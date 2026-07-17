@@ -17,11 +17,11 @@ import {
 import { HashChainLedger } from "./audit.js";
 import { LoopDetector, scanVisibleTextForPromptInjection } from "./safety.js";
 
-export interface ElementSearchResult {
+export type ElementSearchResult = {
   observationId: string;
   elements: UiElement[];
   warnings: string[];
-}
+};
 
 export class ExosuitOrchestrator {
   readonly #agent: DesktopAgent;
