@@ -2,8 +2,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { FakeDesktopAgent, HttpDesktopAgent } from "./agent.js";
 import { ApplicationMapStore } from "./applicationMap.js";
 import { HashChainLedger } from "./audit.js";
-import { createMcpServer } from "./mcp.js";
 import { ExosuitOrchestrator } from "./orchestrator.js";
+import { createExosuitMcpServer } from "./server.js";
 import { createTimeoutFetch, parseGatewayRequestTimeout } from "./timeoutFetch.js";
 
 function buildAgent() {
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const applicationMaps = new ApplicationMapStore({ directory: process.env.EXOSUIT_APPLICATION_MAP_DIR });
   const mapHydration = await applicationMaps.hydrate();
   const orchestrator = new ExosuitOrchestrator({ agent, ledger, applicationMaps });
-  const server = createMcpServer(orchestrator);
+  const server = createExosuitMcpServer(orchestrator);
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write(
