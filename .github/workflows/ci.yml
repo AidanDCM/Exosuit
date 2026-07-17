@@ -3,7 +3,33 @@ name: Exosuit CI
 on:
   push:
     branches: [main, "build/**"]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "apps/**"
+      - "docs/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "README.md"
+      - "AGENTS.md"
+      - "OWNER_MANUAL.md"
+      - "DEVELOPER_OPERATING_SYSTEM.md"
+      - ".github/copilot-instructions.md"
   pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "apps/**"
+      - "docs/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "README.md"
+      - "AGENTS.md"
+      - "OWNER_MANUAL.md"
+      - "DEVELOPER_OPERATING_SYSTEM.md"
+      - ".github/copilot-instructions.md"
   workflow_dispatch:
 
 permissions:
@@ -14,8 +40,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect:
+    name: Detect project surfaces
+    runs-on: ubuntu-latest
+    outputs:
+      has_typescript: ${{ steps.files.outputs.has_typescript }}
+      has_dotnet: ${{ steps.files.outputs.has_dotnet }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: files
+        shell: bash
+        run: |
+          test -f package.json && echo 'has_typescript=true' >> "$GITHUB_OUTPUT" || echo 'has_typescript=false' >> "$GITHUB_OUTPUT"
+          test -f apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj && echo 'has_dotnet=true' >> "$GITHUB_OUTPUT" || echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
+
   typescript:
     name: TypeScript contracts, gateway, and pulse
+    needs: detect
+    if: needs.detect.outputs.has_typescript == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,6 +78,8 @@ jobs:
 
   windows-agent:
     name: Windows agent build and pure tests
+    needs: detect
+    if: needs.detect.outputs.has_dotnet == 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -54,13 +98,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-agent-test-results
-          path: |
-            **/TestResults/**
+          path: "**/TestResults/**"
           if-no-files-found: warn
           retention-days: 14
 
   repository-contract:
     name: Required manuals and safety files
+    needs: detect
+    if: needs.detect.outputs.has_typescript == 'true' || needs.detect.outputs.has_dotnet == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
