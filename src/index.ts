@@ -1,5 +1,6 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { FakeDesktopAgent, HttpDesktopAgent } from "./agent.js";
+import { ApplicationMapStore } from "./applicationMap.js";
 import { HashChainLedger } from "./audit.js";
 import { createMcpServer } from "./mcp.js";
 import { ExosuitOrchestrator } from "./orchestrator.js";
@@ -24,11 +25,15 @@ async function main(): Promise<void> {
   const agent = buildAgent();
   const ledger = new HashChainLedger(process.env.EXOSUIT_GATEWAY_LEDGER);
   await ledger.hydrate();
-  const orchestrator = new ExosuitOrchestrator({ agent, ledger });
+  const applicationMaps = new ApplicationMapStore({ directory: process.env.EXOSUIT_APPLICATION_MAP_DIR });
+  const mapHydration = await applicationMaps.hydrate();
+  const orchestrator = new ExosuitOrchestrator({ agent, ledger, applicationMaps });
   const server = createMcpServer(orchestrator);
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  process.stderr.write("Exosuit MCP server connected over stdio.\n");
+  process.stderr.write(
+    `Exosuit MCP server connected over stdio. Loaded ${mapHydration.loaded} application map(s); skipped ${mapHydration.skipped}.\n`,
+  );
 }
 
 main().catch((error: unknown) => {
