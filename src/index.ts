@@ -3,6 +3,7 @@ import { FakeDesktopAgent, HttpDesktopAgent } from "./agent.js";
 import { HashChainLedger } from "./audit.js";
 import { createMcpServer } from "./mcp.js";
 import { ExosuitOrchestrator } from "./orchestrator.js";
+import { createTimeoutFetch, parseGatewayRequestTimeout } from "./timeoutFetch.js";
 
 function buildAgent() {
   const mode = (process.env.EXOSUIT_AGENT_MODE ?? "fake").toLowerCase();
@@ -11,7 +12,12 @@ function buildAgent() {
 
   const token = process.env.EXOSUIT_AGENT_TOKEN ?? "";
   const baseUrl = process.env.EXOSUIT_AGENT_URL ?? "http://127.0.0.1:43117";
-  return new HttpDesktopAgent({ baseUrl, token });
+  const timeoutMs = parseGatewayRequestTimeout(process.env.EXOSUIT_GATEWAY_REQUEST_TIMEOUT_MS);
+  return new HttpDesktopAgent({
+    baseUrl,
+    token,
+    fetchImpl: createTimeoutFetch(timeoutMs),
+  });
 }
 
 async function main(): Promise<void> {
