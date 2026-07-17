@@ -1,144 +1,151 @@
 # Exosuit
 
-Exosuit is a local-first, model-independent computer embodiment runtime. It lets an authorized AI pilot such as ChatGPT use narrow, auditable MCP tools while the user's own Windows machine retains control of sensing, permissions, motion, verification, approvals, and emergency stopping.
+Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. It exposes narrow MCP tools while the local Windows runtime owns sensing, policy, approval, execution, verification, audit, deadlines, and emergency stopping.
 
-## Product law
+The design goal is not hidden automation. It is **human flexibility, machine precision, and local user authority**.
 
-```text
-Brain proposes.
-Exosuit validates.
-The local policy engine allows, asks, or blocks.
-The local desktop provider executes only an allowed proposal.
-Verification checks what actually happened.
-A tamper-evident ledger records the chain.
-```
+## Current status
 
-The model never owns permission, credentials, unrestricted mouse/keyboard access, or the emergency stop.
+**GitHub validated; local Windows acceptance required.**
 
-## Current GitHub phase
+The repository currently includes:
 
-This repository is designed so most of the system can be built and validated without touching a real desktop:
+- a tool-only MCP server suitable for OpenAI Secure MCP Tunnel,
+- a real MCP client/server protocol integration test,
+- fake desktop provider for deterministic CI,
+- Windows UI Automation sensing and semantic actions,
+- sanitized versioned application maps,
+- proposal → policy → local approval → fresh recheck → execution → verification,
+- immutable approval fingerprints,
+- gateway and provider deadlines,
+- dual tamper-evident audit ledgers,
+- prompt-injection and loop guards,
+- local control panel and emergency stop,
+- transparent standard-Windows pointer, click, Unicode typing, and hotkey motor code,
+- restart-only and allowlist-only physical-input activation,
+- GitHub-hosted Linux and Windows build/test workflows,
+- npm and NuGet vulnerability audits,
+- owner, developer, security, architecture, test, audit, and Codex handoff manuals.
 
-- shared typed contracts
-- deterministic safety policy
-- prompt-injection warning scanner
-- loop and step-budget controls
-- hash-chained audit ledger
-- fake desktop provider
-- loopback Windows agent protocol
-- MCP server for ChatGPT developer mode
-- system-pulse end-to-end tests
-- Windows UI Automation provider compiled but disabled by default
-- local control/status panel and emergency stop
-- CI for TypeScript and Windows/.NET
-
-Real Windows interaction remains unvalidated until the Codex/local phase.
+The repository is **not approved for production use**, real accounts, consequential actions, or normal personal desktops until the Codex/local matrix is completed.
 
 ## Architecture
 
 ```text
-ChatGPT / another MCP host
-          |
-          | MCP (stdio through Secure MCP Tunnel, or a future streaming HTTP transport)
-          v
-Exosuit MCP server (Node/TypeScript)
-          |
-          | authenticated loopback HTTP
-          v
-Exosuit Windows agent (.NET, 127.0.0.1 only)
-   |             |              |
-policy       audit ledger    provider interface
-                                  |
-                      fake provider | Windows UI Automation
+ChatGPT / Claude / MCP host
+            |
+     private MCP tools
+            v
+TypeScript gateway
+  - contracts
+  - application memory
+  - prompt-injection/loop guards
+  - gateway deadline
+  - gateway audit
+            |
+ authenticated loopback HTTP
+            v
+.NET Windows agent
+  - fresh UI Automation state
+  - deterministic policy
+  - local approval fingerprints
+  - provider deadlines
+  - verification
+  - local audit
+  - emergency stop
+            |
+      provider adapters
+  +---------+------------------+
+  |                            |
+fake sandbox              Windows UIA
+                               |
+                    optional local motor
+                    standard Windows APIs
 ```
 
-The MCP server issues meaningful semantic operations. It does not stream individual cursor pixels. Smooth movement and immediate stopping belong to the local motor layer.
+MCP carries intentions, not one cursor coordinate per animation frame. The local runtime handles motor interpolation and immediate interruption.
+
+## MCP tools
+
+- `desktop_get_status`
+- `desktop_observe`
+- `desktop_find_elements`
+- `desktop_build_application_map`
+- `desktop_list_application_maps`
+- `desktop_get_application_map`
+- `desktop_match_application_map`
+- `desktop_propose_action`
+- `desktop_propose_physical_input`
+- `desktop_execute_proposal`
+- `desktop_emergency_stop`
+- `desktop_get_audit_log`
+
+Stored application maps are advisory memory only. They must be matched against a fresh observation before their current element IDs can be used.
 
 ## Safety defaults
 
-- provider defaults to `fake`
-- control mode defaults to `observe`
-- physical input defaults to disabled
-- full-control mode cannot be enabled through MCP
-- unknown actions are blocked
-- sensitive and destructive targets are blocked or require local approval
-- screenshots are omitted unless explicitly enabled locally
-- the agent binds only to `127.0.0.1`
-- every agent API endpoint requires a strong shared token
-- emergency stop is local and deterministic
+| Capability | Default |
+|---|---|
+| provider | fake |
+| fake mode | sandbox |
+| Windows mode | observe |
+| bind address | `127.0.0.1` |
+| screenshots | disabled and not implemented in the Windows provider |
+| physical input | disabled |
+| full control | disabled; restart-only; cannot be enabled by MCP or the panel |
+| credentials/secrets | hard denied |
+| destructive targets | hard denied |
+| unknown actions | denied |
+| real semantic actions | local review |
+| physical actions | critical risk + exact local typed review |
 
-Exosuit is not intended to evade automation detection, anti-cheat systems, access controls, or application policies.
+Physical input requires all exact local startup settings plus a non-empty process allowlist. Every physical action then requires a fresh active target window; pointer coordinates must be inside that window, and physical text requires a fresh enabled, visible, focused target field.
 
-## TypeScript development
+## Quick GitHub-safe validation
 
 ```bash
-npm install
+npm install --ignore-scripts
 npm run typecheck
-npm test
+npm test -- --reporter=verbose
 npm run build
-npm run test:pulse
+npm run test:pulse -- --reporter=verbose
 ```
 
-Run the MCP server against the simulated desktop:
+On Windows:
 
-```bash
-EXOSUIT_AGENT_MODE=fake npm run dev:mcp
+```powershell
+dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release -warnaserror
+dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-Run against the local Windows agent:
+Do not enable the Windows provider or physical input until following `docs/CODEX_HANDOFF.md` in a disposable Windows environment.
 
-```bash
-EXOSUIT_AGENT_MODE=http \
-EXOSUIT_AGENT_URL=http://127.0.0.1:43117 \
-EXOSUIT_AGENT_TOKEN=<strong-random-token> \
-npm run dev:mcp
-```
+## Manuals and evidence
 
-On PowerShell, set the same values with `$env:NAME = "value"`.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security model](docs/SECURITY_MODEL.md)
+- [Test plan](docs/TEST_PLAN.md)
+- [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
+- [Codex local handoff](docs/CODEX_HANDOFF.md)
+- [Parts & donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
+- [GitHub phase final audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
+- [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
+- [Decision log](docs/logs/DECISION_LOG.md)
 
-## Windows agent development
+## Explicit exclusions
 
-```bash
-dotnet build apps/windows-agent/Exosuit.Agent.csproj
-dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
-```
+Exosuit must not implement or claim:
 
-The agent refuses to start without `EXOSUIT_AGENT_TOKEN` of at least 32 characters. It uses the fake provider unless `EXOSUIT_PROVIDER=windows` is explicitly set. Physical input additionally requires `EXOSUIT_ENABLE_PHYSICAL_INPUT=true` and an approved local mode.
+- stealth or undetectable automation,
+- anti-bot or anti-cheat evasion,
+- kernel or hardware impersonation for concealment,
+- credential harvesting,
+- privilege escalation,
+- arbitrary remote shell execution,
+- covert surveillance or recording,
+- bypassing platform or application security controls.
 
-## Connecting ChatGPT
+## Next phase
 
-The intended private route is OpenAI Secure MCP Tunnel using the MCP server as a local stdio command. Current OpenAI documentation says ChatGPT developer mode supports read and write MCP tools, while Secure MCP Tunnel keeps the private server inside the user's network and uses an outbound connection.
-
-- https://developers.openai.com/api/docs/guides/developer-mode
-- https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
-- https://developers.openai.com/apps-sdk/build/mcp-server
-- https://developers.openai.com/apps-sdk/plan/tools
-
-Exact tunnel setup is deferred to the Codex/local validation phase because it requires the user's machine, OpenAI organization/workspace access, and local credentials.
-
-## Donor systems considered
-
-- `AidanDCM/Parts-and-Pieces`
-- `AidanDCM/AI-Desktop-Operating-System-`
-- `AidanDCM/mcp-platform`
-- `AidanDCM/Dev-Orchestrator`
-- `AidanDCM/Pokemon-yellow-bot`
-- audit patterns harvested from `AidanDCM/Futures-Trading` through Parts & Pieces
-
-See `docs/PARTS_REUSE_ADR.md` for what was reused, adapted, or rejected.
-
-## Read before changing execution code
-
-1. `AGENTS.md`
-2. `DEVELOPER_OPERATING_SYSTEM.md`
-3. `OWNER_MANUAL.md`
-4. `docs/ARCHITECTURE.md`
-5. `docs/SECURITY_MODEL.md`
-6. `docs/TEST_PLAN.md`
-7. `docs/qa/ATOMIC_AUDIT_BASELINE.md`
-
-No claim of live desktop readiness is valid until the Codex handoff checks in `docs/CODEX_HANDOFF.md` are completed with evidence.
-
-## Validation state
-
-The draft PR is the source of truth for CI and CodeQL status. Until those checks produce green evidence, this repository remains in **REVIEW** status even when the architecture and tests are present.
+The next approved step is isolated Codex validation on a Windows VM or dedicated test account. The product PR remains draft until `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` is completed with evidence.
