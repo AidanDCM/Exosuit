@@ -16,6 +16,7 @@ on:
       - "OWNER_MANUAL.md"
       - "DEVELOPER_OPERATING_SYSTEM.md"
       - ".github/copilot-instructions.md"
+      - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "src/**"
@@ -30,6 +31,7 @@ on:
       - "OWNER_MANUAL.md"
       - "DEVELOPER_OPERATING_SYSTEM.md"
       - ".github/copilot-instructions.md"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 permissions:
@@ -68,7 +70,21 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
       - name: Typecheck
-        run: npm run typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          exit_code=$?
+          cat typecheck.log
+          exit "$exit_code"
+      - name: Upload TypeScript diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-diagnostics
+          path: typecheck.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Unit and integration tests
         run: npm test -- --reporter=verbose
       - name: Build
@@ -90,7 +106,20 @@ jobs:
       - name: Restore
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
       - name: Build with warnings as errors
-        run: dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
+        shell: pwsh
+        run: |
+          dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror *> windows-build.log
+          $exitCode = $LASTEXITCODE
+          Get-Content windows-build.log
+          exit $exitCode
+      - name: Upload Windows build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-diagnostics
+          path: windows-build.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Test
         run: dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=windows-agent.trx" --collect:"XPlat Code Coverage"
       - name: Upload test evidence
@@ -112,28 +141,43 @@ jobs:
       - name: Verify serious-repo contract
         shell: bash
         run: |
-          set -euo pipefail
-          required=(
-            README.md
-            AGENTS.md
-            OWNER_MANUAL.md
-            DEVELOPER_OPERATING_SYSTEM.md
-            docs/ARCHITECTURE.md
-            docs/SECURITY_MODEL.md
-            docs/TEST_PLAN.md
-            docs/PARTS_REUSE_ADR.md
-            docs/CODEX_HANDOFF.md
-            docs/qa/ATOMIC_AUDIT_BASELINE.md
-            docs/logs/ISSUE_AND_SOLUTION_LOG.md
-            docs/logs/DECISION_LOG.md
-            docs/logs/CHANGELOG_INTERNAL.md
-            .github/copilot-instructions.md
-          )
-          for path in "${required[@]}"; do
-            test -s "$path" || { echo "Missing or empty required file: $path"; exit 1; }
-          done
-          ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,})' \
-            --exclude-dir=.git --exclude='*.md' . || {
-              echo 'Potential committed secret shape detected outside documentation.'
-              exit 1
-            }
+          validate_contract() {
+            set -euo pipefail
+            required=(
+              README.md
+              AGENTS.md
+              OWNER_MANUAL.md
+              DEVELOPER_OPERATING_SYSTEM.md
+              docs/ARCHITECTURE.md
+              docs/SECURITY_MODEL.md
+              docs/TEST_PLAN.md
+              docs/PARTS_REUSE_ADR.md
+              docs/CODEX_HANDOFF.md
+              docs/qa/ATOMIC_AUDIT_BASELINE.md
+              docs/logs/ISSUE_AND_SOLUTION_LOG.md
+              docs/logs/DECISION_LOG.md
+              docs/logs/CHANGELOG_INTERNAL.md
+              .github/copilot-instructions.md
+            )
+            for path in "${required[@]}"; do
+              test -s "$path" || { echo "Missing or empty required file: $path"; return 1; }
+            done
+            ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,})' \
+              --exclude-dir=.git --exclude='*.md' . || {
+                echo 'Potential committed secret shape detected outside documentation.'
+                return 1
+              }
+          }
+          set +e
+          validate_contract > repository-contract.log 2>&1
+          exit_code=$?
+          cat repository-contract.log
+          exit "$exit_code"
+      - name: Upload repository-contract diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-contract-diagnostics
+          path: repository-contract.log
+          if-no-files-found: warn
+          retention-days: 14
