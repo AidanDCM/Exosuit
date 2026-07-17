@@ -1,0 +1,94 @@
+name: Exosuit CI
+
+on:
+  push:
+    branches: [main, "build/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exosuit-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    name: TypeScript contracts, gateway, and pulse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test -- --reporter=verbose
+      - name: Build
+        run: npm run build
+      - name: Full-chain system pulse
+        run: npm run test:pulse -- --reporter=verbose
+
+  windows-agent:
+    name: Windows agent build and pure tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
+      - name: Build with warnings as errors
+        run: dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=windows-agent.trx" --collect:"XPlat Code Coverage"
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-agent-test-results
+          path: |
+            **/TestResults/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  repository-contract:
+    name: Required manuals and safety files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify serious-repo contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            README.md
+            AGENTS.md
+            OWNER_MANUAL.md
+            DEVELOPER_OPERATING_SYSTEM.md
+            docs/ARCHITECTURE.md
+            docs/SECURITY_MODEL.md
+            docs/TEST_PLAN.md
+            docs/PARTS_REUSE_ADR.md
+            docs/CODEX_HANDOFF.md
+            docs/qa/ATOMIC_AUDIT_BASELINE.md
+            docs/logs/ISSUE_AND_SOLUTION_LOG.md
+            docs/logs/DECISION_LOG.md
+            docs/logs/CHANGELOG_INTERNAL.md
+            .github/copilot-instructions.md
+          )
+          for path in "${required[@]}"; do
+            test -s "$path" || { echo "Missing or empty required file: $path"; exit 1; }
+          done
+          ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,})' \
+            --exclude-dir=.git --exclude='*.md' . || {
+              echo 'Potential committed secret shape detected outside documentation.'
+              exit 1
+            }

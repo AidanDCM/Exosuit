@@ -1,0 +1,30 @@
+{
+  "name": "exosuit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first MCP computer embodiment runtime with deterministic safety and a Windows agent.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:pulse": "vitest run tests/systemPulse.test.ts",
+    "dev:mcp": "tsx src/index.ts",
+    "start:mcp": "node dist/src/index.js",
+    "agent:build": "dotnet build apps/windows-agent/Exosuit.Agent.csproj",
+    "agent:test": "dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.6"
+  }
+}
