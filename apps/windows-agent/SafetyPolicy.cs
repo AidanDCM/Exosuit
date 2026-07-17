@@ -14,12 +14,30 @@ public sealed class AgentRuntimeState
         bool physicalInputEnabled,
         bool screenshotCaptureEnabled,
         bool localFullControlEnabled,
-        IReadOnlySet<string> allowedProcessNames)
+        IReadOnlySet<string> allowedProcessNames,
+        bool enforceStartupEnvironment = true)
     {
-        _mode = mode;
-        PhysicalInputEnabled = physicalInputEnabled;
+        ArgumentNullException.ThrowIfNull(allowedProcessNames);
+        if (enforceStartupEnvironment)
+        {
+            var startup = AgentStartupConfigurationResolver.ResolvePhysicalInput(
+                Environment.GetEnvironmentVariable("EXOSUIT_PROVIDER"),
+                mode,
+                physicalInputEnabled,
+                Environment.GetEnvironmentVariable("EXOSUIT_FULL_CONTROL_ACK"),
+                Environment.GetEnvironmentVariable("EXOSUIT_INITIAL_MODE"),
+                allowedProcessNames);
+            _mode = startup.InitialMode;
+            PhysicalInputEnabled = startup.PhysicalInputEnabled;
+            LocalFullControlEnabled = startup.LocalFullControlEnabled;
+        }
+        else
+        {
+            _mode = mode;
+            PhysicalInputEnabled = physicalInputEnabled;
+            LocalFullControlEnabled = localFullControlEnabled;
+        }
         ScreenshotCaptureEnabled = screenshotCaptureEnabled;
-        LocalFullControlEnabled = localFullControlEnabled;
         AllowedProcessNames = allowedProcessNames;
         StartedAt = DateTimeOffset.UtcNow;
     }
