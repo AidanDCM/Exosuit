@@ -43,6 +43,11 @@ public static class Program
             localFullControlEnabled: false,
             allowedProcesses);
         var policy = new SafetyPolicy();
+        var approvals = new ProposalApprovalRegistry();
+        var providerTimeout = ProviderDeadline.ReadMilliseconds(
+            Environment.GetEnvironmentVariable("EXOSUIT_PROVIDER_TIMEOUT_MS"), 15_000, 1_000, 120_000);
+        var emergencyStopTimeout = ProviderDeadline.ReadMilliseconds(
+            Environment.GetEnvironmentVariable("EXOSUIT_EMERGENCY_STOP_TIMEOUT_MS"), 3_000, 250, 10_000);
         var dataDirectory = Environment.GetEnvironmentVariable("EXOSUIT_DATA_DIR") ??
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Exosuit");
         Directory.CreateDirectory(dataDirectory);
@@ -60,6 +65,29 @@ public static class Program
             context.Response.Headers["Content-Security-Policy"] =
                 "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
             await next();
+        });
+
+        app.Use(async (context, next) =>
+        {
+            try
+            {
+                await next();
+            }
+            catch (ProviderDeadlineExceededException exception)
+            {
+                await ledger.AppendAsync("provider_deadline_exceeded", "local-agent", Payload(
+                    ("path", context.Request.Path.Value),
+                    ("timeoutMilliseconds", exception.Timeout.TotalMilliseconds)), CancellationToken.None);
+                if (!context.Response.HasStarted)
+                {
+                    context.Response.StatusCode = StatusCodes.Status504GatewayTimeout;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "The local desktop provider exceeded its configured deadline.",
+                        code = "provider_deadline_exceeded"
+                    }, CancellationToken.None);
+                }
+            }
         });
 
         app.Use(async (context, next) =>
@@ -88,7 +116,9 @@ public static class Program
             if (!IsLoopback(request.HttpContext.Connection.RemoteIpAddress)) return Results.Unauthorized();
             var form = await request.ReadFormAsync(cancellationToken);
             if (!FixedTimeEquals(localCsrfToken, form["csrf"].ToString())) return Results.Unauthorized();
-            await ActivateEmergencyStopAsync(state, provider, ledger, form["reason"].ToString(), "local-control-panel", cancellationToken);
+            await ActivateEmergencyStopAsync(
+                state, approvals, provider, ledger, emergencyStopTimeout,
+                form["reason"].ToString(), "local-control-panel", cancellationToken);
             return Results.Redirect("/ui");
         });
 
@@ -109,7 +139,9 @@ public static class Program
 
             var approved = proposal with { Status = ProposalStatus.Approved };
             state.Proposals[proposalId] = approved;
-            await ledger.AppendAsync("proposal_approved", "local-user", Payload(("proposalId", proposalId)), cancellationToken);
+            var fingerprint = approvals.Approve(approved);
+            await ledger.AppendAsync("proposal_approved", "local-user", Payload(
+                ("proposalId", proposalId), ("fingerprint", fingerprint)), cancellationToken);
             return Results.Redirect("/ui");
         });
 
@@ -123,6 +155,7 @@ public static class Program
             if (!FixedTimeEquals(localCsrfToken, form["csrf"].ToString())) return Results.Unauthorized();
             if (!state.Proposals.TryGetValue(proposalId, out var proposal)) return Results.NotFound();
             state.Proposals[proposalId] = proposal with { Status = ProposalStatus.Denied };
+            approvals.Remove(proposalId);
             await ledger.AppendAsync("proposal_denied", "local-user", Payload(("proposalId", proposalId)), cancellationToken);
             return Results.Redirect("/ui");
         });
@@ -154,7 +187,8 @@ public static class Program
                 IncludeScreenshot = request.IncludeScreenshot && state.ScreenshotCaptureEnabled,
                 MaxElements = Math.Clamp(request.MaxElements, 1, 2_000)
             };
-            var observation = await provider.ObserveAsync(bounded, state, cancellationToken);
+            var observation = await ProviderDeadline.RunAsync(
+                token => provider.ObserveAsync(bounded, state, token), providerTimeout, cancellationToken);
             await ledger.AppendAsync("desktop_observed", "mcp", Payload(
                 ("observationId", observation.ObservationId),
                 ("windowCount", observation.Windows.Count),
@@ -168,8 +202,11 @@ public static class Program
             var validationError = ValidateAction(action);
             if (validationError is not null) return Results.BadRequest(new { error = validationError, code = "invalid_action" });
 
-            var observation = await provider.ObserveAsync(
-                new ObservationRequest(action.TargetWindowId, true, false, 2_000), state, cancellationToken);
+            var observation = await ProviderDeadline.RunAsync(
+                token => provider.ObserveAsync(
+                    new ObservationRequest(action.TargetWindowId, true, false, 2_000), state, token),
+                providerTimeout,
+                cancellationToken);
             var targetWindow = observation.Windows.FirstOrDefault(window => window.Id == action.TargetWindowId);
             var targetElement = observation.Elements.FirstOrDefault(element => element.Id == action.TargetElementId);
             var decision = policy.Evaluate(action, state, provider.Name, observation.ActiveWindow, targetWindow, targetElement);
@@ -201,6 +238,7 @@ public static class Program
             if (proposal.ExpiresAt <= DateTimeOffset.UtcNow)
             {
                 state.Proposals[proposalId] = proposal with { Status = ProposalStatus.Expired };
+                approvals.Remove(proposalId);
                 return Results.Ok(BlockedResult(proposal, "Proposal expired."));
             }
             if (state.EmergencyStopped || proposal.Status is ProposalStatus.Blocked or ProposalStatus.Denied or ProposalStatus.Expired)
@@ -209,32 +247,68 @@ public static class Program
                 return Results.Ok(new ActionResult(proposalId, proposal.Action.Id, ResultStatus.PendingReview,
                     VerificationStatus.NotChecked, "Local approval is still required.",
                     new Dictionary<string, object?>(), Array.Empty<string>()));
+            if (proposal.Status == ProposalStatus.Approved && !approvals.IsValid(proposal))
+            {
+                state.Proposals[proposalId] = proposal with { Status = ProposalStatus.Denied };
+                approvals.Remove(proposalId);
+                await ledger.AppendAsync("approval_fingerprint_mismatch", "local-agent", Payload(
+                    ("proposalId", proposalId)), CancellationToken.None);
+                return Results.Ok(BlockedResult(proposal, "The locally approved proposal no longer matches its immutable fingerprint."));
+            }
 
-            var fresh = await provider.ObserveAsync(
-                new ObservationRequest(proposal.Action.TargetWindowId, true, false, 2_000), state, cancellationToken);
+            var fresh = await ProviderDeadline.RunAsync(
+                token => provider.ObserveAsync(
+                    new ObservationRequest(proposal.Action.TargetWindowId, true, false, 2_000), state, token),
+                providerTimeout,
+                cancellationToken);
             var freshTargetWindow = fresh.Windows.FirstOrDefault(window => window.Id == proposal.Action.TargetWindowId);
             var freshTargetElement = fresh.Elements.FirstOrDefault(element => element.Id == proposal.Action.TargetElementId);
             var freshDecision = policy.Evaluate(
                 proposal.Action, state, provider.Name, fresh.ActiveWindow, freshTargetWindow, freshTargetElement);
             if (freshDecision.Status == PermissionStatus.Block)
             {
+                approvals.Remove(proposalId);
                 var blocked = BlockedResult(proposal, $"Action failed fresh policy evaluation: {freshDecision.Reason}");
                 await ledger.AppendAsync("action_blocked_at_execution", "local-agent", Payload(
                     ("proposalId", proposalId), ("decision", JsonSerializer.SerializeToElement(freshDecision, jsonOptions))), cancellationToken);
                 return Results.Ok(blocked);
             }
-            if (freshDecision.Status == PermissionStatus.ReviewRequired && proposal.Status != ProposalStatus.Approved)
+            if (freshDecision.Status == PermissionStatus.ReviewRequired &&
+                (proposal.Status != ProposalStatus.Approved || freshDecision != proposal.Decision))
+            {
+                var pending = proposal with { Decision = freshDecision, Status = ProposalStatus.PendingReview };
+                state.Proposals[proposalId] = pending;
+                approvals.Remove(proposalId);
+                await ledger.AppendAsync("fresh_review_required", "local-agent", Payload(
+                    ("proposalId", proposalId),
+                    ("decision", JsonSerializer.SerializeToElement(freshDecision, jsonOptions))), cancellationToken);
                 return Results.Ok(new ActionResult(proposalId, proposal.Action.Id, ResultStatus.PendingReview,
-                    VerificationStatus.NotChecked, "Fresh policy evaluation requires local approval.",
+                    VerificationStatus.NotChecked, "Fresh policy evaluation requires a new local approval.",
                     new Dictionary<string, object?>(), Array.Empty<string>()));
+            }
 
             ProviderExecution execution;
             try
             {
-                execution = await provider.ExecuteAsync(proposal.Action, cancellationToken);
+                execution = await ProviderDeadline.RunAsync(
+                    token => provider.ExecuteAsync(proposal.Action, token), providerTimeout, cancellationToken);
+            }
+            catch (ProviderDeadlineExceededException exception)
+            {
+                approvals.Remove(proposalId);
+                state.Proposals[proposalId] = proposal with { Status = ProposalStatus.Denied };
+                var timedOut = new ActionResult(proposalId, proposal.Action.Id, ResultStatus.Failed,
+                    VerificationStatus.NotChecked, exception.Message,
+                    new Dictionary<string, object?> { ["timeoutMilliseconds"] = exception.Timeout.TotalMilliseconds },
+                    Array.Empty<string>());
+                await ledger.AppendAsync("action_timed_out", "local-agent", Payload(
+                    ("proposalId", proposalId),
+                    ("timeoutMilliseconds", exception.Timeout.TotalMilliseconds)), CancellationToken.None);
+                return Results.Ok(timedOut);
             }
             catch (OperationCanceledException)
             {
+                approvals.Remove(proposalId);
                 var cancelled = new ActionResult(proposalId, proposal.Action.Id, ResultStatus.Cancelled,
                     VerificationStatus.NotChecked, "The provider operation was cancelled.",
                     new Dictionary<string, object?>(), Array.Empty<string>());
@@ -242,18 +316,35 @@ public static class Program
                 return Results.Ok(cancelled);
             }
 
-            var verification = execution.Succeeded
-                ? await provider.VerifyAsync(proposal.Action.Expected, execution, cancellationToken)
-                : (false, execution.Summary, execution.Evidence);
+            (bool Passed, string Summary, IReadOnlyDictionary<string, object?> Evidence) verification;
+            try
+            {
+                verification = execution.Succeeded
+                    ? await ProviderDeadline.RunAsync(
+                        token => provider.VerifyAsync(proposal.Action.Expected, execution, token),
+                        providerTimeout,
+                        cancellationToken)
+                    : (false, execution.Summary, execution.Evidence);
+            }
+            catch (ProviderDeadlineExceededException exception)
+            {
+                verification = (false, exception.Message,
+                    new Dictionary<string, object?> { ["timeoutMilliseconds"] = exception.Timeout.TotalMilliseconds });
+                await ledger.AppendAsync("verification_timed_out", "local-agent", Payload(
+                    ("proposalId", proposalId),
+                    ("timeoutMilliseconds", exception.Timeout.TotalMilliseconds)), CancellationToken.None);
+            }
+
             var result = new ActionResult(
                 proposalId,
                 proposal.Action.Id,
-                execution.Succeeded && verification.Item1 ? ResultStatus.Succeeded : ResultStatus.Failed,
-                verification.Item1 ? VerificationStatus.Passed : VerificationStatus.Failed,
-                verification.Item2,
-                verification.Item3,
+                execution.Succeeded && verification.Passed ? ResultStatus.Succeeded : ResultStatus.Failed,
+                verification.Passed ? VerificationStatus.Passed : VerificationStatus.Failed,
+                verification.Summary,
+                verification.Evidence,
                 execution.Warnings);
             state.Proposals[proposalId] = proposal with { Status = ProposalStatus.Executed };
+            approvals.Remove(proposalId);
             await ledger.AppendAsync(
                 result.Status == ResultStatus.Succeeded ? "action_executed" : "action_failed",
                 "local-agent",
@@ -264,7 +355,9 @@ public static class Program
 
         app.MapPost("/v1/emergency-stop", async (EmergencyStopRequest request, CancellationToken cancellationToken) =>
         {
-            var result = await ActivateEmergencyStopAsync(state, provider, ledger, request.Reason, "mcp", cancellationToken);
+            var result = await ActivateEmergencyStopAsync(
+                state, approvals, provider, ledger, emergencyStopTimeout,
+                request.Reason, "mcp", cancellationToken);
             return Results.Ok(result);
         });
 
@@ -276,7 +369,9 @@ public static class Program
             ("mode", state.Mode.ToString()),
             ("port", port),
             ("physicalInputEnabled", state.PhysicalInputEnabled),
-            ("screenshotCaptureEnabled", state.ScreenshotCaptureEnabled)));
+            ("screenshotCaptureEnabled", state.ScreenshotCaptureEnabled),
+            ("providerTimeoutMilliseconds", providerTimeout.TotalMilliseconds),
+            ("emergencyStopTimeoutMilliseconds", emergencyStopTimeout.TotalMilliseconds)));
 
         await app.RunAsync();
     }
@@ -288,21 +383,46 @@ public static class Program
 
     private static async Task<object> ActivateEmergencyStopAsync(
         AgentRuntimeState state,
+        ProposalApprovalRegistry approvals,
         IDesktopProvider provider,
         HashChainAuditLedger ledger,
+        TimeSpan emergencyStopTimeout,
         string? reason,
         string actor,
         CancellationToken cancellationToken)
     {
         state.ActivateEmergencyStop();
+        approvals.Clear();
         foreach (var pair in state.Proposals.ToArray())
         {
             if (pair.Value.Status is not (ProposalStatus.Executed or ProposalStatus.Denied or ProposalStatus.Blocked or ProposalStatus.Expired))
                 state.Proposals[pair.Key] = pair.Value with { Status = ProposalStatus.Denied };
         }
-        await provider.CancelAsync(cancellationToken);
-        await ledger.AppendAsync("emergency_stop", actor, Payload(("reason", reason ?? "No reason supplied.")), cancellationToken);
-        return new { stopped = true, summary = "Exosuit stopped locally and pending proposals were denied." };
+
+        var cancellationTimedOut = false;
+        try
+        {
+            await ProviderDeadline.RunAsync(
+                token => provider.CancelAsync(token), emergencyStopTimeout, cancellationToken);
+        }
+        catch (ProviderDeadlineExceededException exception)
+        {
+            cancellationTimedOut = true;
+            await ledger.AppendAsync("emergency_stop_provider_timeout", actor, Payload(
+                ("timeoutMilliseconds", exception.Timeout.TotalMilliseconds)), CancellationToken.None);
+        }
+
+        await ledger.AppendAsync("emergency_stop", actor, Payload(
+            ("reason", reason ?? "No reason supplied."),
+            ("providerCancellationTimedOut", cancellationTimedOut)), CancellationToken.None);
+        return new
+        {
+            stopped = true,
+            providerCancellationTimedOut = cancellationTimedOut,
+            summary = cancellationTimedOut
+                ? "Exosuit stopped locally and pending proposals were denied; provider cancellation exceeded its deadline."
+                : "Exosuit stopped locally and pending proposals were denied."
+        };
     }
 
     private static ActionResult BlockedResult(ActionProposal proposal, string summary) => new(
