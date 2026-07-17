@@ -24,8 +24,13 @@ Lower evidence levels never imply higher ones.
 | loop control | normal progression | repeated action and step budget stop |
 | audit | append, redact, verify | tampering detected |
 | HTTP agent | loopback URL and strong token | remote URL and weak token rejected |
+| gateway deadline | successful response, bounded default | local timeout, malformed setting, caller cancellation distinction |
+| application map sanitization | safe descriptors and fingerprints | sensitive controls, live values, source IDs, plain titles excluded |
+| application map matching | fresh IDs and confidence | sensitive fresh controls and missing controls remain unmatched |
+| application map persistence | atomic save, hydrate, version increment | invalid files skipped, old versions pruned |
 | fake agent | execute and verify | emergency-stop lock |
 | system pulse | observe → find → propose → execute → verify → audit → stop | action after stop blocked |
+| wire fixture | TypeScript parses canonical JSON | schema drift fails parsing |
 
 Commands:
 
@@ -44,7 +49,9 @@ npm run test:pulse
 | fake provider | semantic value set and verification |
 | motor math | exact endpoints and finite coordinates |
 | audit ledger | redaction, hash verification, tamper failure |
-| wire format | snake_case enum compatibility with TypeScript |
+| approval binding | stable fingerprint, changed proposal rejection, approval removal |
+| provider deadline | hung operation times out, caller cancellation remains distinct, configuration bounded |
+| wire format | snake_case enum and canonical fixture compatibility with TypeScript |
 
 Commands:
 
@@ -57,22 +64,35 @@ dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
 
 ### TypeScript
 
-- install from `package.json`,
-- typecheck,
+- install from `package.json` with scripts disabled,
+- strict typecheck,
 - unit/integration tests,
-- build,
-- dedicated system pulse.
+- production build,
+- dedicated system pulse,
+- upload typecheck diagnostics.
 
 ### Windows agent
 
 - restore on a GitHub-hosted Windows runner,
-- build Windows agent,
+- build with warnings as errors,
 - run .NET tests,
-- upload test results when available.
+- upload build diagnostics, TRX, and coverage evidence.
 
-### Code scanning
+### Repository contract
 
-CodeQL scans JavaScript/TypeScript and C# separately. A CodeQL success does not prove application safety; it is one static-analysis layer.
+- require owner/developer/security/architecture/test/audit/reuse documentation,
+- require the pull-request safety checklist,
+- scan non-document source for committed credential-shaped strings.
+
+### Dependency security
+
+This private personal repository does not have GitHub Code Security enabled, so CodeQL SARIF upload is not an available gate. The supported private-repository security gate is:
+
+- npm direct/transitive vulnerability audit, failing on high or critical advisories,
+- NuGet direct/transitive vulnerability audit,
+- uploaded reports retained as evidence.
+
+CodeQL jobs remain conditional and automatically run if the repository becomes public or receives GitHub Code Security.
 
 ## Required local Codex tests
 
@@ -85,6 +105,7 @@ Run in a dedicated Windows user or VM before any real account or production file
 - Windows provider requires the exact local acknowledgement,
 - service listens only on 127.0.0.1,
 - missing/wrong token returns 401,
+- gateway timeout is shorter than an unacceptable hang and longer than normal local calls,
 - control panel is reachable locally and not framed.
 
 ### Observe-only UI Automation
@@ -96,12 +117,23 @@ Run in a dedicated Windows user or VM before any real account or production file
 - max-element cap is respected,
 - disappeared windows/elements produce a clean failure.
 
+### Application-map memory
+
+- build a Notepad map from a fresh observation,
+- inspect the persisted file and confirm there are no live values, raw element IDs, screenshots, plain window titles, or password controls,
+- close and reopen Notepad so runtime IDs change,
+- match the stored map and confirm current IDs are returned,
+- change the window title and confirm a warning appears,
+- remove or rename a control and confirm it remains unmatched,
+- confirm matching never creates or executes a proposal,
+- confirm any later action still passes through fresh policy, approval, deadline, and verification.
+
 ### Safe semantic action
 
 Use only a disposable Notepad document:
 
 1. observe Notepad,
-2. resolve the Edit control,
+2. resolve the Edit control directly or through a freshly matched map,
 3. propose setting `Exosuit validation successful`,
 4. verify local review requirement in scoped mode,
 5. approve locally,
@@ -115,8 +147,11 @@ Use only a disposable Notepad document:
 
 - change focus after proposal and verify wrong-window block,
 - close target after proposal and verify missing-target block,
+- mutate an approved proposal in a test harness and verify fingerprint rejection,
 - emergency-stop before execution and verify denial,
 - emergency-stop during a bounded wait and verify cancellation,
+- make a test provider hang and verify the local deadline,
+- make the local agent hang and verify the gateway deadline,
 - repeat a failed task and verify no blind continuation,
 - show hostile visible text and verify the gateway blocks mutation,
 - verify full control cannot be enabled through MCP or the panel.
@@ -136,6 +171,7 @@ Use only a disposable Notepad document:
 - password value is not returned,
 - screenshot bytes are absent,
 - control panel does not expose token,
+- application-map files contain no live values, element IDs, or plain window titles,
 - app logs contain no private field contents beyond explicit task evidence.
 
 ### ChatGPT MCP acceptance
@@ -144,25 +180,31 @@ After local tests pass:
 
 1. run the MCP server in `http` agent mode,
 2. launch OpenAI Secure MCP Tunnel with the stdio command,
-3. add the endpoint as a private developer-mode app,
+3. add the tunnel as a private developer-mode app,
 4. select Exosuit in a new ChatGPT web conversation,
 5. ask for status and observe-only information,
-6. run the disposable Notepad task,
-7. confirm ChatGPT uses proposal then execution rather than inventing success,
-8. confirm local approvals appear and remain authoritative,
-9. issue “stop” and verify the local stop event,
-10. export evidence into the local validation report.
+6. build/list/get/match a fake-provider application map,
+7. run the disposable Notepad task,
+8. confirm ChatGPT uses proposal then execution rather than inventing success,
+9. confirm local approvals appear and remain authoritative,
+10. issue “stop” and verify the local stop event,
+11. export evidence into the local validation report.
 
 ## Fault injection cases
 
 - invalid JSON from agent,
-- HTTP timeout/disconnect,
+- gateway HTTP timeout/disconnect,
+- provider timeout,
 - expired proposal,
+- modified approved proposal,
 - modified active window,
 - missing element,
 - disabled/offscreen element,
 - provider exception,
 - verification mismatch,
+- malformed application-map file,
+- stale application-map title fingerprint,
+- unmatched application-map controls,
 - corrupted audit line,
 - changed prior audit event,
 - repeated identical action,
@@ -172,4 +214,4 @@ Each escaped fault must become a regression test.
 
 ## Promotion gate
 
-The repository may be described as **GitHub validated** only when CI runs are green. It may be described as **Windows validated** only after the local matrix is completed with evidence. It may be described as **ChatGPT connected** only after the private app acceptance test succeeds.
+The repository may be described as **GitHub validated** only when CI and supported dependency-security audits are green on the reviewed commit. It may be described as **Windows validated** only after the local matrix is completed with evidence. It may be described as **ChatGPT connected** only after the private app acceptance test succeeds.
