@@ -142,6 +142,28 @@ public sealed class CoreTests
         Assert.Contains("os_accessibility", json);
     }
 
+    [Fact]
+    public async Task SharedWireFixtureDeserializesAcrossDotNetContracts()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "wire-contract-v1.json");
+        var fixture = JsonSerializer.Deserialize<WireContractFixture>(
+            await File.ReadAllTextAsync(path),
+            JsonOptions());
+
+        Assert.NotNull(fixture);
+        Assert.Equal(ControlMode.Sandbox, fixture.Status.Mode);
+        Assert.Equal("fake-sandbox", fixture.Status.Provider);
+        var element = Assert.Single(fixture.Observation.Elements);
+        Assert.Equal(ElementSource.Fake, element.Source);
+        Assert.Contains(ActionType.SetElementValue, element.SupportedActions);
+        Assert.Equal(ActionType.SetElementValue, fixture.Proposal.Action.ActionType);
+        Assert.Equal(ActionRoute.OsAccessibility, fixture.Proposal.Action.Route);
+        Assert.Equal(PermissionStatus.Allow, fixture.Proposal.Decision.Status);
+        Assert.Equal(ResultStatus.Succeeded, fixture.Result.Status);
+        Assert.Equal(VerificationStatus.Passed, fixture.Result.VerificationStatus);
+        Assert.Equal(64, fixture.AuditEvent.Hash.Length);
+    }
+
     private static AgentRuntimeState State(ControlMode mode) => new(
         mode,
         physicalInputEnabled: false,
@@ -173,4 +195,11 @@ public sealed class CoreTests
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         return options;
     }
+
+    private sealed record WireContractFixture(
+        AgentStatus Status,
+        DesktopObservation Observation,
+        ActionProposal Proposal,
+        ActionResult Result,
+        AuditEvent AuditEvent);
 }
