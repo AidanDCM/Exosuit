@@ -21,5 +21,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../windows-agent/Exosuit.Agent.csproj" />
+    <None Include="../../tests/fixtures/wire-contract-v1.json" Link="wire-contract-v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
