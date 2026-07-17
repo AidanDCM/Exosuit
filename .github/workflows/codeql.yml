@@ -1,4 +1,4 @@
-name: CodeQL
+name: Security Audit
 
 on:
   push:
@@ -42,10 +42,73 @@ jobs:
           test -f package.json && echo 'has_typescript=true' >> "$GITHUB_OUTPUT" || echo 'has_typescript=false' >> "$GITHUB_OUTPUT"
           test -f apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj && echo 'has_dotnet=true' >> "$GITHUB_OUTPUT" || echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
 
-  javascript-typescript:
-    name: CodeQL JavaScript/TypeScript
+  npm-audit:
+    name: npm dependency vulnerability audit
     needs: detect
     if: needs.detect.outputs.has_typescript == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve dependency tree without scripts
+        run: npm install --ignore-scripts --fund=false
+      - name: Fail on high or critical advisories
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=high --json > npm-audit.json
+          exit_code=$?
+          cat npm-audit.json
+          exit "$exit_code"
+      - name: Upload npm audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: npm-audit.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  nuget-audit:
+    name: NuGet dependency vulnerability audit
+    needs: detect
+    if: needs.detect.outputs.has_dotnet == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore with NuGet audit enabled
+        run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj -p:NuGetAudit=true
+      - name: List vulnerable direct and transitive packages
+        shell: pwsh
+        run: |
+          $output = dotnet list apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj package --vulnerable --include-transitive
+          $exitCode = $LASTEXITCODE
+          $output | Tee-Object -FilePath nuget-vulnerability-audit.txt
+          if ($exitCode -ne 0) { exit $exitCode }
+          if (($output -join "`n") -match 'has the following vulnerable packages') {
+            Write-Error 'NuGet reported one or more known vulnerable packages.'
+            exit 1
+          }
+      - name: Upload NuGet audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-audit-report
+          path: nuget-vulnerability-audit.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  codeql-javascript-typescript:
+    name: CodeQL JavaScript/TypeScript (public repositories only)
+    needs: detect
+    if: needs.detect.outputs.has_typescript == 'true' && github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -56,10 +119,10 @@ jobs:
           build-mode: none
       - uses: github/codeql-action/analyze@v3
 
-  csharp:
-    name: CodeQL C# Windows agent
+  codeql-csharp:
+    name: CodeQL C# (public repositories only)
     needs: detect
-    if: needs.detect.outputs.has_dotnet == 'true'
+    if: needs.detect.outputs.has_dotnet == 'true' && github.event.repository.private == false
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
