@@ -129,8 +129,30 @@ public sealed class SafetyPolicy
             if (!state.PhysicalInputEnabled)
                 return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
                     "Physical input is disabled by local configuration.", "physical-input-disabled");
+            if (targetWindow is null || action.TargetWindowId is null)
+                return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                    "Every raw input action requires a freshly resolved target window.", "raw-window-required");
+            if (activeWindow is null || !string.Equals(activeWindow.Id, targetWindow.Id, StringComparison.Ordinal))
+                return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                    "The intended raw-input window is not currently active.", "raw-wrong-window-deny");
+            if (!state.AllowedProcessNames.Contains(targetWindow.ProcessName))
+                return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                    "The raw-input target process is outside the local allowlist.", "raw-process-scope-deny");
+            if (action.ActionType is ActionType.MovePointer or ActionType.ClickPointer)
+            {
+                if (action.Coordinates is null)
+                    return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                        "Pointer input requires explicit coordinates.", "raw-pointer-coordinates-required");
+                if (targetWindow.Bounds is not null && !Contains(targetWindow.Bounds, action.Coordinates))
+                    return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                        "Pointer coordinates are outside the freshly resolved target window.", "raw-pointer-outside-window");
+            }
+            if (action.ActionType == ActionType.TypeText &&
+                (targetElement is null || !targetElement.Enabled || targetElement.Offscreen))
+                return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
+                    "Physical text input requires a fresh, enabled, visible target element.", "raw-text-target-required");
             return Decision(PermissionStatus.ReviewRequired, RiskLevel.Critical, ApprovalType.TypedConfirmation,
-                "Raw physical input requires a fresh local typed confirmation.", "raw-input-confirmation");
+                "Standard Windows physical input requires a fresh local typed confirmation.", "raw-input-confirmation");
         }
 
         if (targetWindow is null || targetElement is null)
@@ -158,7 +180,6 @@ public sealed class SafetyPolicy
                 return Decision(PermissionStatus.Block, RiskLevel.High, ApprovalType.LocalOnly,
                     "Sandbox mode can only use a provider explicitly identified as fake or sandboxed.",
                     "sandbox-provider-required");
-
             return Decision(PermissionStatus.Allow, RiskLevel.Medium, ApprovalType.None,
                 "Bounded semantic action is allowed in the sandbox.", "sandbox-semantic-action");
         }
@@ -168,10 +189,19 @@ public sealed class SafetyPolicy
             if (!state.AllowedProcessNames.Contains(targetWindow.ProcessName))
                 return Decision(PermissionStatus.Block, RiskLevel.High, ApprovalType.LocalOnly,
                     "The target process is outside the local allowlist.", "process-scope-deny");
-
             return Decision(PermissionStatus.ReviewRequired, RiskLevel.High, ApprovalType.LocalClick,
                 "A semantic action against a real scoped application requires local review.",
                 "scoped-action-review");
+        }
+
+        if (state.Mode == ControlMode.FullControl)
+        {
+            if (!state.AllowedProcessNames.Contains(targetWindow.ProcessName))
+                return Decision(PermissionStatus.Block, RiskLevel.High, ApprovalType.LocalOnly,
+                    "The target process is outside the local allowlist.", "process-scope-deny");
+            return Decision(PermissionStatus.ReviewRequired, RiskLevel.High, ApprovalType.LocalClick,
+                "Semantic actions remain reviewable during a locally enabled full-control session.",
+                "full-control-semantic-review");
         }
 
         if (state.Mode == ControlMode.SkillAutopilot)
@@ -182,6 +212,10 @@ public sealed class SafetyPolicy
         return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
             "No policy rule authorizes this action.", "deny-by-default");
     }
+
+    private static bool Contains(Bounds bounds, Point point) =>
+        point.X >= bounds.X && point.X <= bounds.X + bounds.Width &&
+        point.Y >= bounds.Y && point.Y <= bounds.Y + bounds.Height;
 
     private static string ToWireName(ControlMode mode) => mode switch
     {
