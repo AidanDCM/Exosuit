@@ -11,6 +11,7 @@ on:
       - "tsconfig.json"
       - ".github/workflows/codeql.yml"
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "src/**"
       - "tests/**"
