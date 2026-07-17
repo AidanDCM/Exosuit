@@ -9,12 +9,13 @@ import {
   ApplicationMapStore,
 } from "../src/applicationMap.js";
 import { actionProposalSchema, actionResultSchema, agentStatusSchema, observationSchema } from "../src/contracts.js";
-import { createMcpServer } from "../src/mcp.js";
 import { ExosuitOrchestrator } from "../src/orchestrator.js";
+import { createExosuitMcpServer } from "../src/server.js";
 
 const expectedTools = [
   "desktop_build_application_map",
   "desktop_emergency_stop",
+  "desktop_execute_physical_proposal",
   "desktop_execute_proposal",
   "desktop_find_elements",
   "desktop_get_application_map",
@@ -24,6 +25,7 @@ const expectedTools = [
   "desktop_match_application_map",
   "desktop_observe",
   "desktop_propose_action",
+  "desktop_propose_physical_input",
 ].sort();
 
 describe("MCP protocol boundary", () => {
@@ -32,7 +34,7 @@ describe("MCP protocol boundary", () => {
       agent: new FakeDesktopAgent(),
       applicationMaps: new ApplicationMapStore(),
     });
-    const server = createMcpServer(orchestrator);
+    const server = createExosuitMcpServer(orchestrator);
     const client = new Client({ name: "exosuit-test-client", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
@@ -47,6 +49,12 @@ describe("MCP protocol boundary", () => {
         readOnlyHint: false,
         destructiveHint: true,
         idempotentHint: false,
+      });
+      const physicalTool = tools.tools.find((tool) => tool.name === "desktop_propose_physical_input");
+      expect(physicalTool?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
       });
 
       const statusResult = await client.callTool({ name: "desktop_get_status", arguments: {} });
@@ -75,6 +83,23 @@ describe("MCP protocol boundary", () => {
       });
       const matched = z.object({ result: applicationMapMatchResultSchema }).parse(matchResult.structuredContent);
       expect(matched.result.matches.map((item) => item.element.id).sort()).toEqual(["el-editor", "el-save"]);
+
+      const physicalProposalResult = await client.callTool({
+        name: "desktop_propose_physical_input",
+        arguments: {
+          id: "protocol-pointer-test",
+          actionType: "click_pointer",
+          targetWindowId: "win-notepad",
+          coordinates: { x: 400, y: 300 },
+          rationale: "Confirm that sandbox mode cannot authorize physical input.",
+          expected: { kind: "window_active", windowId: "win-notepad" },
+        },
+      });
+      const physical = z.object({ proposal: actionProposalSchema }).parse(physicalProposalResult.structuredContent);
+      expect(physical.proposal).toMatchObject({
+        status: "blocked",
+        decision: { policyRule: "raw-input-local-only", riskLevel: "critical" },
+      });
 
       const proposalResult = await client.callTool({
         name: "desktop_propose_action",
