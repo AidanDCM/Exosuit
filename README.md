@@ -64,7 +64,7 @@ The MCP server issues meaningful semantic operations. It does not stream individ
 - sensitive and destructive targets are blocked or require local approval
 - screenshots are omitted unless explicitly enabled locally
 - the agent binds only to `127.0.0.1`
-- every non-health agent endpoint requires a strong shared token
+- every agent API endpoint requires a strong shared token
 - emergency stop is local and deterministic
 
 Exosuit is not intended to evade automation detection, anti-cheat systems, access controls, or application policies.
@@ -138,3 +138,7 @@ See `docs/PARTS_REUSE_ADR.md` for what was reused, adapted, or rejected.
 7. `docs/qa/ATOMIC_AUDIT_BASELINE.md`
 
 No claim of live desktop readiness is valid until the Codex handoff checks in `docs/CODEX_HANDOFF.md` are completed with evidence.
+
+## Validation state
+
+The draft PR is the source of truth for CI and CodeQL status. Until those checks produce green evidence, this repository remains in **REVIEW** status even when the architecture and tests are present.
