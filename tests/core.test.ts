@@ -163,7 +163,8 @@ describe("audit ledger", () => {
   });
 
   it("redacts common inline secret shapes", () => {
-    expect(redactForAudit("key=sk-abcdefghijklmnopqrstuvwxyz")).not.toContain("sk-abcdefghijklmnopqrstuvwxyz");
+    const credentialShapedFixture = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    expect(redactForAudit(`key=${credentialShapedFixture}`)).not.toContain(credentialShapedFixture);
   });
 });
 
