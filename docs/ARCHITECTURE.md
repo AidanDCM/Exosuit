@@ -13,12 +13,16 @@ Node/TypeScript MCP gateway
   - tool descriptions and schemas
   - prompt-injection guard
   - loop/step guard
+  - bounded local-agent requests
+  - sanitized application-map memory
   - gateway audit chain
              |
-             | authenticated loopback HTTP
+             | authenticated, time-bounded loopback HTTP
              v
 .NET Windows agent
   - local deterministic policy
+  - immutable approval fingerprints
+  - bounded provider operations
   - proposal and local approval state
   - emergency stop
   - local audit chain
@@ -40,6 +44,7 @@ MCP calls are appropriate for semantic operations such as:
 
 - observe the active window,
 - find the textbox named Email,
+- build or freshly match an advisory application map,
 - propose setting a value,
 - execute a locally approved proposal,
 - stop the agent.
@@ -68,6 +73,31 @@ Gateway-side deterministic guardrails:
 
 Tamper-evident append-only audit chain with secret redaction. The hash chain detects changes to prior entries but is not a substitute for operating-system access controls or remote notarization.
 
+### `src/timeoutFetch.ts`
+
+Bounds every gateway request to the local agent. Timeout is distinct from caller cancellation and becomes a typed `agent_request_timeout` error. The configurable value is restricted to 250 ms through 120 seconds.
+
+### `src/applicationMap.ts`
+
+Versioned advisory memory for application structure. A map may retain:
+
+- process name,
+- accessible control name and role,
+- automation ID,
+- supported semantic actions,
+- relative geometry,
+- fingerprints and revision metadata.
+
+A map never retains:
+
+- live element values,
+- source element IDs,
+- screenshot bytes,
+- plain window titles,
+- controls marked sensitive.
+
+Maps can be memory-only or persisted under `EXOSUIT_APPLICATION_MAP_DIR`. Files are atomically replaced, bounded to a configured number of versions, and revalidated on hydrate. A stored map never authorizes an action. It must be matched to a fresh observation, and only the returned fresh element IDs may be used later.
+
 ### `src/agent.ts`
 
 Two gateway clients:
@@ -77,15 +107,26 @@ Two gateway clients:
 
 ### `src/orchestrator.ts`
 
-The host-side control loop. It observes before proposals, searches elements, applies prompt-injection and loop guards, forwards proposals, refuses blind continuation after failed verification, and records gateway events.
+The host-side control loop. It observes before proposals, searches elements, builds and freshly matches application maps, applies prompt-injection and loop guards, forwards proposals, refuses blind continuation after failed verification, and records gateway events.
 
 ### `src/mcp.ts`
 
 The private tool-only ChatGPT app surface. Tools are narrow and annotated as read or write operations.
 
+Current tools:
+
+- status,
+- observe,
+- find elements,
+- build/list/get/match application maps,
+- propose action,
+- execute proposal,
+- emergency stop,
+- audit review.
+
 ### `apps/windows-agent`
 
-The local execution authority. It owns provider selection, policy, local approvals, control mode, audit records, and emergency stopping.
+The local execution authority. It owns provider selection, policy, approval fingerprints, local approvals, control mode, audit records, provider deadlines, and emergency stopping.
 
 ### `IDesktopProvider`
 
@@ -111,23 +152,45 @@ It does not implement shell execution, browser DOM access, screenshots, credenti
 ## Action lifecycle
 
 ```text
-1. Host observes.
-2. Host resolves stable window and element IDs.
+1. Host checks status and observes.
+2. Host resolves fresh window and element IDs directly, or freshly matches an advisory map.
 3. Host proposes one bounded action with an expected result.
 4. Gateway guards inspect loops and visible injection warnings.
-5. Windows agent builds a fresh observation.
-6. Local policy returns allow / review_required / block.
-7. If needed, the user approves in the loopback control panel.
-8. Execute endpoint builds another fresh observation and repeats policy.
-9. Provider executes one semantic action.
-10. Provider verifies expected evidence.
-11. Both local and gateway ledgers record the result.
-12. Failed verification stops the chain for recovery or human review.
+5. The loopback request has a gateway deadline.
+6. Windows agent builds a fresh observation under a provider deadline.
+7. Local policy returns allow / review_required / block.
+8. If needed, the user approves the exact proposal locally; a fingerprint binds approval to its immutable content.
+9. Execute endpoint builds another fresh observation and repeats policy.
+10. Provider executes one semantic action under a deadline.
+11. Provider verifies expected evidence under a deadline.
+12. Approval is consumed and both local and gateway ledgers record the result.
+13. Failed verification stops the chain for recovery or human review.
 ```
+
+## Application-map lifecycle
+
+```text
+fresh observation
+  -> choose one window
+  -> discard sensitive controls and all values
+  -> convert volatile controls into semantic descriptors
+  -> fingerprint title; do not store it
+  -> save a versioned map
+
+later task
+  -> load map
+  -> observe desktop again
+  -> locate current process/window
+  -> score semantic control matches
+  -> return current IDs + confidence + warnings
+  -> normal proposal/policy/approval/verification path still required
+```
+
+Application maps improve navigation speed but never weaken freshness or policy checks.
 
 ## Stable identifiers
 
-The fake provider has deterministic IDs. The Windows provider derives IDs from UI Automation runtime IDs and resolves them from a fresh tree before each action. Runtime IDs may still change across application restarts or virtualized controls, so callers must observe again rather than treating them as permanent application IDs.
+The fake provider has deterministic IDs. The Windows provider derives IDs from UI Automation runtime IDs and resolves them from a fresh tree before each action. Runtime IDs may change across application restarts or virtualized controls, so callers must observe again or match an application map rather than treating stored IDs as permanent.
 
 ## Control modes
 
@@ -155,9 +218,9 @@ Future work must arrive in isolated slices:
 2. Local approval UX hardening.
 3. dedicated VM semantic-action testing.
 4. ephemeral screenshot provider with redaction.
-5. app-specific selectors and application maps.
+5. richer app-specific selectors and parent/child control paths.
 6. approved skills with explicit manifests.
 7. optional motor driver after separate critical-risk audit.
 8. streaming HTTP MCP transport only if deployment requires it.
 
-No extension may weaken the local policy, audit, verification, or emergency-stop path.
+No extension may weaken the local policy, audit, verification, deadline, approval-binding, or emergency-stop path.
