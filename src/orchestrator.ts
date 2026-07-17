@@ -15,6 +15,14 @@ import {
   type UiElement,
 } from "./contracts.js";
 import { HashChainLedger } from "./audit.js";
+import {
+  ApplicationMapStore,
+  buildApplicationMap,
+  matchApplicationMap,
+  type ApplicationMap,
+  type ApplicationMapMatchResult,
+  type ApplicationMapSummary,
+} from "./applicationMap.js";
 import { LoopDetector, scanVisibleTextForPromptInjection } from "./safety.js";
 
 export type ElementSearchResult = {
@@ -27,12 +35,19 @@ export class ExosuitOrchestrator {
   readonly #agent: DesktopAgent;
   readonly #ledger: HashChainLedger;
   readonly #loopDetector: LoopDetector;
+  readonly #applicationMaps: ApplicationMapStore;
   readonly #guardBlockedProposals = new Map<string, ActionProposal>();
 
-  constructor(options: { agent: DesktopAgent; ledger?: HashChainLedger; loopDetector?: LoopDetector }) {
+  constructor(options: {
+    agent: DesktopAgent;
+    ledger?: HashChainLedger;
+    loopDetector?: LoopDetector;
+    applicationMaps?: ApplicationMapStore;
+  }) {
     this.#agent = options.agent;
     this.#ledger = options.ledger ?? new HashChainLedger();
     this.#loopDetector = options.loopDetector ?? new LoopDetector();
+    this.#applicationMaps = options.applicationMaps ?? new ApplicationMapStore();
   }
 
   async getStatus(): Promise<AgentStatus> {
@@ -70,6 +85,7 @@ export class ExosuitOrchestrator {
     const observation = await this.observe({ windowId: input.windowId, includeElements: true, maxElements: 1_000 });
     const limit = Math.max(1, Math.min(input.limit ?? 25, 100));
     const scored = observation.elements
+      .filter((element) => !element.isSensitive)
       .map((element) => {
         const haystack = [element.name, element.controlType, element.automationId, element.value]
           .filter(Boolean)
@@ -85,6 +101,80 @@ export class ExosuitOrchestrator {
       .slice(0, limit)
       .map((item) => item.element);
     return { observationId: observation.observationId, elements: scored, warnings: observation.warnings };
+  }
+
+  async buildApplicationMap(input: { windowId?: string; maxElements?: number } = {}): Promise<ApplicationMap> {
+    const maxElements = Math.max(1, Math.min(input.maxElements ?? 1_000, 2_000));
+    const observation = await this.observe({
+      windowId: input.windowId,
+      includeElements: true,
+      includeScreenshot: false,
+      maxElements,
+    });
+    const window = input.windowId
+      ? observation.windows.find((candidate) => candidate.id === input.windowId)
+      : observation.activeWindow;
+    if (!window) throw new Error("No target window is available for application mapping.");
+
+    const map = buildApplicationMap({
+      observation,
+      window,
+      revision: this.#applicationMaps.nextRevision(window.processName),
+    });
+    await this.#applicationMaps.save(map);
+    await this.#ledger.append({
+      eventType: "application_map_saved",
+      actor: "orchestrator",
+      payload: {
+        mapId: map.mapId,
+        revision: map.revision,
+        applicationKey: map.applicationKey,
+        processName: map.processName,
+        controlCount: map.controls.length,
+        skippedSensitiveCount: map.skippedSensitiveCount,
+      },
+    });
+    return map;
+  }
+
+  listApplicationMaps(): ApplicationMapSummary[] {
+    return this.#applicationMaps.list();
+  }
+
+  getApplicationMap(mapId: string): ApplicationMap {
+    const map = this.#applicationMaps.get(mapId);
+    if (!map) throw new Error(`Application map ${mapId} was not found.`);
+    return map;
+  }
+
+  async matchApplicationMap(input: { mapId: string; windowId?: string }): Promise<ApplicationMapMatchResult> {
+    const map = this.getApplicationMap(input.mapId);
+    const observation = await this.observe({
+      windowId: input.windowId,
+      includeElements: true,
+      includeScreenshot: false,
+      maxElements: 2_000,
+    });
+    const window = input.windowId
+      ? observation.windows.find((candidate) => candidate.id === input.windowId)
+      : observation.windows.find(
+          (candidate) => candidate.isActive && candidate.processName.toLowerCase() === map.processName.toLowerCase(),
+        ) ?? observation.windows.find((candidate) => candidate.processName.toLowerCase() === map.processName.toLowerCase());
+    if (!window) throw new Error(`No fresh window for process ${map.processName} is available.`);
+
+    const result = matchApplicationMap(map, observation, window);
+    await this.#ledger.append({
+      eventType: "application_map_matched",
+      actor: "orchestrator",
+      payload: {
+        mapId: map.mapId,
+        observationId: result.observationId,
+        windowId: result.window.id,
+        matchCount: result.matches.length,
+        unmatchedCount: result.unmatchedControlKeys.length,
+      },
+    });
+    return result;
   }
 
   async proposeAction(action: DesktopAction): Promise<ActionProposal> {
