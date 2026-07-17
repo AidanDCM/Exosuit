@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Exosuit.Agent;
 
 public enum ControlMode { Observe, Guide, Sandbox, Scoped, SkillAutopilot, FullControl }
@@ -69,14 +71,41 @@ public sealed record DesktopObservation(
     string? ScreenshotMimeType,
     IReadOnlyList<string> Warnings);
 
-public sealed record VerificationExpectation(
-    string Kind,
-    string? ElementId = null,
-    string? Equals = null,
-    string? State = null,
-    string? WindowId = null,
-    string? Key = null,
-    string? Reason = null);
+public sealed class VerificationExpectation
+{
+    [JsonConstructor]
+    public VerificationExpectation(
+        string kind,
+        string? elementId = null,
+        string? expectedValue = null,
+        string? state = null,
+        string? windowId = null,
+        string? key = null,
+        string? reason = null)
+    {
+        Kind = kind;
+        ElementId = elementId;
+        ExpectedValue = expectedValue;
+        State = state;
+        WindowId = windowId;
+        Key = key;
+        Reason = reason;
+    }
+
+    public string Kind { get; }
+    public string? ElementId { get; }
+
+    [JsonPropertyName("equals")]
+    public string? ExpectedValue { get; }
+
+    public string? State { get; }
+    public string? WindowId { get; }
+    public string? Key { get; }
+    public string? Reason { get; }
+
+    [JsonIgnore]
+    public new string? Equals => ExpectedValue;
+}
 
 public sealed record DesktopAction(
     string Id,
