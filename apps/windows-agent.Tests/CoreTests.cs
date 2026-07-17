@@ -129,6 +129,64 @@ public sealed class CoreTests
     }
 
     [Fact]
+    public void ApprovalFingerprintIsStableAndBindsImmutableContent()
+    {
+        var pending = Proposal();
+        var approved = pending with { Status = ProposalStatus.Approved };
+        Assert.Equal(ProposalFingerprint.Compute(pending), ProposalFingerprint.Compute(approved));
+
+        var changedAction = approved with { Action = approved.Action with { Text = "different" } };
+        Assert.NotEqual(ProposalFingerprint.Compute(approved), ProposalFingerprint.Compute(changedAction));
+    }
+
+    [Fact]
+    public void ApprovalRegistryRejectsModifiedProposal()
+    {
+        var registry = new ProposalApprovalRegistry();
+        var approved = Proposal() with { Status = ProposalStatus.Approved };
+        registry.Approve(approved);
+        Assert.True(registry.IsValid(approved));
+        Assert.False(registry.IsValid(approved with { Action = approved.Action with { TargetElementId = "other" } }));
+        Assert.True(registry.Remove(approved.ProposalId));
+        Assert.False(registry.IsValid(approved));
+    }
+
+    [Fact]
+    public async Task ProviderDeadlineStopsHungOperation()
+    {
+        var exception = await Assert.ThrowsAsync<ProviderDeadlineExceededException>(() =>
+            ProviderDeadline.RunAsync(async token =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), token);
+                return true;
+            }, TimeSpan.FromMilliseconds(50), CancellationToken.None));
+        Assert.Equal(50, exception.Timeout.TotalMilliseconds);
+    }
+
+    [Fact]
+    public async Task ProviderDeadlinePreservesCallerCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var exception = await Record.ExceptionAsync(() =>
+            ProviderDeadline.RunAsync(async token =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), token);
+                return true;
+            }, TimeSpan.FromSeconds(1), cancellation.Token));
+        Assert.IsAssignableFrom<OperationCanceledException>(exception);
+        Assert.IsNotType<ProviderDeadlineExceededException>(exception);
+    }
+
+    [Fact]
+    public void ProviderDeadlineConfigurationIsBounded()
+    {
+        Assert.Equal(1_000, ProviderDeadline.ReadMilliseconds("10", 15_000, 1_000, 120_000).TotalMilliseconds);
+        Assert.Equal(120_000, ProviderDeadline.ReadMilliseconds("999999", 15_000, 1_000, 120_000).TotalMilliseconds);
+        Assert.Equal(15_000, ProviderDeadline.ReadMilliseconds("invalid", 15_000, 1_000, 120_000).TotalMilliseconds);
+    }
+
+    [Fact]
     public void WireEnumsUseSnakeCase()
     {
         var json = JsonSerializer.Serialize(new
@@ -184,6 +242,24 @@ public sealed class CoreTests
         "Test the field.",
         new VerificationExpectation("element_value", Element.Id, "hello"),
         "test");
+
+    private static ActionProposal Proposal()
+    {
+        var now = new DateTimeOffset(2026, 7, 17, 20, 0, 0, TimeSpan.Zero);
+        return new ActionProposal(
+            "proposal-1",
+            now,
+            now.AddMinutes(5),
+            Action(),
+            new PermissionDecision(
+                PermissionStatus.ReviewRequired,
+                RiskLevel.High,
+                ApprovalType.LocalClick,
+                "Local review required.",
+                "test-review"),
+            Window.Id,
+            ProposalStatus.PendingReview);
+    }
 
     private static JsonSerializerOptions JsonOptions()
     {
