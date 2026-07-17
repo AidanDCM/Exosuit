@@ -18,8 +18,8 @@
     "agent:test": "dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.0",
-    "zod": "^3.24.1"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
