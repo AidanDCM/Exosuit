@@ -184,7 +184,12 @@ describe("agent boundaries", () => {
   it("fake agent executes and verifies a semantic sandbox action", async () => {
     const agent = new FakeDesktopAgent();
     const proposal = await agent.propose(
-      action({ id: "fake-set", targetWindowId: "win-notepad", targetElementId: "el-editor" }),
+      action({
+        id: "fake-set",
+        targetWindowId: "win-notepad",
+        targetElementId: "el-editor",
+        expected: { kind: "element_value", elementId: "el-editor", equals: "hello" },
+      }),
     );
     expect(proposal.status).toBe("allowed");
     const result = await agent.execute(proposal.proposalId);
