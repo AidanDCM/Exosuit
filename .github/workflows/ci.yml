@@ -150,6 +150,7 @@ jobs:
               AGENTS.md
               OWNER_MANUAL.md
               DEVELOPER_OPERATING_SYSTEM.md
+              docs/MASTER_SYSTEM_ROADMAP.md
               docs/ARCHITECTURE.md
               docs/SECURITY_MODEL.md
               docs/TEST_PLAN.md
