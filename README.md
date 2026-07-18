@@ -25,9 +25,30 @@ The repository currently includes:
 - restart-only and allowlist-only physical-input activation,
 - GitHub-hosted Linux and Windows build/test workflows,
 - npm and NuGet vulnerability audits,
-- owner, developer, security, architecture, test, audit, and Codex handoff manuals.
+- owner, developer, security, architecture, test, audit, roadmap, and Codex handoff manuals.
 
-The repository is **not approved for production use**, real accounts, consequential actions, or normal personal desktops until the Codex/local matrix is completed.
+The repository is **not approved for production use**, real accounts, consequential actions, or normal personal desktops until the required local and later roadmap promotion gates are completed.
+
+## Planning authority
+
+`docs/MASTER_SYSTEM_ROADMAP.md` is the authoritative future plan. It defines:
+
+- multi-window workflow coordination,
+- focus leasing and per-window locking,
+- structured data transfer between applications,
+- Windows virtual-desktop awareness,
+- multiple VM/session agents,
+- browser semantic companion architecture,
+- privacy-preserving visual fallback,
+- approved skills,
+- operator cockpit,
+- persistence and crash recovery,
+- performance targets,
+- signed packaging and rollback,
+- production security review,
+- cross-platform expansion.
+
+`docs/ARCHITECTURE.md` describes what is implemented now. It must not be used as a substitute roadmap.
 
 ## Architecture
 
@@ -64,6 +85,8 @@ fake sandbox              Windows UIA
 ```
 
 MCP carries intentions, not one cursor coordinate per animation frame. The local runtime handles motor interpolation and immediate interruption.
+
+The current implementation coordinates one bounded proposal at a time through one agent. Multi-window workflows, virtual desktops, and multiple VM/session agents are planned but not yet implemented.
 
 ## MCP tools
 
@@ -123,7 +146,8 @@ Do not enable the Windows provider or physical input until following `docs/CODEX
 
 ## Manuals and evidence
 
-- [Architecture](docs/ARCHITECTURE.md)
+- [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
+- [Current architecture](docs/ARCHITECTURE.md)
 - [Security model](docs/SECURITY_MODEL.md)
 - [Test plan](docs/TEST_PLAN.md)
 - [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
@@ -146,6 +170,12 @@ Exosuit must not implement or claim:
 - covert surveillance or recording,
 - bypassing platform or application security controls.
 
-## Next phase
+## Next approved sequence
 
-The next approved step is isolated Codex validation on a Windows VM or dedicated test account. The product PR remains draft until `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` is completed with evidence.
+1. Validate the current core through the isolated Codex Windows and ChatGPT acceptance procedure.
+2. Return to GitHub for the Multi-window Workspace Coordinator.
+3. Validate multi-window behavior locally.
+4. Build Windows virtual-desktop awareness.
+5. Build the multi-agent/VM supervisor.
+
+The exact dependencies, evidence gates, and later phases are maintained in `docs/MASTER_SYSTEM_ROADMAP.md`. The product PR remains draft until `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` is completed with evidence.
