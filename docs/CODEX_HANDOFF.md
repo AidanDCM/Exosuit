@@ -1,19 +1,37 @@
 # Codex Local Validation Handoff
 
+## Scope and roadmap boundary
+
+This handoff validates **Phase 1 — Current core: interactive Windows and ChatGPT acceptance** from `docs/MASTER_SYSTEM_ROADMAP.md`.
+
+It does not validate or imply implementation of:
+
+- multi-window workflow scheduling,
+- focus leases or per-window locks,
+- native Windows virtual-desktop coordination,
+- multiple VM/session agents,
+- browser semantic companion,
+- screenshot/vision fallback,
+- approved workflow skills,
+- production packaging or operations.
+
+After this handoff passes, return to GitHub for Phase 2 Multi-window Workspace Coordinator. Do not improvise future roadmap phases inside the local acceptance session.
+
 ## Purpose
 
-GitHub has validated the Exosuit code, contracts, fake end-to-end chain, MCP protocol, Windows-targeted compilation, pure native tests, motor simulation, repository contract, and supported dependency-security gates. Codex must now validate the behavior that requires a real interactive Windows desktop and a live private ChatGPT app connection.
+GitHub has validated the current Exosuit contracts, fake end-to-end chain, MCP protocol, Windows-targeted compilation, pure native tests, motor simulation, repository contract, and supported dependency-security gates. Codex must validate behavior that requires a real interactive Windows desktop and a live private ChatGPT app connection.
 
-Do not treat this document as permission to use Exosuit on a normal personal desktop immediately. Start in a disposable Windows VM or dedicated local Windows account containing no real credentials, messages, financial data, browser sessions, private documents, or production files.
+Start in a disposable Windows VM or dedicated local Windows account containing no real credentials, messages, financial data, browser sessions, private documents, or production files.
 
 ## Reviewed source
 
 - Repository: `AidanDCM/Exosuit`
 - Branch: `build/exosuit-mvp`
 - Product PR: #1, draft
-- Final GitHub audit: `docs/qa/GITHUB_PHASE_FINAL_AUDIT.md`
+- Master roadmap: `docs/MASTER_SYSTEM_ROADMAP.md`
+- GitHub evidence: `docs/qa/GITHUB_PHASE_FINAL_AUDIT.md`
 
-Record the exact checkout SHA before validation. Do not test an uncommitted or modified working tree without documenting the diff.
+Record the exact checkout SHA. Do not test an uncommitted or modified tree without documenting the diff.
 
 ## Phase 0 — Environment isolation
 
@@ -22,7 +40,7 @@ Record the exact checkout SHA before validation. Do not test an uncommitted or m
 3. Clone the reviewed branch.
 4. Confirm `git status --short` is empty.
 5. Do not sign into personal browsers, email, banking, social media, stores, work systems, or password managers.
-6. Create a dedicated test directory containing only disposable files.
+6. Create a dedicated directory containing disposable files only.
 7. Keep Task Manager or a terminal ready to terminate the agent.
 8. Keep the local Exosuit control panel visible during all action tests.
 
@@ -40,7 +58,7 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-Stop if any gate fails. Preserve logs and add the issue to `docs/logs/ISSUE_AND_SOLUTION_LOG.md` before changing code.
+Stop if any gate fails. Preserve logs and record the issue before changing code.
 
 ## Phase 2 — Fake-provider host
 
@@ -85,30 +103,30 @@ Open only Notepad and Calculator. Validate:
 
 - status is `observe`,
 - provider is Windows UI Automation,
-- active window matches the real foreground window,
-- accessible element names, roles, IDs, enabled/focused/offscreen states, actions, and bounds are sensible,
+- active window matches the foreground window,
+- accessible names, roles, IDs, actions, bounds, enabled/focused/offscreen states are sensible,
 - password/secret values are not returned,
 - observation caps work,
 - disappeared windows and controls produce bounded failures,
-- mutation proposals are blocked in observe mode,
+- mutation proposals are blocked,
 - no physical cursor or keyboard action occurs.
 
-Repeat at 100%, 125%, and 150% display scaling, then with a second monitor if available.
+Repeat at 100%, 125%, and 150% scaling and on a second monitor if available.
 
-## Phase 4 — Application maps
+## Phase 4 — Application-map privacy and rematching
 
 Using disposable Notepad:
 
 1. Build a fresh application map.
-2. Inspect the persisted JSON manually.
-3. Confirm it contains no live field values, raw runtime element IDs, screenshots, plain window titles, tokens, or controls marked sensitive.
+2. Inspect persisted JSON.
+3. Confirm no live values, runtime IDs, screenshots, plain window titles, tokens, or sensitive controls.
 4. Close and reopen Notepad.
 5. Freshly match the map.
 6. Confirm current element IDs are returned.
-7. Change the window title and confirm a fingerprint warning.
+7. Change the title and confirm a fingerprint warning.
 8. Remove/change a target and confirm it remains unmatched.
-9. Confirm map matching never creates, approves, or executes an action.
-10. Confirm every subsequent action still passes fresh observation, local policy, approval, deadline, and verification.
+9. Confirm matching never creates, approves, or executes an action.
+10. Confirm later actions still pass fresh observation, policy, approval, deadline, and verification.
 
 ## Phase 5 — Scoped semantic action
 
@@ -120,27 +138,27 @@ Use only a disposable Notepad document.
 4. Confirm local review is required.
 5. Approve in the local panel.
 6. Execute the exact proposal.
-7. Confirm the field value through UI Automation.
+7. Confirm the value through UI Automation.
 8. Change focus after preparing a second proposal and confirm wrong-window denial.
 9. Close the target after preparing a proposal and confirm missing-target denial.
-10. Confirm approval is consumed after execution.
-11. Inspect both local and gateway audit events.
+10. Confirm approval is consumed.
+11. Inspect local and gateway audit events.
 
-Do not test Save, Send, Submit, Purchase, Delete, authentication, or any consequential control in this phase.
+Do not test Save, Send, Submit, Purchase, Delete, authentication, or any consequential control.
 
 ## Phase 6 — Full-control startup denial tests
 
-Before enabling physical input, prove every incomplete configuration fails closed. Test separately:
+Before enabling physical input, prove every incomplete configuration fails closed:
 
 - physical input with fake provider,
 - physical input without `full_control`,
 - physical input without exact acknowledgement,
-- physical input without allowlisted processes,
+- physical input without an allowlist,
 - `full_control` while physical input is false,
 - misspelled acknowledgement,
 - Windows provider without its UI Automation acknowledgement.
 
-The agent must refuse startup or remain unable to execute raw input.
+The agent must refuse startup or remain unable to execute physical input.
 
 ## Phase 7 — Full-control motor test
 
@@ -159,15 +177,13 @@ dotnet run --project apps/windows-agent/Exosuit.Agent.csproj
 
 Confirm the local panel visibly warns that physical input is armed.
 
-Run one action at a time:
-
 ### Pointer movement
 
 - target a point inside active Notepad,
-- confirm critical/typed-review classification,
+- confirm critical typed-review classification,
 - approve locally,
 - execute,
-- observe a bounded eased trajectory,
+- observe bounded eased movement,
 - verify endpoint and audit evidence.
 
 ### Click
@@ -184,32 +200,32 @@ Run one action at a time:
 - propose `Exosuit physical validation successful`,
 - confirm an unfocused field is denied,
 - approve and execute,
-- verify the exact text through UI Automation.
+- verify exact text through UI Automation.
 
 ### Hotkey
 
-- use a harmless allowlisted key such as `CTRL+A` in disposable Notepad,
+- use a harmless allowlisted combination such as `CTRL+A` in disposable Notepad,
 - confirm unsupported keys are rejected,
 - approve locally and verify the result.
 
-## Phase 8 — Motor fault injection
+## Phase 8 — Fault injection and emergency stop
 
-Prove all of the following:
+Prove:
 
-- pointer coordinates outside the fresh target window are blocked,
+- pointer outside fresh window is blocked,
 - nonallowlisted process is blocked,
 - inactive target window is blocked,
 - unfocused text field is blocked,
-- changed active window between proposal and execution is blocked,
+- active window changed between proposal and execution is blocked,
 - modified approved proposal fails fingerprint validation,
 - expired proposal is blocked,
-- provider timeout fails the action and consumes approval,
+- provider timeout fails and consumes approval,
 - emergency stop interrupts movement,
 - emergency stop interrupts typing,
 - provider cancellation timeout still leaves Exosuit permanently stopped,
-- process restart is required after emergency stop.
+- restart is required after emergency stop.
 
-Measure and record emergency-stop latency.
+Measure emergency-stop latency.
 
 ## Phase 9 — MCP gateway over loopback
 
@@ -225,46 +241,44 @@ npm run start:mcp
 
 Validate:
 
-- non-loopback URL is rejected,
-- weak token is rejected,
-- gateway timeout is distinguishable from caller cancellation,
-- MCP tool list matches the documented surface,
-- physical proposal tool cannot enable full control,
-- universal execution tool respects the local approval state,
-- visible hostile instructions block mutation,
+- non-loopback URL rejected,
+- weak token rejected,
+- gateway timeout distinguishable from caller cancellation,
+- MCP tool list matches the reviewed current-core surface,
+- physical proposal cannot enable full control,
+- execution respects local approval state,
+- hostile visible instructions block mutation,
 - failed verification stops continuation.
 
-## Phase 10 — OpenAI Secure MCP Tunnel
+## Phase 10 — Secure MCP Tunnel
 
-Follow `docs/SECURE_MCP_TUNNEL_RUNBOOK.md` and current official OpenAI documentation.
+Follow `docs/SECURE_MCP_TUNNEL_RUNBOOK.md` and current official OpenAI instructions.
 
-1. Initialize a private stdio tunnel profile for `npm run start:mcp`.
+1. Initialize a private stdio tunnel for `npm run start:mcp`.
 2. Run tunnel diagnostics.
-3. Add the tunnel as a private developer-mode ChatGPT app.
-4. Set the app to **Always ask** initially.
-5. Confirm only expected Exosuit tools are discovered.
+3. Add it as a private developer-mode ChatGPT app.
+4. Set permissions to **Always ask** initially.
+5. Confirm only reviewed Exosuit tools are discovered.
 6. Start a new conversation and explicitly select Exosuit.
 
-Do not improvise a public tunnel or expose the local Windows agent directly.
+Do not expose the Windows agent directly or improvise a public tunnel.
 
 ## Phase 11 — ChatGPT acceptance sequence
-
-Use the normal ChatGPT conversation:
 
 1. `Get Exosuit status. Do not take action.`
 2. `Observe Notepad and list accessible elements.`
 3. `Build a sanitized map for Notepad.`
-4. `Close and reopen Notepad, then freshly match the map.`
+4. Close/reopen Notepad and freshly match the map.
 5. `Propose setting the disposable text field through UI Automation. Do not execute.`
 6. Approve locally.
 7. `Execute the exact proposal and verify it.`
-8. In the full-control VM only: `Propose moving the pointer to this harmless point. Do not execute.`
+8. In the full-control VM only: propose one harmless pointer move without executing.
 9. Approve locally and execute.
 10. Ask for the audit tail.
 11. Say `Stop Exosuit now.`
 12. Confirm later mutation is blocked.
 
-ChatGPT must not claim success before the verified result returns.
+ChatGPT must not claim success before a verified result returns.
 
 ## Evidence package
 
@@ -274,32 +288,36 @@ Preserve, with secrets and private content removed:
 - clean working-tree proof,
 - local build/test logs,
 - environment variable names and boolean states but not token values,
-- tunnel `doctor` output,
-- ChatGPT discovered tool list,
+- tunnel diagnostic output,
+- discovered tool list,
 - status snapshots,
 - proposal IDs and statuses,
 - verification results,
-- redacted audit tails and chain-verification output,
+- redacted audit tails and chain verification,
 - emergency-stop latency,
 - negative-test results,
 - DPI/monitor/session matrix,
 - application-map privacy inspection,
 - unresolved issues.
 
-Write the final local report as `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` and attach it to PR #1 before considering merge.
+Write the report as `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` and attach it to PR #1.
 
 ## Stop conditions
 
 Stop immediately and return to GitHub review when:
 
 - an unexpected process receives input,
-- focus changes without a denial,
+- focus changes without denial,
 - an unfocused field receives text,
-- a pointer target outside the fresh window is accepted,
+- an outside-window pointer target is accepted,
 - approval can be reused or modified,
 - an action continues after failed verification,
-- emergency stop does not halt the task promptly,
+- emergency stop does not halt promptly,
 - a credential or sensitive value appears in output or logs,
 - a screenshot is captured,
 - ChatGPT discovers an unexpected tool,
 - the tunnel exposes anything beyond the reviewed MCP server.
+
+## After Phase 1 passes
+
+Do not merge unrelated roadmap implementation into the local evidence report. Complete Phase 1 evidence, update PR #1, and then begin the Multi-window Workspace Coordinator as a separate GitHub phase governed by `docs/MASTER_SYSTEM_ROADMAP.md` and `docs/TEST_PLAN.md`.
