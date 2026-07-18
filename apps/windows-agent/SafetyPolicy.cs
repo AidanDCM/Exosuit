@@ -166,9 +166,9 @@ public sealed class SafetyPolicy
                         "Pointer coordinates are outside the freshly resolved target window.", "raw-pointer-outside-window");
             }
             if (action.ActionType == ActionType.TypeText &&
-                (targetElement is null || !targetElement.Enabled || targetElement.Offscreen))
+                (targetElement is null || !targetElement.Enabled || targetElement.Offscreen || !targetElement.Focused))
                 return Decision(PermissionStatus.Block, RiskLevel.Critical, ApprovalType.LocalOnly,
-                    "Physical text input requires a fresh, enabled, visible target element.", "raw-text-target-required");
+                    "Physical text input requires a fresh, enabled, visible, focused target element.", "raw-text-target-required");
             return Decision(PermissionStatus.ReviewRequired, RiskLevel.Critical, ApprovalType.TypedConfirmation,
                 "Standard Windows physical input requires a fresh local typed confirmation.", "raw-input-confirmation");
         }
