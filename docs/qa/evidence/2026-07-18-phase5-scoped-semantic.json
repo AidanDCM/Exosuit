@@ -1,0 +1,61 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-07-18T20:47:22.8179151+00:00",
+    "evidenceClass":  "local Windows interactive acceptance",
+    "environment":  "dedicated Exosuit validation account",
+    "provider":  "windows-ui-automation",
+    "mode":  "scoped",
+    "physicalInputEnabled":  false,
+    "screenshotCaptureEnabled":  false,
+    "fixture":  {
+                    "title":  "Exosuit Disposable Acceptance Fixture",
+                    "automationId":  "AcceptanceText",
+                    "processName":  "Exosuit.AcceptanceFixture"
+                },
+    "semanticAction":  {
+                           "expected":  "Exosuit semantic validation successful",
+                           "warnings":  [
+
+                                        ],
+                           "actual":  "Exosuit semantic validation successful",
+                           "verificationStatus":  "passed",
+                           "status":  "succeeded",
+                           "proposalId":  "proposal-afd394a2-9eec-4dcc-9763-e816267cbddb"
+                       },
+    "wrongWindow":  {
+                        "status":  "blocked",
+                        "proposalId":  "proposal-0a95fafb-9e47-41b3-b0fe-e61b28a8a4d9",
+                        "reason":  "The active window changed after the action was prepared.",
+                        "verificationStatus":  "not_checked"
+                    },
+    "missingTargetBeforePatch":  {
+                                     "defect":  "Retry was incorrectly classified as approval_fingerprint_mismatch after approval removal.",
+                                     "retryStatus":  "blocked",
+                                     "firstStatus":  "blocked",
+                                     "proposalId":  "proposal-be0ca9ed-d833-4eb1-a44c-66763214fd05"
+                                 },
+    "missingTargetAfterPatch":  {
+                                    "firstPolicyRule":  "target-resolution-required",
+                                    "fingerprintMismatchCount":  0,
+                                    "auditEventSequences":  [
+                                                                30,
+                                                                31,
+                                                                32
+                                                            ],
+                                    "firstStatus":  "blocked",
+                                    "retrySummary":  "Local policy blocks this proposal.",
+                                    "retryStatus":  "blocked",
+                                    "proposalId":  "proposal-64a4f719-489b-49d3-ad35-3455600f0236"
+                                },
+    "audit":  {
+                  "valid":  true
+              },
+    "automatedChecks":  {
+                            "build":  "passed",
+                            "typecheck":  "passed",
+                            "systemPulse":  "passed",
+                            "typescriptTests":  "34 passed",
+                            "dotnetTests":  "27 passed",
+                            "nugetVulnerabilityMetadata":  "NU1900 offline warning; no clean audit claimed"
+                        }
+}

@@ -6,6 +6,20 @@ namespace Exosuit.Agent.Tests;
 
 public sealed class CoreTests
 {
+    [Fact]
+    public void WindowProcessIdentityFallsBackToNativeWindowHandle()
+    {
+        var lookedUpHandle = IntPtr.Zero;
+        var identity = WindowProcessIdentity.Resolve(
+            0,
+            new IntPtr(42),
+            handle => { lookedUpHandle = handle; return 1234; },
+            processId => processId == 1234 ? "AcceptanceFixture" : "unexpected");
+
+        Assert.Equal(new IntPtr(42), lookedUpHandle);
+        Assert.Equal(1234, identity.ProcessId);
+        Assert.Equal("AcceptanceFixture", identity.ProcessName);
+    }
     private static readonly WindowInfo Window = new(
         "win-1", "Test", "test-app", 1, true, false, new Bounds(0, 0, 800, 600));
 
@@ -152,6 +166,24 @@ public sealed class CoreTests
     }
 
     [Fact]
+    public void MarkProposalDeniedConsumesApprovedState()
+    {
+        var state = new AgentRuntimeState(
+            ControlMode.Scoped,
+            physicalInputEnabled: false,
+            screenshotCaptureEnabled: false,
+            localFullControlEnabled: false,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            enforceStartupEnvironment: false);
+        var approved = Proposal() with { Status = ProposalStatus.Approved };
+        state.Proposals[approved.ProposalId] = approved;
+
+        state.MarkProposalDenied(approved.ProposalId);
+
+        Assert.Equal(ProposalStatus.Denied, state.Proposals[approved.ProposalId].Status);
+    }
+
+    [Fact]
     public async Task ProviderDeadlineStopsHungOperation()
     {
         var exception = await Assert.ThrowsAsync<ProviderDeadlineExceededException>(() =>
@@ -222,6 +254,34 @@ public sealed class CoreTests
         Assert.Equal(64, fixture.AuditEvent.Hash.Length);
     }
 
+    [Fact]
+    public async Task EmergencyStopRemainsActiveWhenProviderCancellationTimesOut()
+    {
+        var state = State(ControlMode.Scoped);
+        var proposal = Proposal();
+        state.Proposals[proposal.ProposalId] = proposal;
+        var approvals = new ProposalApprovalRegistry();
+        var ledgerPath = Path.Combine(AppContext.BaseDirectory, $"emergency-{Guid.NewGuid():N}.jsonl");
+        try
+        {
+            var ledger = new HashChainAuditLedger(ledgerPath, JsonOptions());
+            await AgentHost.ActivateEmergencyStopAsync(
+                state, approvals, new HangingCancelProvider(), ledger,
+                TimeSpan.FromMilliseconds(25), "test timeout", "test", CancellationToken.None);
+
+            Assert.True(state.EmergencyStopped);
+            Assert.Equal(ProposalStatus.Denied, state.Proposals[proposal.ProposalId].Status);
+            Assert.Contains(ledger.Tail(10), item => item.EventType == "emergency_stop_provider_timeout");
+            var stopped = Assert.Single(ledger.Tail(10), item => item.EventType == "emergency_stop");
+            Assert.Equal(true, stopped.Payload["providerCancellationTimedOut"]);
+            Assert.True(ledger.Verify().Valid);
+        }
+        finally
+        {
+            if (File.Exists(ledgerPath)) File.Delete(ledgerPath);
+        }
+    }
+
     private static AgentRuntimeState State(ControlMode mode) => new(
         mode,
         physicalInputEnabled: false,
@@ -278,4 +338,16 @@ public sealed class CoreTests
         ActionProposal Proposal,
         ActionResult Result,
         AuditEvent AuditEvent);
+}
+internal sealed class HangingCancelProvider : IDesktopProvider
+{
+    public string Name => "hanging-cancel-test";
+    public Task<DesktopObservation> ObserveAsync(ObservationRequest request, AgentRuntimeState state, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+    public Task<ProviderExecution> ExecuteAsync(DesktopAction action, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+    public Task<(bool Passed, string Summary, IReadOnlyDictionary<string, object?> Evidence)> VerifyAsync(
+        VerificationExpectation expectation, ProviderExecution execution, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+    public Task CancelAsync(CancellationToken cancellationToken) => Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
 }

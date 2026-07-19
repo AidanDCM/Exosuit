@@ -204,7 +204,13 @@ public static class AgentHost
                 return Results.Ok(BlockedResult(proposal, "Proposal expired."));
             }
             if (state.EmergencyStopped || proposal.Status is ProposalStatus.Blocked or ProposalStatus.Denied or ProposalStatus.Expired)
+            {
+                await ledger.AppendAsync("action_blocked_before_execution", "local-agent", Payload(
+                    ("proposalId", proposalId),
+                    ("emergencyStopped", state.EmergencyStopped),
+                    ("proposalStatus", proposal.Status.ToString())), cancellationToken);
                 return Results.Ok(BlockedResult(proposal, "Local policy blocks this proposal."));
+            }
             if (proposal.Status == ProposalStatus.PendingReview)
                 return Results.Ok(new ActionResult(proposalId, proposal.Action.Id, ResultStatus.PendingReview,
                     VerificationStatus.NotChecked, "Local approval is still required.",
@@ -231,6 +237,7 @@ public static class AgentHost
             if (freshDecision.Status == PermissionStatus.Block)
             {
                 approvals.Remove(proposalId);
+                state.MarkProposalDenied(proposalId);
                 var blocked = BlockedResult(
                     proposal, $"Action failed fresh policy evaluation: {freshDecision.Reason}");
                 await ledger.AppendAsync("action_blocked_at_execution", "local-agent", Payload(
@@ -411,7 +418,7 @@ public static class AgentHost
         state.PhysicalInputEnabled, state.ScreenshotCaptureEnabled,
         state.PendingProposalCount, state.StartedAt);
 
-    private static async Task<object> ActivateEmergencyStopAsync(
+    internal static async Task<object> ActivateEmergencyStopAsync(
         AgentRuntimeState state,
         ProposalApprovalRegistry approvals,
         IDesktopProvider provider,

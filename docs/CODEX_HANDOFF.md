@@ -130,10 +130,14 @@ Using disposable Notepad:
 
 ## Phase 5 — Scoped semantic action
 
-Use only a disposable Notepad document.
+Use the disposable `apps/windows-agent.AcceptanceFixture` application. The tested
+Windows 11 Notepad editor exposes a `Document` without a writable `ValuePattern`,
+so it is not a valid semantic `set_element_value` acceptance target. Passing this
+fixture phase does not validate Notepad compatibility.
 
 1. Change mode locally from `observe` to `scoped`.
-2. Observe Notepad and resolve its text field.
+2. Observe `Exosuit Disposable Acceptance Fixture` and resolve the
+   `Exosuit acceptance text` field.
 3. Propose setting `Exosuit semantic validation successful`.
 4. Confirm local review is required.
 5. Approve in the local panel.

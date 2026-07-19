@@ -1,0 +1,16 @@
+{
+  "date": "2026-07-19",
+  "environment": "Windows Sandbox",
+  "target": "Exosuit.AcceptanceFixture",
+  "scope": "bounded physical-input acceptance with separate local typed approval",
+  "result": "passed",
+  "actions": [
+    {"action": "move_pointer", "proposalId": "proposal-fbed724a-9cb8-453b-8725-e34ae4dc54eb", "status": "succeeded", "verificationStatus": "passed"},
+    {"action": "click_pointer", "proposalId": "proposal-86052dbd-4be8-48e9-8d8d-9a4f3ef43101", "status": "succeeded", "verificationStatus": "passed"},
+    {"action": "type_text", "proposalId": "proposal-50f22c44-a79b-4846-a4e8-cedbc10c1439", "status": "succeeded", "verificationStatus": "passed", "expectedAndActual": "Exosuit physical validation successful"},
+    {"action": "hotkey", "proposalId": "proposal-c4a4e431-f2ba-41a6-986a-d82d6af38818", "status": "succeeded", "verificationStatus": "passed"}
+  ],
+  "audit": {"valid": true, "checked": 33, "firstInvalidSequence": null, "eventCounts": {"agent_started": 1, "desktop_observed": 20, "action_proposed": 4, "proposal_approved": 4, "action_executed": 4}},
+  "safety": {"approvalSource": "fresh local human typed confirmation for every proposal", "runnerCouldApprove": false, "networking": false, "clipboardRedirection": false, "screenshots": false, "devices": false, "printers": false, "vGPU": false, "rawAuditCommitted": false},
+  "limitations": ["single disposable WinForms fixture", "single display and DPI configuration", "no screenshots", "no consequential controls or production accounts", "no Secure MCP Tunnel or ChatGPT connected acceptance"]
+}

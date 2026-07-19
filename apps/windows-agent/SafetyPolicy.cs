@@ -70,6 +70,12 @@ public sealed class AgentRuntimeState
     }
 
     public int PendingProposalCount => Proposals.Values.Count(static proposal => proposal.Status == ProposalStatus.PendingReview);
+
+    public void MarkProposalDenied(string proposalId)
+    {
+        if (Proposals.TryGetValue(proposalId, out var proposal))
+            Proposals[proposalId] = proposal with { Status = ProposalStatus.Denied };
+    }
 }
 
 public sealed class SafetyPolicy

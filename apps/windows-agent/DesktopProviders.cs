@@ -404,11 +404,13 @@ public sealed class WindowsUiAutomationProvider : IDesktopProvider
         try
         {
             var id = StableElementId(element);
-            var processId = element.Current.ProcessId;
-            var processName = "unknown";
-            try { processName = Process.GetProcessById(processId).ProcessName; } catch (ArgumentException) { }
             var rectangle = element.Current.BoundingRectangle;
             var handle = new IntPtr(element.Current.NativeWindowHandle);
+            var (processId, processName) = WindowProcessIdentity.Resolve(
+                element.Current.ProcessId,
+                handle,
+                static windowHandle => NativeMethods.TryGetWindowProcessId(windowHandle),
+                static id => Process.GetProcessById(id).ProcessName);
             return new WindowInfo(id, element.Current.Name ?? string.Empty, processName, processId,
                 handle != IntPtr.Zero && handle == foreground, element.Current.IsOffscreen,
                 rectangle.IsEmpty ? null : new Bounds(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height));
@@ -502,5 +504,31 @@ public sealed class WindowsUiAutomationProvider : IDesktopProvider
     {
         [DllImport("user32.dll")]
         internal static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+        internal static int TryGetWindowProcessId(IntPtr windowHandle)
+        {
+            if (windowHandle == IntPtr.Zero) return 0;
+            _ = GetWindowThreadProcessId(windowHandle, out var processId);
+            return processId <= int.MaxValue ? (int)processId : 0;
+        }
+    }
+}
+
+internal static class WindowProcessIdentity
+{
+    internal static (int ProcessId, string ProcessName) Resolve(
+        int automationProcessId,
+        IntPtr windowHandle,
+        Func<IntPtr, int> getWindowProcessId,
+        Func<int, string> getProcessName)
+    {
+        var processId = automationProcessId > 0 ? automationProcessId : getWindowProcessId(windowHandle);
+        if (processId <= 0) return (0, "unknown");
+        try { return (processId, getProcessName(processId)); }
+        catch (ArgumentException) { return (processId, "unknown"); }
+        catch (InvalidOperationException) { return (processId, "unknown"); }
     }
 }
