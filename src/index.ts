@@ -3,7 +3,7 @@ import { FakeDesktopAgent, HttpDesktopAgent } from "./agent.js";
 import { ApplicationMapStore } from "./applicationMap.js";
 import { HashChainLedger } from "./audit.js";
 import { ExosuitOrchestrator } from "./orchestrator.js";
-import { createExosuitMcpServer } from "./server.js";
+import { createExosuitMcpServerWithState } from "./server.js";
 import { createTimeoutFetch, parseGatewayRequestTimeout } from "./timeoutFetch.js";
 
 function buildAgent() {
@@ -28,11 +28,16 @@ async function main(): Promise<void> {
   const applicationMaps = new ApplicationMapStore({ directory: process.env.EXOSUIT_APPLICATION_MAP_DIR });
   const mapHydration = await applicationMaps.hydrate();
   const orchestrator = new ExosuitOrchestrator({ agent, ledger, applicationMaps });
-  const server = createExosuitMcpServer(orchestrator);
+  const { server, startup } = await createExosuitMcpServerWithState(orchestrator);
   const transport = new StdioServerTransport();
   await server.connect(transport);
   process.stderr.write(
-    `Exosuit MCP server connected over stdio. Loaded ${mapHydration.loaded} application map(s); skipped ${mapHydration.skipped}.\n`,
+    [
+      "Exosuit MCP server connected over stdio.",
+      `Loaded ${mapHydration.loaded} application map(s); skipped ${mapHydration.skipped}.`,
+      `Workflow persistence: ${startup.workflowPersistenceMode}; hydrated ${startup.hydratedWorkflows}.`,
+      `Hydrated ${startup.hydratedAgents} supervisor agent record(s).`,
+    ].join(" ") + "\n",
   );
 }
 
