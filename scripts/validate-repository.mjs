@@ -13,12 +13,15 @@ const required = [
   "docs/TEST_PLAN.md",
   "docs/GLOVE_FIELD_BOUNDARY.md",
   "docs/FIELD_ARCHITECTURE.md",
+  "docs/FIELD_IMPLEMENTATION_STATUS.md",
   "docs/FIELD_OWNER_MANUAL.md",
   "docs/FIELD_DEVELOPER_MANUAL.md",
   "docs/FIELD_TEST_PLAN.md",
   "docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md",
   "docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md",
+  "docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md",
   "docs/engineering_log/2026-07-21-glove-field-foundation.md",
+  "docs/engineering_log/2026-07-21-field-foundation-expansion.md",
   "src/fieldContracts.ts",
   "tests/fieldContracts.test.ts",
   "src/fieldRegistry.ts",
@@ -29,10 +32,16 @@ const required = [
   "tests/encryptedDemonstrationStore.test.ts",
   "src/fieldManager.ts",
   "tests/fieldManager.test.ts",
+  "src/fieldProvisioningPlan.ts",
+  "tests/fieldProvisioningPlan.test.ts",
   "src/fieldScene.ts",
   "tests/fieldScene.test.ts",
   "src/shadowLearning.ts",
   "tests/shadowLearning.test.ts",
+  "src/fieldPathScope.ts",
+  "tests/fieldPathScope.test.ts",
+  "src/fieldArtifactBroker.ts",
+  "tests/fieldArtifactBroker.test.ts",
   "tests/fixtures/field-contract-v1.json",
   "tests/fieldWireContract.test.ts",
   "apps/windows-agent/FieldFoundation.cs",
@@ -78,8 +87,11 @@ const sourceFiles = [
   "src/demonstration.ts",
   "src/encryptedDemonstrationStore.ts",
   "src/encryptedCheckpointStore.ts",
+  "src/fieldArtifactBroker.ts",
   "src/fieldContracts.ts",
   "src/fieldManager.ts",
+  "src/fieldPathScope.ts",
+  "src/fieldProvisioningPlan.ts",
   "src/fieldRegistry.ts",
   "src/fieldScene.ts",
   "src/fileCheckpointStore.ts",
@@ -176,6 +188,17 @@ for (const requiredInvariant of [
   if (!fieldManager.includes(requiredInvariant)) failures.push(`src/fieldManager.ts: missing Field Manager invariant ${requiredInvariant}`);
 }
 
+const provisioning = await readFile(resolve(root, "src/fieldProvisioningPlan.ts"), "utf8");
+for (const requiredInvariant of [
+  'hypervisor: z.literal("hyper-v")',
+  "vmGeneration: z.literal(2)",
+  "broadDriveMapping: z.literal(false)",
+  "hostInputInjection: z.literal(false)",
+  "Field provisioning plan failed integrity verification",
+]) {
+  if (!provisioning.includes(requiredInvariant)) failures.push(`src/fieldProvisioningPlan.ts: missing provisioning invariant ${requiredInvariant}`);
+}
+
 const demonstration = await readFile(resolve(root, "src/demonstration.ts"), "utf8");
 for (const requiredInvariant of ["granted: z.literal(true)", "Demonstration event limit reached", "[REDACTED]", "timestamp order"]) {
   if (!demonstration.includes(requiredInvariant)) failures.push(`src/demonstration.ts: missing recording invariant ${requiredInvariant}`);
@@ -213,6 +236,27 @@ for (const requiredInvariant of [
   "Trajectory timestamps must increase strictly",
 ]) {
   if (!shadowLearning.includes(requiredInvariant)) failures.push(`src/shadowLearning.ts: missing Shadow invariant ${requiredInvariant}`);
+}
+
+const pathScope = await readFile(resolve(root, "src/fieldPathScope.ts"), "utf8");
+for (const requiredInvariant of [
+  "alternate data streams are forbidden",
+  "reserved device names are forbidden",
+  "reparseInspectionRequired: z.literal(true)",
+  "transfer is not allowed through Field directory",
+]) {
+  if (!pathScope.includes(requiredInvariant)) failures.push(`src/fieldPathScope.ts: missing path-scope invariant ${requiredInvariant}`);
+}
+
+const artifactBroker = await readFile(resolve(root, "src/fieldArtifactBroker.ts"), "utf8");
+for (const requiredInvariant of [
+  "expectedSha256",
+  "timingSafeEqual",
+  "Sensitive Field artifacts require a separate owner-reviewed export path",
+  "Untrusted Field artifacts must be reviewed and reclassified before export",
+  "Only a verified artifact transfer can complete",
+]) {
+  if (!artifactBroker.includes(requiredInvariant)) failures.push(`src/fieldArtifactBroker.ts: missing artifact invariant ${requiredInvariant}`);
 }
 
 const boundary = await readFile(resolve(root, "docs/GLOVE_FIELD_BOUNDARY.md"), "utf8");
