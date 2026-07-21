@@ -4,7 +4,17 @@
 
 Before changing Exosuit, read `README.md`, `DEVELOPER_OPERATING_SYSTEM.md`, `OWNER_MANUAL.md`, `docs/GLOVE_FIELD_BOUNDARY.md`, `docs/SECURITY_MODEL.md`, `docs/TEST_PLAN.md`, and the latest file in `docs/qa/`.
 
-Before changing any Field-owned surface, also read `docs/FIELD_ARCHITECTURE.md`, `docs/FIELD_OWNER_MANUAL.md`, `docs/FIELD_DEVELOPER_MANUAL.md`, `docs/FIELD_TEST_PLAN.md`, and `docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md`.
+Before changing any Field-owned surface, also read:
+
+- `docs/FIELD_ARCHITECTURE.md`
+- `docs/FIELD_IMPLEMENTATION_STATUS.md`
+- `docs/FIELD_OWNER_MANUAL.md`
+- `docs/FIELD_DEVELOPER_MANUAL.md`
+- `docs/FIELD_TEST_PLAN.md`
+- `docs/FIELD_WINDOWS_RUNBOOK.md`
+- `docs/qa/FIELD_THREAT_MODEL.md`
+- `docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md`
+- `docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md`
 
 Acknowledge internally:
 
@@ -23,16 +33,16 @@ I will make one reviewable slice at a time and document rollback.
 - The **Field** owns the isolated Windows environment, display, VM/storage lifecycle, task workspace, and owner-consented demonstration surface.
 - Do not collapse Glove and Field identity, lifecycle, policy, or evidence into one generic desktop object.
 - Do not add stealth, anti-detection, anti-cheat, credential scraping, security bypass, privilege escalation, covert recording, or deceptive-impersonation features.
-- Do not let MCP or model output enable `full_control`, create Field policy, sign Field attestation, or grant recording consent.
+- Do not let MCP or model output enable `full_control`, create Field policy, sign Field attestation, grant recording consent, rotate keys, delete demonstrations, or approve sensitive export.
 - Do not bind the Windows agent beyond a reviewed authenticated architecture.
 - Do not put secrets, screenshot bytes, private UI text, demonstration raw bytes, or agent/Field tokens into logs, fixtures, tool results, or commits.
 
 ## Architecture laws
 
 1. The brain proposes; local Glove and Field authorities own permission and execution environment.
-2. Every state-changing action goes through one Glove policy gateway.
+2. Every state-changing desktop action goes through one Glove policy gateway.
 3. Every Field operation binds exact `fieldId`, `fieldGeneration`, agent, and Windows session identity.
-4. Unknown actions, targets, Fields, generations, policies, and recording states fail closed.
+4. Unknown actions, targets, Fields, generations, policies, channel messages, and recording states fail closed.
 5. Real providers implement the same interface as fake providers.
 6. Tests use fake providers/managers unless a test is explicitly tagged as local/manual.
 7. Every action has an expected result or verification status.
@@ -44,6 +54,11 @@ I will make one reviewable slice at a time and document rollback.
 13. Shadow Mode predicts only and must not inject input.
 14. Personal behavior models may influence style and strategy but may not weaken isolation, policy, verification, deadlines, audit, or stop.
 15. The host must not control a guest by treating VMConnect/RDP pixels as the guest desktop; one agent runs inside each controlled Windows session.
+16. The base image is immutable. A Field boots from a disposable differencing overlay.
+17. A model cannot administer Fields. Local owner and service authority remain separate from pilot authority.
+18. Host/guest messages require authentication, expiration, exact generation, direction, sequence, nonce, and replay protection.
+19. A possible unverified external effect must reconcile before retry; emergency-stop failure is release-blocking.
+20. Destruction must be confined to one exact disposable Field generation and must not target the base or personal-state disks.
 
 ## Required change report
 
@@ -74,10 +89,11 @@ A Field change must explicitly answer:
 - Can the pilot create or expand the policy?
 - Can recording occur without consent or visible state?
 - Can data cross from the host or another Field?
-- What happens on session lock, secure desktop, heartbeat loss, overflow, or emergency stop?
+- What happens on session lock, Secure Desktop, heartbeat loss, replay, overflow, uncertain effect, or emergency stop?
+- Does this touch the immutable base, disposable overlay, personal state, or task disk?
 - Which evidence proves isolation, recording, prediction, or execution separately?
 
-Before adding file transfer, implement and test Parts & Pieces-style path scope. Before adding visual/input recording, update the privacy-critical Level 4 audit.
+Before adding file transfer, implement and test Parts & Pieces-style path scope. Before adding visual/input recording, update the privacy-critical Level 4 audit. Before adding a live transport, prove replay, restart, key rotation, and stale-generation behavior. Before changing provisioning/destruction, run the Windows script static tests and update the threat/failure matrices.
 
 ## Test expectations
 
@@ -85,23 +101,35 @@ At minimum, run:
 
 ```bash
 npm run validate:repository
+npm run validate:field-contract
 npm run typecheck
-npm test
+npm run test:field -- --reporter=verbose
+npm run test:field-pulse -- --reporter=verbose
+npm test -- --reporter=verbose
 npm run build
-npm run test:pulse
+npm run test:pulse -- --reporter=verbose
 ```
 
 ```powershell
-dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
+dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
+dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-For changes to the MCP boundary, policy, provider interface, audit ledger, authentication, control panel, physical input, screenshots, Field attestation, VM lifecycle, demonstration recording, personal models, artifact transfer, or action verification, also update the Level 4 audit and run the relevant system pulse or explicitly record why it does not exist yet.
+On a local Windows host, prefer the evidence-preserving runner:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
+```
+
+For changes to the MCP boundary, policy, provider interface, audit ledger, authentication, control panel, physical input, screenshots, Field attestation, VM lifecycle, demonstration recording, personal models, artifact transfer, or action verification, also update the Level 4 audit and run the relevant system pulse or explicitly record why it cannot execute.
 
 ## Pull request rules
 
 - Never push execution or recording changes directly to `main`.
-- Keep the PR draft until CI passes and remaining local checks are explicit.
+- Keep the PR draft until executable validation passes and remaining local checks are explicit.
 - A green compile is not evidence that Windows UI Automation, Hyper-V, recording, isolation, or behavior learning works.
 - A manual check without a reproducible command or artifact is not enough for release.
 - Do not merge real-input or real-recording capability until the dedicated local acceptance and privacy matrices are complete.
 - Do not use donor repository tests as Exosuit evidence.
+- Do not call a GitHub runner allocation failure a repository test failure or pass.
