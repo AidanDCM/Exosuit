@@ -62,7 +62,7 @@ describe("Field provisioning plan", () => {
     expect(plan.steps).toContain("verify_personal_state");
     expect(plan.steps).toContain("create_runtime_overlay");
     expect(plan.steps).toContain("attach_runtime_overlay");
-    expect(plan.steps).not.toContain("attach_base_image" as never);
+    expect((plan.steps as string[])).not.toContain("attach_base_image");
     expect(plan.steps).toContain("attach_personal_state");
     expect(new Set(plan.steps).size).toBe(plan.steps.length);
   });
