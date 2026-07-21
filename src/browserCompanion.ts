@@ -241,9 +241,7 @@ export class MockBrowserCompanion implements BrowserCompanionProvider {
       ...this.snapshot,
       snapshotId: randomUUID(),
       capturedAt: new Date().toISOString(),
-      documentFingerprint: sha256(
-        JSON.stringify(this.snapshot.elements.map((candidate) => [candidate.locatorId, candidate.value])),
-      ),
+      documentFingerprint: this.snapshot.documentFingerprint,
     });
     this.snapshot = next;
     return browserActionResultSchema.parse({
