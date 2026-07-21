@@ -1,14 +1,25 @@
 # Exosuit
 
-Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. The pilot supplies intent; the local runtime owns sensing, policy, approval, scheduling, execution, verification, audit, deadlines, persistence, and emergency stopping.
+Exosuit is a private, model-independent computer embodiment platform for authorized AI pilots such as ChatGPT or Claude.
 
-The goal is **human flexibility, machine precision, transparent operation, and local user authority**—not hidden automation.
+The repository now contains two intentionally separate systems:
+
+| System | Meaning | Responsibility |
+|---|---|---|
+| **Exosuit Glove** | the body, hand, and nervous system | sensing, planning, policy, execution, verification, workflow state, audit, and emergency stop |
+| **Exosuit Field** | the controlled computer and teaching environment | isolated Windows session, stable display, applications, storage, task workspace, recording surface, and VM lifecycle |
+
+The pilot supplies intent. The Glove decides how to observe and act within local policy. The Field supplies the computer environment in which the Glove learns and works. They share one repository but have separate identities, lifecycles, policies, evidence, tests, manuals, and failure states.
+
+The goal is **human flexibility, machine precision, transparent operation, recoverable workflows, detailed owner teaching, and local user authority**—not hidden automation.
+
+Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before changing either subsystem.
 
 ## Current status
 
-**Strong single-agent Windows core with bounded live acceptance; multi-window and later product foundations are in active development. Production use remains denied.**
+**The Glove has a strong single-agent Windows core with bounded live acceptance. The Field now has an implemented contract and documentation foundation, but no live VM, recording, learning, or Pilot runtime. Production use remains denied.**
 
-The current branch includes:
+### Glove foundation currently includes
 
 - a tool-only MCP server suitable for a private ChatGPT app,
 - real MCP client/server protocol tests,
@@ -27,21 +38,46 @@ The current branch includes:
 - workflow dependency graphs, step lifecycle, window locks, focus leases, and session queues,
 - structured cross-window artifacts with provenance and integrity hashes,
 - checkpoints, uncertain-effect recovery, idempotency keys, and coordinator audit timelines,
-- narrow MCP workflow create/read/run/pause/resume/cancel tools,
-- virtual-desktop identity, availability, transition, and local switch-intent foundations,
-- multi-agent health/capability registry and authenticated replay-resistant registration foundations,
-- transparent browser semantic companion contracts and mock provider,
-- disabled-by-default synthetic visual privacy/consent foundation,
-- signed bounded skill-manifest and permission-upgrade foundation,
-- quotas, queue backpressure, and latency percentile foundations.
+- virtual-desktop and multi-agent foundations,
+- disabled-by-default visual, browser-companion, skill, and resource-governance foundations.
 
-### Evidence boundary
+### Field foundation currently includes
 
-The single-agent Windows core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
+- explicit `glove` and `field` subsystem vocabulary,
+- Field identity and monotonically increasing generation,
+- agent, machine, Windows-session, image, personal-state, and task-disk identity,
+- fixed display contract,
+- bounded Teach, Shadow, and Pilot policy schema,
+- hard-denied host desktop, host-drive write, privilege escalation, and security-control changes,
+- canonical policy hashing and short-lived HMAC-SHA256 Field attestation,
+- separate Field lifecycle and Glove-agent binding,
+- consent-bound demonstration episodes,
+- bounded ordered event streams,
+- recursive secret-shaped payload redaction,
+- TypeScript and .NET pure tests,
+- dedicated Field architecture, owner, developer, test, audit, and Parts & Pieces manuals.
 
-The newer workflow, virtual-desktop, multi-agent, browser, visual-policy, skill, and resource-governance slices are GitHub-source implementations with focused local reconstruction tests. They are **not** yet approved as interactive Windows, connected ChatGPT, multi-window, virtual-desktop, multi-agent, browser-extension, visual-capture, or production evidence.
+### Field capabilities not implemented yet
 
-As of the latest development cycle, GitHub-hosted workflow jobs are failing before checkout with no steps allocated. The repository does not mislabel that runner/account failure as passing hosted CI. Run the reproducible local validation command and attach exact evidence until hosted runners are available again.
+- Hyper-V provisioning and image management,
+- persistent personal-state and disposable task disks,
+- host/guest transport,
+- guest bootstrap and display enforcement,
+- real Teach Mode input or visual recording,
+- scene graph,
+- Shadow prediction,
+- personal task, motor, typing, language, or timing models,
+- artifact and credential brokers,
+- autonomous Pilot integration,
+- live ChatGPT-to-Field acceptance.
+
+## Evidence boundary
+
+The single-agent Glove core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
+
+The Field foundation currently has source contracts, documentation, and tests written. That evidence does **not** prove Hyper-V, VM isolation, recording, behavioral learning, or autonomous operation. See [`docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md`](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md).
+
+GitHub-hosted workflow jobs recently failed before checkout with no steps allocated. The repository does not mislabel runner/account failures as passing CI. Exact branch validation remains required.
 
 ## Architecture
 
@@ -50,34 +86,51 @@ ChatGPT / Claude / another MCP host
                  |
           narrow MCP tools
                  v
-       Exosuit Supervisor Gateway
-  - single-action orchestrator
-  - workflow DAG/runtime
-  - workspace and agent registries
-  - structured artifact/checkpoint stores
-  - prompt-injection and loop guards
-  - gateway deadlines and audit
+        Exosuit Glove Supervisor
+  - action and workflow planning
+  - demonstration retrieval
+  - personal policy selection
+  - window/workspace coordination
+  - verification, recovery, audit
                  |
-       authenticated agent boundary
+       authenticated field boundary
                  v
-           .NET Windows agent
+       Exosuit Glove Agent in guest
   - fresh UI Automation state
-  - deterministic policy
-  - local approval fingerprints
-  - bounded provider operations
-  - verification and local audit
-  - emergency stop
+  - optional visual state
+  - deterministic local policy
+  - local reflex and motor control
+  - verification and emergency stop
                  |
-      fake provider / Windows UIA
-                 |
-     optional locally gated motor
+                 v
+           Exosuit Field
+  - isolated Windows session
+  - fixed display contract
+  - approved applications
+  - personal-state disk
+  - disposable task workspace
+  - Teach / Shadow / Pilot lifecycle
 ```
 
-A single Windows session has one foreground focus and one physical mouse/keyboard stream. Exosuit may observe and plan across many windows, but physical actions are serialized through a focus lease. Genuine physical parallelism requires separate healthy agents inside separate Windows sessions or VMs.
+The host must not control the guest by treating VMConnect or an RDP viewer as the guest desktop. One Glove agent runs inside every controlled Windows session or VM.
+
+## Field modes
+
+### Teach
+
+The owner controls the Field. The Glove records consent-bound task, input, visual, accessibility, system, correction, and outcome evidence. It does not inject input.
+
+### Shadow
+
+The owner controls the Field. The Glove predicts the next intent, target, method, timing class, and expected result. It does not inject input.
+
+### Pilot
+
+An authorized pilot controls the Field through the Glove within a host-created, signed, bounded policy. Pilot mode is planned; it is not enabled by the Field foundation.
 
 ## Current MCP surface
 
-### Desktop core
+### Desktop Glove core
 
 - `desktop_get_status`
 - `desktop_observe`
@@ -109,27 +162,25 @@ A single Windows session has one foreground focus and one physical mouse/keyboar
 - `desktop_get_workflow_audit`
 - `desktop_list_agents`
 
-Workflow tools do not approve their own work. Desktop steps still enter the ordinary proposal, local policy, approval, fresh observation, execution, and verification pipeline.
+No model-facing Field Manager or recording tool is enabled by this slice. Future Field tools must not create consent, sign policy, expose arbitrary Hyper-V commands, or grant host access.
 
 ## Safety defaults
 
 | Capability | Default |
 |---|---|
-| desktop provider | fake |
-| fake mode | sandbox |
-| Windows mode | observe |
-| bind address | `127.0.0.1` |
+| Glove desktop provider | fake |
+| real Windows mode | observe |
 | physical input | disabled |
-| full control | restart-only; cannot be enabled by MCP or the panel |
 | screenshots | disabled; no Windows capture implementation |
-| visual policy | disabled; synthetic foundation only |
-| browser companion | mock/contracts only; no installed extension |
-| remote agents | registry/auth contracts only; no production transport |
-| skills | signed registry foundation only; execution not enabled |
+| Field VM | unimplemented |
+| Teach recording | unimplemented and disabled |
+| Shadow prediction | unimplemented |
+| Pilot Field autonomy | unimplemented and denied |
+| Field host desktop access | hard false in policy |
+| Field host-drive write | hard false in policy |
+| privilege/security changes | hard false in policy |
 | credentials and secret-bearing controls | hard denied |
-| destructive targets | hard denied |
-| real semantic actions | local review |
-| physical actions | critical risk + exact local typed confirmation |
+| arbitrary shell through MCP | excluded |
 
 ## Validation
 
@@ -146,9 +197,10 @@ On Windows with .NET 8:
 npm run validate
 ```
 
-The individual commands remain available:
+Individual commands:
 
 ```bash
+npm run validate:repository
 npm run typecheck
 npm test -- --reporter=verbose
 npm run build
@@ -161,22 +213,37 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`.
+Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`. Do not implement live Field recording before the Field privacy audit and consent/stop design are reviewed.
 
-## Planning and evidence
+## Planning, manuals, and evidence
 
+### Shared and Glove
+
+- [Glove/Field boundary](docs/GLOVE_FIELD_BOUNDARY.md)
 - [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Implemented architecture](docs/ARCHITECTURE.md)
+- [Implemented Glove architecture](docs/ARCHITECTURE.md)
 - [Security model](docs/SECURITY_MODEL.md)
-- [Test plan](docs/TEST_PLAN.md)
+- [Glove test plan](docs/TEST_PLAN.md)
 - [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
 - [Codex/local acceptance handoff](docs/CODEX_HANDOFF.md)
+
+### Field
+
+- [Field architecture](docs/FIELD_ARCHITECTURE.md)
+- [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
+- [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
+- [Field test plan](docs/FIELD_TEST_PLAN.md)
+- [Glove/Field Parts traceability](docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md)
+- [Field foundation Atomic Audit](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md)
+
+### Logs
+
 - [Parts and donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
-- [GitHub-phase audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
 - [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
 - [Decision log](docs/logs/DECISION_LOG.md)
+- [Field foundation engineering log](docs/engineering_log/2026-07-21-glove-field-foundation.md)
 
-`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` must describe only what exists.
+`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` describes the implemented Glove. `docs/FIELD_ARCHITECTURE.md` explicitly separates implemented Field foundation from planned Field runtime.
 
 ## Explicit exclusions
 
@@ -188,20 +255,20 @@ Exosuit must not implement or claim:
 - credential harvesting,
 - privilege escalation,
 - arbitrary remote shell execution,
-- covert surveillance or recording,
-- bypassing application or platform security controls.
+- recording without explicit owner consent,
+- host-wide input capture,
+- covert surveillance,
+- bypassing application or platform security controls,
+- that behavioral imitation proves a human performed an action.
 
 ## Current holds
 
-- **PR state:** draft
+- **PR state:** development branch; draft review required
 - **Merge to main:** hold
 - **Production use:** denied
 - **Real accounts or consequential targets:** denied
 - **Normal personal desktop use:** denied
-- **Connected ChatGPT acceptance:** pending
-- **Interactive three-window validation:** pending
-- **Native virtual-desktop validation:** pending
-- **Multi-agent/VM transport validation:** pending
-- **Browser extension and real browser execution:** pending
-- **Windows visual capture:** unimplemented and disabled
-- **Packaging, signing, updater, rollback, penetration testing, and release operations:** pending
+- **Live Field VM:** unimplemented
+- **Teach/Shadow/Pilot runtime:** unimplemented
+- **Connected ChatGPT Field acceptance:** pending
+- **Packaging, signing, updater, rollback, privacy operations, penetration testing, and release operations:** pending
