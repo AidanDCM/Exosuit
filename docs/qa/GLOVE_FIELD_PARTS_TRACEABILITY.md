@@ -15,56 +15,58 @@
 
 | Parts & Pieces source | Glove application | Field application | Current evidence |
 |---|---|---|---|
-| `docs/dev_manual/ATOMIC_AUDIT.md` | Level 4 execution/safety audits | Level 4 privacy, VM, recording, and autonomy audits | project audit files and required structure |
-| `QUESTION_EVERYTHING_PROTOCOL.md` | interrogate action, policy, provider, verification, audit units | interrogate identity, VM, consent, recorder, storage, model, and lifecycle units | assumption/question ledgers in Field audit |
+| `docs/dev_manual/ATOMIC_AUDIT.md` | Level 4 execution/safety audits | Level 4 privacy, VM, recording, autonomy, storage, and artifact audits | foundation audit plus expansion addendum |
+| `QUESTION_EVERYTHING_PROTOCOL.md` | interrogate action, policy, provider, verification, audit units | interrogate identity, VM, consent, recorder, storage, model, scene, transfer, and lifecycle units | assumption/question ledgers in Field audits |
 | `NORTH_STAR_INTERROGATION.md` | private model-independent body | stable instrumented Windows teaching/execution environment | Glove/Field North Stars documented separately |
-| `STRICT_PRECISION_FLUID_EXECUTION.md` | strict policy/evidence with adaptable provider sequence | fixed boundaries with staged VM/recording implementation | slice plan and promotion gates |
-| `DEV_LOOP_SENTINEL.md` | stop repeated action/development loops | stop repeated provisioning, recording, or recovery loops | runtime loop guards on Glove; Field sentinel planned |
-| `QUALITY_GATES.md` | contracts, tests, security scan, manuals | Field docs/code/tests required by repository validator | validator update in this slice |
-| owner/developer/manual templates | existing root manuals | dedicated Field owner/developer/test manuals | created in this slice |
+| `STRICT_PRECISION_FLUID_EXECUTION.md` | strict policy/evidence with adaptable provider sequence | fixed boundaries with fake-first staged VM/recording implementation | typed manager, provisioning plan, promotion gates |
+| `DEV_LOOP_SENTINEL.md` | stop repeated action/development loops | bounded events, action/runtime budgets, provisioning/recovery sentinels | recorder cap implemented; full runtime sentinel pending |
+| `QUALITY_GATES.md` | contracts, tests, security scan, manuals | Field docs/code/tests required by repository validator and CI contract | validator and workflow updated |
+| owner/developer/manual templates | existing root manuals | dedicated Field owner/developer/test/status manuals | implemented |
 
 ## Reusable parts and decisions
 
 | Part | Glove decision | Field decision | Proof or planned proof |
 |---|---|---|---|
-| `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies the bounded desktop and fake/live environments | existing Glove tests; Field lifecycle/contract tests |
-| `command-broker` | principles adapted; no arbitrary shell | future Field Manager operations use typed provisioning plans, not model commands | Field Manager tests required before Hyper-V |
-| `event_ledger` | tamper-evident Glove and coordinator ledgers | Field lifecycle, consent, provisioning, episode, and destruction events need separate actor identity | Field audit requirement; runtime pending |
-| `reconciliation` | expected result vs provider evidence | expected Field identity/state/output vs guest/host evidence | attestation verification now; live reconciliation pending |
-| `loop_detector` | repeated action/step budget | provisioning retry, recorder overflow, stale heartbeat, and recovery budgets | recorder event cap now; Field sentinel pending |
-| `system_pulse` | full fake action chain | future fake Field create -> ready -> Teach/Shadow/Pilot -> stop/destroy pulse | required in Field Manager slice |
-| `check_runner` | PASS/REVIEW/FAIL release posture | Field promotion report by evidence class | manual/audit now; reusable runner deferred |
-| `path_scope` | prerequisite before file tools | mandatory for Inbox/Outbox artifact broker | deferred prerequisite, explicitly required |
-| `redaction_scan` | log/support-bundle redaction | demonstration payload, visual metadata, and credential broker redaction | TS/.NET payload redaction tests now |
-| `jsonl_validator` | contract and ledger validation | future episode/event-log integrity and migrations | Zod contracts now; persistence validator pending |
-| `evidence_source_guard` | prevents CI evidence inflation | separates pure tests, VM tests, Teach, Shadow, Pilot, and owner acceptance | Field Test Plan evidence vocabulary |
-| `approval_gate` | local action approval | recording consent and host-created Field policy | consent schema now; live owner UI pending |
-| `audit_timeline` | action/workflow history | Field provisioning/session/recording/destruction history | contract planned; runtime pending |
-| `background_job_manager` | bounded workflow runtime exists | no hidden Field recording or provisioning background autonomy | hidden background recording rejected |
-| `mcp_gateway` | narrow pilot tools | pilot cannot create policy, consent, or VM authority | boundary manual and future MCP deny tests |
+| `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies bounded fake/live environments and scene state | existing Glove tests; Field scene/lifecycle tests written |
+| `command-broker` | principles adapted; no arbitrary shell | typed `FieldProvisioner`, strict provisioning plan, no command field | fake manager and plan tests written |
+| `event_ledger` | tamper-evident Glove and coordinator ledgers | hash-linked Field Manager audit with separate actor/subsystem identity | source and tests written; persistence pending |
+| `reconciliation` | expected result vs provider evidence | policy/attestation, scene, artifact bytes, and future provider results reconciled | attestation and artifact hash verification implemented |
+| `loop_detector` | repeated action/step budget | demonstration event cap, policy action/runtime budget, future provisioning retry budget | partial implementation |
+| `system_pulse` | full fake action chain | fake Field planned -> provisioned -> Teach -> ready -> stop -> destroy | test written |
+| `check_runner` | PASS/REVIEW/FAIL release posture | Field implementation status and audit verdict by evidence class | manuals/audits implemented; reusable runner deferred |
+| `path_scope` | prerequisite before file tools | Windows-specific Inbox/Outbox scope with transfer direction and reparse requirement | adapted implementation and tests written |
+| `redaction_scan` | log/support-bundle redaction | demonstration payload redaction plus encrypted storage metadata restrictions | TS/.NET/store tests written |
+| `jsonl_validator` | contract and ledger validation | episode/envelope schema integrity and future event migrations | Zod/encrypted envelope now; migration validator pending |
+| `evidence_source_guard` | prevents CI evidence inflation | separates pure tests, VM tests, Teach, Shadow, Pilot, owner acceptance | Field Test Plan and status doc |
+| `approval_gate` | local action approval | recording consent and host-created Field policy | consent/policy schemas now; live owner UI pending |
+| `audit_timeline` | action/workflow history | Field planning/provision/mode/fault/stop/destroy history | in-memory hash-linked audit implemented |
+| `background_job_manager` | bounded workflow runtime exists | no hidden Field recording/provisioning autonomy | hidden background recording rejected |
+| `mcp_gateway` | narrow pilot tools | pilot cannot create policy, consent, VM authority, arbitrary path, or command | boundary/plan schemas; MCP deny tests future |
 
 ## Project-specific donor translation
 
 ### Command broker becomes a typed Field Manager
 
-The Field Manager must not accept arbitrary PowerShell, Hyper-V commands, executable paths, or model-authored shell strings. It should accept typed operations such as:
+The Field Manager does not accept arbitrary PowerShell, Hyper-V commands, executable paths, or model-authored shell strings. The current fake-first surface performs typed lifecycle operations:
 
 ```text
-plan_field
-create_field
-start_field
-stop_field
-destroy_field
-get_field_status
+plan
+provision
+enter Teach | Shadow | Pilot
+return ready
+stop
+destroy
+get status
+read/verify audit
 ```
 
-The host implementation may internally call supported APIs or reviewed commands, but the model boundary remains typed and policy-bound.
+The future host provider may internally call supported APIs or reviewed commands, but it must consume the strict provisioning plan and return structured evidence.
 
 ### Event ledger becomes dual subsystem evidence
 
 The Glove ledger answers: who proposed, allowed, executed, verified, or stopped an action?
 
-The Field ledger answers: who created, attested, entered mode, recorded, faulted, stopped, exported, reset, or destroyed the environment?
+The Field ledger answers: who planned, attested, provisioned, entered mode, faulted, stopped, exported, reset, or destroyed the environment?
 
 These timelines may be correlated but must not be collapsed into one ambiguous actor stream.
 
@@ -72,27 +74,47 @@ These timelines may be correlated but must not be collapsed into one ambiguous a
 
 For Glove actions, reconciliation checks whether a desktop change occurred.
 
-For the Field, reconciliation also checks:
+For the Field, current and planned reconciliation covers:
 
+- exact policy and attestation,
 - guest boot and agent identity,
-- display contract,
+- display and scene contract,
 - task-disk identity,
-- output artifact hash,
-- whether a download completed,
-- whether an episode closed cleanly,
-- whether a task disk was actually destroyed.
+- output artifact size and hash,
+- download completion,
+- episode terminal state,
+- task disk destruction.
 
 ### Path scope is mandatory before artifact export
 
-The Field design introduces model-relevant files, so the earlier deferred `path_scope` prerequisite is now active. Before Inbox/Outbox code is added, the implementation must prove:
+The donor `parts/python/path_scope/path_scope.py` was inspected directly. The Exosuit adaptation adds Windows and Field-specific rules:
 
-- canonical path remains below configured root,
-- no traversal,
-- no symlink/reparse escape,
-- bounded size and file count,
-- extension/content classification,
-- explicit transfer direction,
-- audit and hash.
+- fixed top-level Field directories,
+- caller path must remain relative,
+- no traversal, drive, or UNC path,
+- no alternate data stream,
+- no reserved device name,
+- no invalid character or trailing-dot/space alias,
+- transfer direction restrictions,
+- required live reparse-point ancestry inspection,
+- exact bytes/hash and classification in the broker.
+
+The pure scope and in-memory broker are implemented. Live Windows race/reparse proof is still required.
+
+### Encrypted persistence follows checkpoint-store principles
+
+The demonstration store adapts existing Exosuit/Parts durability principles:
+
+- strict schema,
+- terminal-state requirement,
+- atomic temporary file,
+- size bounds,
+- authenticated identity,
+- tamper failure,
+- explicit deletion,
+- no silent invalid-file acceptance.
+
+It adds AES-256-GCM because demonstration metadata can contain personal behavior evidence.
 
 ## Glove-specific atomic units
 
@@ -114,23 +136,18 @@ The Field design introduces model-relevant files, so the earlier deferred `path_
 
 - Field identity and generation
 - display contract
-- Field policy
-- Field attestation
+- Field policy and attestation
 - Field registry and lifecycle
-- base image
-- personal-state disk
-- task disk
-- Field Manager
-- guest bootstrap
-- host/guest channel
+- fake/real Field Manager
+- strict VM provisioning plan
+- base image, personal-state disk, task disk
+- guest bootstrap and host/guest channel
 - scene graph
-- Teach consent
-- input recorder
-- visual recorder
-- UIA/system recorder
-- demonstration episode/store
-- Shadow predictor
+- Teach consent and event recorder
+- encrypted demonstration store
+- Shadow predictor/evaluator
 - personal behavior profiles
+- Windows path scope
 - artifact broker
 - Field audit
 - Field emergency stop integration
@@ -140,14 +157,18 @@ The Field design introduces model-relevant files, so the earlier deferred `path_
 - treating the VM viewer as the guest control surface,
 - one unrestricted `control_field` tool,
 - model-created policy or consent,
+- arbitrary command strings in provisioning plans,
 - host-wide input recording,
 - recording without visible state,
 - persistent full-screen recording by default,
 - storing passwords/cookies/tokens in demonstrations,
+- raw visual bytes in demonstration metadata,
 - coordinate-only macros as learned skills,
+- calling a Shadow prediction executable authority,
 - claiming inferred reasons are owner statements,
 - allowing personal imitation models to weaken policy,
 - broad writable host drive mapping,
+- ordinary export of sensitive or untrusted artifacts,
 - arbitrary shell provisioning through MCP,
 - calling contract tests Hyper-V validation,
 - calling Teach recordings Pilot validation,
@@ -157,32 +178,38 @@ The Field design introduces model-relevant files, so the earlier deferred `path_
 
 - `src/fieldContracts.ts` — identity, display, policy, HMAC attestation.
 - `src/fieldRegistry.ts` — separate Field lifecycle and Glove binding.
+- `src/fieldManager.ts` — fake-first lifecycle, policy binding, Field audit.
+- `src/fieldProvisioningPlan.ts` — strict no-shell Hyper-V desired state.
 - `src/demonstration.ts` — consent-bound episode, event bounds, ordering, redaction.
-- `apps/windows-agent/FieldFoundation.cs` — Windows-side identity/display/lifecycle/redaction primitives.
-- TypeScript and .NET pure tests for the above.
-- dedicated Field architecture, owner, developer, and test manuals.
+- `src/encryptedDemonstrationStore.ts` — authenticated encrypted terminal storage and deletion.
+- `src/fieldScene.ts` — versioned scene/readiness foundation.
+- `src/shadowLearning.ts` — non-executing prediction comparison and metrics.
+- `src/fieldPathScope.ts` — adapted Windows path-scope guard.
+- `src/fieldArtifactBroker.ts` — bounded in-memory transfer contract.
+- `apps/windows-agent/FieldFoundation.cs` — Windows identity/display/lifecycle/redaction primitives.
+- TypeScript and .NET tests written for the above applicable surfaces.
+- dedicated Field manuals, status, audits, and engineering logs.
 
 ## Missing proof
 
-- branch commands have not yet been executed in this connector session,
-- GitHub Actions results pending,
-- no local TypeScript or .NET run captured here,
-- no Hyper-V implementation,
-- no guest acceptance,
-- no input hooks,
-- no visual capture,
-- no persistent demonstration store,
-- no Shadow or personal-model implementation,
-- no Pilot field autonomy integration,
-- no artifact broker/path-scope implementation.
+- hosted jobs currently fail before checkout with zero executed steps,
+- no successful local TypeScript or .NET run captured,
+- no Hyper-V provider or VM lifecycle,
+- no guest acceptance or transport,
+- no input hooks or visual capture,
+- no live scene producer,
+- no actual Shadow predictor or personal model,
+- no live artifact filesystem/cross-VM transport,
+- no credential broker,
+- no Pilot Field integration.
 
 ## Required follow-through
 
-1. Run repository, TypeScript, and .NET validation on the exact branch head.
-2. Fix failures using the narrow Parts & Pieces failure loop.
-3. Add a cross-language Field fixture.
-4. Implement fake Field Manager before Hyper-V.
-5. Activate `path_scope` before artifact transfer.
-6. Perform a dedicated privacy audit before visual/input recording.
-7. Add exact local Windows/Hyper-V evidence before any live claim.
-8. Feed broadly reusable Field identity, consent, and episode parts back into Parts & Pieces only after Exosuit tests prove them.
+1. Run repository, TypeScript, and .NET validation on a functioning runner/local checkout.
+2. Fix only confirmed failures using the narrow Parts & Pieces loop.
+3. Persist and hydrate Field registry/audit safely.
+4. Implement dry-run and supported Hyper-V provider against the strict plan.
+5. Perform a dedicated privacy audit before visual/input recording.
+6. Add exact local Windows/Hyper-V evidence before any live claim.
+7. Validate path/reparse behavior on Windows before live artifact transfer.
+8. Feed reusable Field identity, consent, encrypted episode, and path-scope parts back into Parts & Pieces only after Exosuit tests execute and prove them.
