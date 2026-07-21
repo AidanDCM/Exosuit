@@ -105,8 +105,9 @@ try {
     $sessionLocked = $null -ne $process
 } catch {}
 Add-Check -Name 'session_unlocked' -Passed (-not $sessionLocked) -Summary 'Interactive session lock state was checked.'
-Add-Check -Name 'secure_desktop_inactive' -Passed $false -Summary 'Secure Desktop must be confirmed by the running guest agent; bootstrap alone cannot declare this check passed.' -Evidence @{ pendingRuntimeConfirmation = $true }
-Add-Check -Name 'heartbeat_started' -Passed $false -Summary 'Heartbeat is not declared started until the guest agent authenticates its channel.' -Evidence @{ pendingAgentStart = $true }
+# `secure_desktop_inactive` and `heartbeat_started` are deliberately omitted here.
+# They are runtime checks supplied by the authenticated guest agent, so the host
+# evaluator will correctly classify this precheck as not_ready instead of failed.
 
 $report = [ordered]@{
     contractVersion = 1
