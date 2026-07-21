@@ -25,8 +25,14 @@ const required = [
   "tests/fieldRegistry.test.ts",
   "src/demonstration.ts",
   "tests/demonstration.test.ts",
+  "src/encryptedDemonstrationStore.ts",
+  "tests/encryptedDemonstrationStore.test.ts",
   "src/fieldManager.ts",
   "tests/fieldManager.test.ts",
+  "src/fieldScene.ts",
+  "tests/fieldScene.test.ts",
+  "src/shadowLearning.ts",
+  "tests/shadowLearning.test.ts",
   "tests/fixtures/field-contract-v1.json",
   "tests/fieldWireContract.test.ts",
   "apps/windows-agent/FieldFoundation.cs",
@@ -70,10 +76,12 @@ const sourceFiles = [
   "src/coordinator.ts",
   "src/coordinatorMcp.ts",
   "src/demonstration.ts",
+  "src/encryptedDemonstrationStore.ts",
   "src/encryptedCheckpointStore.ts",
   "src/fieldContracts.ts",
   "src/fieldManager.ts",
   "src/fieldRegistry.ts",
+  "src/fieldScene.ts",
   "src/fileCheckpointStore.ts",
   "src/index.ts",
   "src/mcp.ts",
@@ -84,6 +92,7 @@ const sourceFiles = [
   "src/runtimeFactory.ts",
   "src/safety.ts",
   "src/server.ts",
+  "src/shadowLearning.ts",
   "src/skillStore.ts",
   "src/skills.ts",
   "src/supervisor.ts",
@@ -133,11 +142,7 @@ for (const path of sourceFiles) {
 }
 
 const virtualDesktop = await readFile(resolve(root, "src/virtualDesktop.ts"), "utf8");
-for (const requiredInvariant of [
-  "requiresLocalApproval: true",
-  "automaticExecutionAllowed: false",
-  "newer snapshot version",
-]) {
+for (const requiredInvariant of ["requiresLocalApproval: true", "automaticExecutionAllowed: false", "newer snapshot version"]) {
   if (!virtualDesktop.includes(requiredInvariant)) failures.push(`src/virtualDesktop.ts: missing invariant ${requiredInvariant}`);
 }
 
@@ -172,13 +177,42 @@ for (const requiredInvariant of [
 }
 
 const demonstration = await readFile(resolve(root, "src/demonstration.ts"), "utf8");
-for (const requiredInvariant of [
-  "granted: z.literal(true)",
-  "Demonstration event limit reached",
-  "[REDACTED]",
-  "timestamp order",
-]) {
+for (const requiredInvariant of ["granted: z.literal(true)", "Demonstration event limit reached", "[REDACTED]", "timestamp order"]) {
   if (!demonstration.includes(requiredInvariant)) failures.push(`src/demonstration.ts: missing recording invariant ${requiredInvariant}`);
+}
+
+const encryptedDemonstrations = await readFile(resolve(root, "src/encryptedDemonstrationStore.ts"), "utf8");
+for (const requiredInvariant of [
+  'algorithm: z.literal("aes-256-gcm")',
+  "Only completed or aborted demonstration episodes may be persisted",
+  "Inline visual bytes are forbidden",
+  "deleteByField",
+  "authentication failed",
+]) {
+  if (!encryptedDemonstrations.includes(requiredInvariant)) {
+    failures.push(`src/encryptedDemonstrationStore.ts: missing privacy or persistence invariant ${requiredInvariant}`);
+  }
+}
+
+const fieldScene = await readFile(resolve(root, "src/fieldScene.ts"), "utf8");
+for (const requiredInvariant of [
+  "Scene versions must increase",
+  "Secure desktop blocks Field input",
+  "Locked Field session blocks input",
+  "Field input queue is already busy",
+  "Active window identity must match",
+]) {
+  if (!fieldScene.includes(requiredInvariant)) failures.push(`src/fieldScene.ts: missing scene invariant ${requiredInvariant}`);
+}
+
+const shadowLearning = await readFile(resolve(root, "src/shadowLearning.ts"), "utf8");
+for (const requiredInvariant of [
+  "executionAllowed: z.literal(false)",
+  "different Field generations",
+  "same source observation",
+  "Trajectory timestamps must increase strictly",
+]) {
+  if (!shadowLearning.includes(requiredInvariant)) failures.push(`src/shadowLearning.ts: missing Shadow invariant ${requiredInvariant}`);
 }
 
 const boundary = await readFile(resolve(root, "docs/GLOVE_FIELD_BOUNDARY.md"), "utf8");
