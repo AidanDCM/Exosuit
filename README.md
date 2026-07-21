@@ -1,94 +1,83 @@
 # Exosuit
 
-Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. It exposes narrow MCP tools while the local Windows runtime owns sensing, policy, approval, execution, verification, audit, deadlines, and emergency stopping.
+Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. The pilot supplies intent; the local runtime owns sensing, policy, approval, scheduling, execution, verification, audit, deadlines, persistence, and emergency stopping.
 
-The design goal is not hidden automation. It is **human flexibility, machine precision, and local user authority**.
+The goal is **human flexibility, machine precision, transparent operation, and local user authority**—not hidden automation.
 
 ## Current status
 
-**GitHub validated; local Windows acceptance required.**
+**Strong single-agent Windows core with bounded live acceptance; multi-window and later product foundations are in active development. Production use remains denied.**
 
-The repository currently includes:
+The current branch includes:
 
-- a tool-only MCP server suitable for OpenAI Secure MCP Tunnel,
-- a real MCP client/server protocol integration test,
-- fake desktop provider for deterministic CI,
+- a tool-only MCP server suitable for a private ChatGPT app,
+- real MCP client/server protocol tests,
+- fake desktop provider for deterministic testing,
 - Windows UI Automation sensing and semantic actions,
-- sanitized versioned application maps,
-- proposal → policy → local approval → fresh recheck → execution → verification,
+- standard Windows pointer, click, Unicode typing, and bounded hotkey motor code,
+- restart-only and allowlist-only physical-input activation,
+- proposal → deterministic policy → local approval → fresh recheck → execution → verification,
 - immutable approval fingerprints,
-- gateway and provider deadlines,
+- gateway/provider deadlines and local emergency stop,
+- sanitized versioned application maps,
 - dual tamper-evident audit ledgers,
 - prompt-injection and loop guards,
-- local control panel and emergency stop,
-- transparent standard-Windows pointer, click, Unicode typing, and hotkey motor code,
-- restart-only and allowlist-only physical-input activation,
-- GitHub-hosted Linux and Windows build/test workflows,
-- npm and NuGet vulnerability audits,
-- owner, developer, security, architecture, test, audit, roadmap, and Codex handoff manuals.
+- local approval/control panel,
+- multi-window workspace/window generation contracts,
+- workflow dependency graphs, step lifecycle, window locks, focus leases, and session queues,
+- structured cross-window artifacts with provenance and integrity hashes,
+- checkpoints, uncertain-effect recovery, idempotency keys, and coordinator audit timelines,
+- narrow MCP workflow create/read/run/pause/resume/cancel tools,
+- virtual-desktop identity, availability, transition, and local switch-intent foundations,
+- multi-agent health/capability registry and authenticated replay-resistant registration foundations,
+- transparent browser semantic companion contracts and mock provider,
+- disabled-by-default synthetic visual privacy/consent foundation,
+- signed bounded skill-manifest and permission-upgrade foundation,
+- quotas, queue backpressure, and latency percentile foundations.
 
-The repository is **not approved for production use**, real accounts, consequential actions, or normal personal desktops until the required local and later roadmap promotion gates are completed.
+### Evidence boundary
 
-## Planning authority
+The single-agent Windows core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
 
-`docs/MASTER_SYSTEM_ROADMAP.md` is the authoritative future plan. It defines:
+The newer workflow, virtual-desktop, multi-agent, browser, visual-policy, skill, and resource-governance slices are GitHub-source implementations with focused local reconstruction tests. They are **not** yet approved as interactive Windows, connected ChatGPT, multi-window, virtual-desktop, multi-agent, browser-extension, visual-capture, or production evidence.
 
-- multi-window workflow coordination,
-- focus leasing and per-window locking,
-- structured data transfer between applications,
-- Windows virtual-desktop awareness,
-- multiple VM/session agents,
-- browser semantic companion architecture,
-- privacy-preserving visual fallback,
-- approved skills,
-- operator cockpit,
-- persistence and crash recovery,
-- performance targets,
-- signed packaging and rollback,
-- production security review,
-- cross-platform expansion.
-
-`docs/ARCHITECTURE.md` describes what is implemented now. It must not be used as a substitute roadmap.
+As of the latest development cycle, GitHub-hosted workflow jobs are failing before checkout with no steps allocated. The repository does not mislabel that runner/account failure as passing hosted CI. Run the reproducible local validation command and attach exact evidence until hosted runners are available again.
 
 ## Architecture
 
 ```text
-ChatGPT / Claude / MCP host
-            |
-     private MCP tools
-            v
-TypeScript gateway
-  - contracts
-  - application memory
-  - prompt-injection/loop guards
-  - gateway deadline
-  - gateway audit
-            |
- authenticated loopback HTTP
-            v
-.NET Windows agent
+ChatGPT / Claude / another MCP host
+                 |
+          narrow MCP tools
+                 v
+       Exosuit Supervisor Gateway
+  - single-action orchestrator
+  - workflow DAG/runtime
+  - workspace and agent registries
+  - structured artifact/checkpoint stores
+  - prompt-injection and loop guards
+  - gateway deadlines and audit
+                 |
+       authenticated agent boundary
+                 v
+           .NET Windows agent
   - fresh UI Automation state
   - deterministic policy
   - local approval fingerprints
-  - provider deadlines
-  - verification
-  - local audit
+  - bounded provider operations
+  - verification and local audit
   - emergency stop
-            |
-      provider adapters
-  +---------+------------------+
-  |                            |
-fake sandbox              Windows UIA
-                               |
-                    optional local motor
-                    standard Windows APIs
+                 |
+      fake provider / Windows UIA
+                 |
+     optional locally gated motor
 ```
 
-MCP carries intentions, not one cursor coordinate per animation frame. The local runtime handles motor interpolation and immediate interruption.
+A single Windows session has one foreground focus and one physical mouse/keyboard stream. Exosuit may observe and plan across many windows, but physical actions are serialized through a focus lease. Genuine physical parallelism requires separate healthy agents inside separate Windows sessions or VMs.
 
-The current implementation coordinates one bounded proposal at a time through one agent. Multi-window workflows, virtual desktops, and multiple VM/session agents are planned but not yet implemented.
+## Current MCP surface
 
-## MCP tools
+### Desktop core
 
 - `desktop_get_status`
 - `desktop_observe`
@@ -103,38 +92,68 @@ The current implementation coordinates one bounded proposal at a time through on
 - `desktop_emergency_stop`
 - `desktop_get_audit_log`
 
-Stored application maps are advisory memory only. They must be matched against a fresh observation before their current element IDs can be used.
+### Coordinator
+
+- `desktop_refresh_workspace`
+- `desktop_get_workspace`
+- `desktop_list_windows`
+- `desktop_create_workflow`
+- `desktop_list_workflows`
+- `desktop_get_workflow`
+- `desktop_run_next_workflow_step`
+- `desktop_continue_approved_workflow_step`
+- `desktop_pause_workflow`
+- `desktop_resume_workflow`
+- `desktop_cancel_workflow`
+- `desktop_list_workflow_artifacts`
+- `desktop_get_workflow_audit`
+- `desktop_list_agents`
+
+Workflow tools do not approve their own work. Desktop steps still enter the ordinary proposal, local policy, approval, fresh observation, execution, and verification pipeline.
 
 ## Safety defaults
 
 | Capability | Default |
 |---|---|
-| provider | fake |
+| desktop provider | fake |
 | fake mode | sandbox |
 | Windows mode | observe |
 | bind address | `127.0.0.1` |
-| screenshots | disabled and not implemented in the Windows provider |
 | physical input | disabled |
-| full control | disabled; restart-only; cannot be enabled by MCP or the panel |
-| credentials/secrets | hard denied |
+| full control | restart-only; cannot be enabled by MCP or the panel |
+| screenshots | disabled; no Windows capture implementation |
+| visual policy | disabled; synthetic foundation only |
+| browser companion | mock/contracts only; no installed extension |
+| remote agents | registry/auth contracts only; no production transport |
+| skills | signed registry foundation only; execution not enabled |
+| credentials and secret-bearing controls | hard denied |
 | destructive targets | hard denied |
-| unknown actions | denied |
 | real semantic actions | local review |
-| physical actions | critical risk + exact local typed review |
+| physical actions | critical risk + exact local typed confirmation |
 
-Physical input requires all exact local startup settings plus a non-empty process allowlist. Every physical action then requires a fresh active target window; pointer coordinates must be inside that window, and physical text requires a fresh enabled, visible, focused target field.
+## Validation
 
-## Quick GitHub-safe validation
+Install dependencies with scripts disabled, then run:
 
 ```bash
 npm install --ignore-scripts
+npm run validate:typescript
+```
+
+On Windows with .NET 8:
+
+```powershell
+npm run validate
+```
+
+The individual commands remain available:
+
+```bash
 npm run typecheck
 npm test -- --reporter=verbose
 npm run build
 npm run test:pulse -- --reporter=verbose
 ```
-
-On Windows:
 
 ```powershell
 dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
@@ -142,20 +161,22 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-Do not enable the Windows provider or physical input until following `docs/CODEX_HANDOFF.md` in a disposable Windows environment.
+Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`.
 
-## Manuals and evidence
+## Planning and evidence
 
 - [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Current architecture](docs/ARCHITECTURE.md)
+- [Implemented architecture](docs/ARCHITECTURE.md)
 - [Security model](docs/SECURITY_MODEL.md)
 - [Test plan](docs/TEST_PLAN.md)
 - [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
-- [Codex local handoff](docs/CODEX_HANDOFF.md)
-- [Parts & donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
-- [GitHub phase final audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
+- [Codex/local acceptance handoff](docs/CODEX_HANDOFF.md)
+- [Parts and donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
+- [GitHub-phase audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
 - [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
 - [Decision log](docs/logs/DECISION_LOG.md)
+
+`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` must describe only what exists.
 
 ## Explicit exclusions
 
@@ -168,14 +189,19 @@ Exosuit must not implement or claim:
 - privilege escalation,
 - arbitrary remote shell execution,
 - covert surveillance or recording,
-- bypassing platform or application security controls.
+- bypassing application or platform security controls.
 
-## Next approved sequence
+## Current holds
 
-1. Validate the current core through the isolated Codex Windows and ChatGPT acceptance procedure.
-2. Return to GitHub for the Multi-window Workspace Coordinator.
-3. Validate multi-window behavior locally.
-4. Build Windows virtual-desktop awareness.
-5. Build the multi-agent/VM supervisor.
-
-The exact dependencies, evidence gates, and later phases are maintained in `docs/MASTER_SYSTEM_ROADMAP.md`. The product PR remains draft until `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` is completed with evidence.
+- **PR state:** draft
+- **Merge to main:** hold
+- **Production use:** denied
+- **Real accounts or consequential targets:** denied
+- **Normal personal desktop use:** denied
+- **Connected ChatGPT acceptance:** pending
+- **Interactive three-window validation:** pending
+- **Native virtual-desktop validation:** pending
+- **Multi-agent/VM transport validation:** pending
+- **Browser extension and real browser execution:** pending
+- **Windows visual capture:** unimplemented and disabled
+- **Packaging, signing, updater, rollback, penetration testing, and release operations:** pending
