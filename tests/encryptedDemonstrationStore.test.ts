@@ -108,7 +108,7 @@ describe("encrypted demonstration store", () => {
     const [name] = await readdir(path);
     const file = join(path, name!);
     const envelope = JSON.parse(await readFile(file, "utf8")) as { ciphertext: string };
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -1)}${envelope.ciphertext.endsWith("A") ? "B" : "A"}`;
+    envelope.ciphertext = `${envelope.ciphertext.startsWith("A") ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
     await writeFile(file, JSON.stringify(envelope), "utf8");
     await expect(store.load(episode.episodeId)).rejects.toThrow(/authentication failed/);
   });
