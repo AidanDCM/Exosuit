@@ -58,7 +58,13 @@ jobs:
           node-version: 22
       - name: Verify TypeScript project surface
         shell: bash
-        run: test -f package.json && test -f tsconfig.json
+        run: |
+          test -f package.json
+          test -f tsconfig.json
+          test -f src/fieldManager.ts
+          test -f tests/fieldManager.test.ts
+          test -f tests/fixtures/field-contract-v1.json
+          test -f tests/fieldWireContract.test.ts
       - name: Install dependencies
         run: npm install --ignore-scripts --fund=false
       - name: Repository safety validation
@@ -98,14 +104,15 @@ jobs:
       - name: Verify .NET project surface
         shell: pwsh
         run: |
-          if (-not (Test-Path 'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj')) {
-            throw 'Windows agent test project is missing.'
-          }
-          if (-not (Test-Path 'apps/windows-agent/FieldFoundation.cs')) {
-            throw 'Field foundation source is missing.'
-          }
-          if (-not (Test-Path 'apps/windows-agent.Tests/FieldFoundationTests.cs')) {
-            throw 'Field foundation tests are missing.'
+          $required = @(
+            'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj',
+            'apps/windows-agent/FieldFoundation.cs',
+            'apps/windows-agent.Tests/FieldFoundationTests.cs',
+            'apps/windows-agent.Tests/FieldWireContractTests.cs',
+            'tests/fixtures/field-contract-v1.json'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) { throw "Required Windows Field artifact is missing: $path" }
           }
       - name: Restore
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
@@ -172,11 +179,16 @@ jobs:
               src/fieldContracts.ts
               src/fieldRegistry.ts
               src/demonstration.ts
+              src/fieldManager.ts
               tests/fieldContracts.test.ts
               tests/fieldRegistry.test.ts
               tests/demonstration.test.ts
+              tests/fieldManager.test.ts
+              tests/fixtures/field-contract-v1.json
+              tests/fieldWireContract.test.ts
               apps/windows-agent/FieldFoundation.cs
               apps/windows-agent.Tests/FieldFoundationTests.cs
+              apps/windows-agent.Tests/FieldWireContractTests.cs
               .github/copilot-instructions.md
               .github/pull_request_template.md
             )
