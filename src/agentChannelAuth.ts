@@ -6,6 +6,7 @@ export const agentRegistrationPayloadSchema = z.object({
   agentId: z.string().min(1).max(200),
   machineId: z.string().min(1).max(300),
   windowsSessionId: z.string().min(1).max(300),
+  userSessionKind: z.enum(["console", "vm", "rdp", "cloud"]),
   issuedAt: z.string().datetime(),
   nonce: z.string().regex(/^[a-f0-9]{32,128}$/),
   capabilities: z.array(z.string().min(1).max(200)).max(200),
