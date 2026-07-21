@@ -14,6 +14,7 @@ function payload(
     agentId: "agent-a",
     machineId: "machine-a",
     windowsSessionId: "session-a",
+    userSessionKind: "vm",
     issuedAt: "2026-07-21T15:00:00.000Z",
     nonce: "a".repeat(48),
     capabilities: ["uia", "motor"],
@@ -30,7 +31,11 @@ describe("agent channel authentication", () => {
     const signed = authenticator.sign(payload(authenticator));
     expect(
       authenticator.verify(signed, new Date("2026-07-21T15:00:01.000Z")),
-    ).toMatchObject({ agentId: "agent-a", capabilities: ["uia", "motor"] });
+    ).toMatchObject({
+      agentId: "agent-a",
+      userSessionKind: "vm",
+      capabilities: ["uia", "motor"],
+    });
   });
 
   it("rejects tampering and a different secret", () => {
@@ -44,6 +49,15 @@ describe("agent channel authentication", () => {
         {
           ...signed,
           payload: { ...signed.payload, capabilities: ["uia", "shell"] },
+        },
+        new Date("2026-07-21T15:00:01.000Z"),
+      ),
+    ).toThrow(/signature is invalid/);
+    expect(() =>
+      signer.verify(
+        {
+          ...signed,
+          payload: { ...signed.payload, userSessionKind: "cloud" },
         },
         new Date("2026-07-21T15:00:01.000Z"),
       ),
