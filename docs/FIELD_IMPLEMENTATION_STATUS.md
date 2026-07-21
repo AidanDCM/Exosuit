@@ -7,256 +7,201 @@
 
 ## Evidence warning
 
-This branch contains substantial Field source, tests, manuals, and pure/fake foundations. GitHub-hosted jobs for the current branch have repeatedly failed before checkout with zero executed steps and no job logs. Therefore:
+This branch contains substantial Field contracts, pure/fake runtimes, Windows-side foundations, guarded PowerShell tooling, tests, manuals, audits, and failure-injection plans. GitHub-hosted jobs have repeatedly failed before checkout with zero executed steps and no job logs. Therefore:
 
-- source exists,
-- tests exist,
-- static review has been performed,
-- hosted test execution is **not** proven,
-- local TypeScript/.NET execution is **not** captured,
-- Hyper-V and interactive Windows behavior are **not** implemented or proven.
-
-Do not describe the Field as operational.
+- source and tests exist;
+- static review and independent fixture recomputation have been performed;
+- hosted test execution is not proven;
+- local TypeScript/.NET execution is not captured;
+- PowerShell scripts have not been executed;
+- Hyper-V and interactive Windows behavior are not proven;
+- the Field must not be described as operational or production-ready.
 
 ## Glove and Field split
 
 | Subsystem | Current role |
 |---|---|
-| Glove | existing MCP, planning, Windows-agent, policy, semantic/motor execution, verification, workflow, audit, stop |
-| Field | new environment identity, policy, provisioning plan, lifecycle, teaching data, storage, scene, Shadow metrics, and artifact-boundary foundations |
+| Glove | existing MCP, planning, Windows agent, policy, semantic/motor execution, verification, workflow, audit, and stop |
+| Field | environment identity, policy, lifecycle, VM desired state, host/guest channel, bootstrap, heartbeat, teaching data, visual policy, scene, Shadow metrics, artifact boundary, recovery, diagnostics, and administration foundations |
 
-The Glove is not the VM. The Field is not the agent.
+**The Glove is not the VM. The Field is not the agent.**
 
-## Implemented Field source
+## Implemented source surfaces
 
-| Surface | Files | Current evidence | Live capability? |
+| Surface | Main files | Current evidence | Live capability? |
 |---|---|---|---|
-| Field identity and generation | `src/fieldContracts.ts`, `.NET FieldFoundation.cs` | source + TS/.NET tests written | no |
-| fixed display contract | same | source + tests written | no Windows enforcement |
-| bounded Field policy | `src/fieldContracts.ts` | source + negative tests written | not integrated into live agent |
-| local policy attestation | `src/fieldContracts.ts` | HMAC/canonicalization source + tests written | no secure host/guest key channel |
-| Field lifecycle/Glove binding | `src/fieldRegistry.ts`, `.NET FieldFoundation.cs` | source + tests written | in-memory only |
-| fake Field Manager | `src/fieldManager.ts` | full fake lifecycle pulse tests written | no Hyper-V |
-| deterministic provisioning plan | `src/fieldProvisioningPlan.ts` | typed plan + tests written | no provider executes it |
-| demonstration episode | `src/demonstration.ts` | source + consent/order/limit tests written | no live hooks |
-| encrypted demonstration store | `src/encryptedDemonstrationStore.ts` | AES-256-GCM store + tests written | file-backed pure component only |
-| Field scene graph | `src/fieldScene.ts` | version/focus/modal/readiness tests written | no Windows event source |
-| Shadow contracts and metrics | `src/shadowLearning.ts` | prediction-only schemas/evaluator + tests written | no predictive model |
-| Windows Field path scope | `src/fieldPathScope.ts` | adapted Parts pattern + tests written | no live broker filesystem traversal |
-| bounded artifact broker | `src/fieldArtifactBroker.ts` | in-memory manifest/hash/state tests written | no host/guest byte transport |
-| cross-language fixture | `tests/fixtures/field-contract-v1.json` | TS/.NET fixture tests written | execution pending |
+| identity, generation, display, policy, attestation | `fieldContracts.ts`, `.NET FieldFoundation.cs` | TS/.NET tests written | no live attestation channel |
+| lifecycle and Glove binding | `fieldRegistry.ts`, `fieldManager.ts` | fake lifecycle and audit tests | in-memory/fake provider |
+| Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
+| immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
+| local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
+| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs` | TS/.NET tests and shared signed fixture | no live transport |
+| guest heartbeat | `fieldHeartbeat.ts`, `.NET foundation` | identity/liveness tests | no guest emitter |
+| guest bootstrap | `fieldBootstrap.ts`, guest bootstrap script | pure evaluator and static script tests | no service integration |
+| typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
+| Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
+| encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
+| visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
+| scene graph | `fieldScene.ts` | version/focus/modal/readiness tests | no Windows producer |
+| Shadow metrics | `shadowLearning.ts` | no-execution/comparison tests | no predictor |
+| Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
+| artifact broker | `fieldArtifactBroker.ts` | hash/size/direction/state tests | no cross-VM copy |
+| deterministic recovery | `fieldRecovery.ts` | no-blind-retry and generation tests | not wired to host/guest |
+| privacy-safe diagnostics | `fieldSupportBundle.ts` | leakage/integrity tests | no automatic collector |
+| fake full-system pulse | `fieldSystemPulse.test.ts` | full source chain written | execution pending |
+| Windows host tooling | `scripts/windows/*.ps1` | static safety tests | unexecuted |
+| local evidence runner | `Invoke-ExosuitFieldValidation.ps1` | source/static review | unexecuted |
 
-## Foundation details
+## Critical architecture decisions now encoded
 
-### Field policy
+### Immutable base image
 
-The schema binds one Field generation and contains:
-
-- Teach, Shadow, or Pilot mode,
-- allowed processes,
-- allowed capabilities,
-- allowed origins,
-- finite runtime/action budgets,
-- recording consent state,
-- expiration,
-- literal false values for host desktop access, broad host-drive write, privilege escalation, and security-control changes.
-
-The pilot does not create or sign this policy.
-
-### Attestation
-
-The local foundation binds:
-
-- Field identity and generation,
-- display contract,
-- exact policy hash,
-- issuer key ID,
-- short validity window,
-- HMAC-SHA256 signature checked in constant time.
-
-This is not TPM, secure-boot, hardware, or remote attestation.
-
-### Fake Field Manager
-
-The implemented fake-first manager supports:
+The golden Windows VHDX is never the writable boot disk. Each Field generation uses:
 
 ```text
-plan
--> verify policy and attestation
--> provision through typed provider
--> ready
--> Teach | Shadow | Pilot lifecycle
--> ready
--> stop
--> destroy
+immutable base VHDX
+        |
+        v
+disposable differencing OS overlay  <-- VM boots and writes here
+
+optional persistent personal-state VHDX
+separate disposable task VHDX
 ```
 
-It records a hash-linked Field audit and binds mode entry to the exact policy used at provisioning. It cannot create a VM.
+The destruction path is confined to the exact generation directory and VM registration. Base and personal-state paths are not deletion targets.
 
-### VM provisioning plan
+### Administration boundary
 
-The typed plan includes:
+- `pilot_model` is blocked from planning/provisioning, mode changes, stop/destroy, key rotation, demonstration deletion, and sensitive export.
+- Field service is limited to reviewed lifecycle execution.
+- consent, key rotation, deletion, and sensitive export require interactive local owner presence.
+- model text can never satisfy review.
 
-- Hyper-V Generation 2,
-- CPU and dynamic/fixed memory bounds,
-- secure boot,
-- optional TPM requirement,
-- production checkpoints,
-- immutable base image identity,
-- encrypted personal-state identity,
-- disposable task disk,
-- disabled/isolated/filtered-NAT network mode,
-- host LAN and inbound connections false,
-- clipboard, broad drive mapping, and host input injection false,
-- viewer allowed only as a viewer,
-- ordered provisioning steps through guest identity/display/attestation/ready.
+### Channel boundary
 
-There is no command or arbitrary shell field.
+Every message binds:
 
-### Demonstration persistence
+- exact Field ID and generation,
+- direction,
+- sequence,
+- message ID,
+- nonce,
+- key ID,
+- payload hash,
+- sent/expiration time,
+- HMAC-SHA256 signature.
 
-Only completed or aborted episodes may be persisted. The store:
+Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay state is currently in memory and requires a persistence design before production.
 
-- redacts secret-shaped payload keys again before persistence,
-- rejects raw screenshot/frame/pixel byte fields in metadata,
-- encrypts and authenticates with AES-256-GCM,
-- binds episode and Field-generation hashes as authenticated data,
-- uses atomic temporary-file replacement,
-- applies byte limits,
-- hides invalid/wrong-key files from listing,
-- supports deletion by episode or Field generation.
+### Guest action boundary
 
-It does not yet provide visual-byte storage, retention jobs, training export, or deletion certificates.
+The guest accepts only typed status, observation, bounded desktop action, emergency-stop, and shutdown commands. Action execution requires:
 
-### Field scene graph
+- Pilot mode,
+- authenticated Glove host actor,
+- exact policy ID and hash,
+- exact current scene version,
+- contiguous action ordinal,
+- remaining action budget,
+- approved desktop route,
+- semantic or physical capability.
 
-The pure graph validates:
+Shell routes are denied. Teach and Shadow cannot execute. Shutdown is local-admin-only. Emergency stop remains available independently of normal action authorization.
 
-- one exact Field generation,
-- increasing scene versions and timestamps,
-- unique windows and elements,
-- active-window consistency,
-- element-to-window ownership,
-- modal-window identity,
-- cursor inside fixed display,
-- locked/secure session cannot be ready,
-- input blocked while not ready, locked, secure, or busy.
+### Teaching and privacy boundary
 
-It emits incremental scene events but has no live Windows producer.
+- Teach requires explicit consent and a visible-recording-state contract.
+- Teach recorder has no input-injection authority.
+- terminal episodes are encrypted with AES-256-GCM.
+- raw screenshots/frame/image/pixel bytes are banned from episode metadata.
+- visual capture requires a separate consent policy, external blob references, sensitive-region redaction, region/change-only mode, and byte/count/TTL limits.
+- support bundles contain hashed identity and aggregate state only.
 
-### Shadow foundation
+### Recovery boundary
 
-Shadow records are hard-coded with `executionAllowed: false`. Comparisons require the same Field generation and source observation and measure:
+- only an idempotent, zero-effect operation may receive a bounded retry;
+- a possible unverified external effect freezes and reconciles instead of retrying;
+- channel/replay/boot/display/attestation/task-disk trust failures require stop, disposable-state destruction, generation increment, and reprovisioning;
+- emergency-stop failure is release-blocking and receives no automated recovery.
 
-- intent agreement,
-- target agreement,
-- mouse/keyboard/semantic method agreement,
-- expected-result agreement,
-- absolute timing error,
-- normalized trajectory-shape distance.
-
-No model generates predictions yet.
-
-### Path scope and artifact broker
-
-The Windows Field path guard rejects:
-
-- absolute, drive, or UNC caller paths,
-- traversal and ambiguous segments,
-- alternate data streams,
-- Windows invalid characters,
-- trailing dots/spaces,
-- reserved device names,
-- wrong folder/direction combinations,
-- uninspected reparse-point ancestry.
-
-The broker then requires exact bytes and SHA-256, restricts host imports to Inbox/Quarantine, restricts exports to Outbox, and blocks sensitive or untrusted exports from the ordinary path. It does not perform live filesystem or cross-VM transfer.
-
-## Tests written
+## Validation surfaces
 
 ### TypeScript
 
-- Field policy/attestation
-- Field lifecycle/Glove binding
-- demonstration events and redaction
-- encrypted demonstration persistence/tamper/deletion
-- fake Field Manager lifecycle and policy substitution
-- Field scene events and readiness
-- Shadow no-execution and metrics
-- provisioning-plan integrity and host isolation
-- Windows path scope and reparse requirement
-- artifact transfer hash/state/direction/classification
-- shared Field fixture
+- focused Field suite: `npm run test:field`
+- fake full-system pulse: `npm run test:field-pulse`
+- Field repository validator: `npm run validate:field-contract`
+- complete Field validation: `npm run validate:field`
+- whole repository: `npm run validate:typescript`
 
 ### .NET
 
-- Field identity/display validation
-- lifecycle/Glove binding
-- fault transition requirements
-- demonstration payload redaction
-- shared Field fixture vocabulary
+- Field identity/lifecycle/redaction tests;
+- authenticated channel/replay/heartbeat tests;
+- shared Field contract fixture;
+- shared signed channel fixture.
+
+### Windows
+
+- `Test-ExosuitFieldHost.ps1` — read-only prerequisites;
+- `Show-ExosuitFieldProvisioningPlan.ps1` — non-mutating plan resolver;
+- `Invoke-ExosuitFieldProvisioning.ps1` — dry-run by default, exact confirmation for apply, bounded rollback;
+- `Initialize-ExosuitFieldGuest.ps1` — fixed-root bootstrap precheck;
+- `Remove-ExosuitFieldGeneration.ps1` — exact-generation destruction;
+- `Invoke-ExosuitFieldValidation.ps1` — one-command evidence capture.
+
+See `docs/FIELD_WINDOWS_RUNBOOK.md`.
 
 ## Hosted validation status
 
-For head `a34deaccb458c8b6b364f3b250ba174a21faecb1`:
+The latest inspected Exosuit CI and Security Audit jobs again reported no steps and no logs. This is classified as an external runner/account allocation block, not a passing or failing repository test result.
 
-- Exosuit CI run `29854178787`: failure before checkout; all three jobs contained zero steps.
-- Security Audit run `29854178777`: failure before checkout; no repository step evidence.
-- job log blob was unavailable because no steps were allocated.
+Executable validation remains mandatory on the exact branch head.
 
-Later commits add more foundations. Their hosted runs must be checked separately, but the known runner/account condition may persist.
+## Not implemented or not proven
 
-This is infrastructure evidence, not a code-test failure and not a code-test pass.
-
-## Not implemented
-
-- supported Hyper-V provider,
-- base-image builder or image registry,
-- VHDX/differencing-disk creation,
-- VM create/start/stop/destroy,
-- Hyper-V socket transport,
-- guest bootstrap service,
-- display enforcement,
-- heartbeat from a guest,
-- live input recorder,
-- UI Automation event recorder for Teach,
-- visual capture or redaction,
-- visible recording indicator,
-- independent recorder stop,
-- scene-graph Windows producer,
-- demonstration segmenter/retrieval model,
-- actual Shadow predictor,
-- personal motor/typing/language/timing models,
-- local reflex execution of learned profiles,
-- live filesystem artifact broker,
-- credential broker,
-- Pilot policy integration into Windows safety policy,
-- MCP Field tools,
-- ChatGPT connection acceptance,
-- installation, signing, upgrades, rollback, penetration test, or release operations.
+- executed TypeScript/.NET suite on the current head;
+- executed PowerShell parser/static/runtime checks;
+- supported, reviewed Hyper-V provider integrated behind `FieldProvisioner`;
+- actual VM creation evidence;
+- base-image immutability evidence after guest use;
+- actual host/guest transport, key persistence, and rotation;
+- running guest bootstrap/heartbeat service;
+- live Windows scene producer;
+- live Teach input and UI Automation hooks;
+- visible recorder UI and independent physical stop;
+- visual capture and encrypted blob store;
+- demonstration segmentation/retrieval or actual Shadow predictor;
+- personal task/motor/typing/language/timing models;
+- live artifact copy with reparse and TOCTOU protection;
+- credential broker;
+- Pilot integration into the existing Windows policy/execution loop;
+- connected ChatGPT Field acceptance;
+- installer, signing, updater, rollback release operations, penetration test, or production support.
 
 ## Promotion posture
 
 | Capability | Posture |
 |---|---|
-| merge to Glove build branch | HOLD pending executable validation and review |
+| draft PR review | OPEN |
+| merge to Glove build branch | HOLD pending executable validation |
 | merge to main | DENIED |
 | real Windows account use | DENIED |
 | real website tasks | DENIED |
-| Teach recording | DENIED; no live recorder |
-| Shadow operation | DENIED; no predictor/runtime |
+| Teach recording | DENIED until live hooks/privacy acceptance |
+| Shadow runtime | DENIED until no-input live proof |
 | Pilot autonomy | DENIED |
 | production | DENIED |
 
-## Next engineering sequence
+## Next unavoidable live sequence
 
-1. Run repository, TypeScript, and .NET commands on a usable runner or local checkout.
-2. Repair only confirmed failures and attach exact outputs.
-3. Add durable Field registry/audit persistence and fake hydration tests.
-4. Implement a supported Hyper-V provider behind `FieldProvisioner`, beginning with plan/dry-run output.
-5. Implement guest bootstrap and heartbeat in a disposable VM.
-6. Complete a dedicated privacy-critical audit before adding input or visual hooks.
-7. Implement Teach recorder with consent indicator, independent stop, encrypted store, and deletion.
-8. Wire live scene graph.
-9. Implement retrieval and Shadow prediction only; prove no input path.
-10. Add personal-model interfaces and local bounded motor only after Shadow thresholds and owner review.
+1. Run `Invoke-ExosuitFieldValidation.ps1` on an authenticated checkout and attach exact evidence.
+2. Fix confirmed compile/test/script failures only, then rerun from the start.
+3. Create a disposable golden-image fixture and private Hyper-V switch.
+4. Dry-run then apply one Field generation using synthetic data only.
+5. Integrate authenticated local transport and guest heartbeat.
+6. Prove bootstrap/display/session/attestation readiness.
+7. Test destruction confinement and base-image immutability.
+8. Add live Teach hooks only after privacy review; prove no injection and independent stop.
+9. Add live scene production and Shadow only; prove no execution path.
+10. Integrate Pilot one synthetic app/workflow at a time, with physical emergency-stop and reconciliation evidence.
