@@ -5,6 +5,7 @@ import {
   compareShadowPrediction,
   createShadowPrediction,
   shadowActualSchema,
+  shadowPredictionSchema,
 } from "../src/shadowLearning.js";
 
 const field = { fieldId: randomUUID(), fieldGeneration: 1 };
@@ -60,8 +61,8 @@ describe("shadow learning foundation", () => {
   it("hard codes prediction records as non-executing", () => {
     const value = prediction();
     expect(value.executionAllowed).toBe(false);
-    expect(() => ({ ...value, executionAllowed: true })).not.toThrow();
-    expect(() =>
+    expect(() => shadowPredictionSchema.parse({ ...value, executionAllowed: true })).toThrow();
+    expect(
       createShadowPrediction({
         field,
         observationId: "observation-2",
@@ -70,9 +71,8 @@ describe("shadow learning foundation", () => {
         confidence: 0.5,
         sourceEpisodeIds: [],
         modelVersion: "v1",
-        executionAllowed: true,
-      } as never),
-    ).toThrow();
+      }).executionAllowed,
+    ).toBe(false);
   });
 
   it("compares intent target method timing result and normalized trajectory shape", () => {
@@ -98,15 +98,21 @@ describe("shadow learning foundation", () => {
     const first = compareShadowPrediction({ prediction: firstPrediction, actual: actual() });
     evaluator.append(first);
 
+    const template = prediction();
     const secondPrediction = createShadowPrediction({
-      ...prediction(),
+      field: template.field,
       predictionId: randomUUID(),
       observationId: "observation-2",
-      action: { ...prediction().action, intent: "Skip result", method: "mouse", delayMs: 400 },
+      predictedAt: template.predictedAt,
+      action: { ...template.action, intent: "Skip result", method: "mouse", delayMs: 400 },
+      confidence: template.confidence,
+      sourceEpisodeIds: template.sourceEpisodeIds,
+      modelVersion: template.modelVersion,
     });
+    const actualTemplate = actual();
     const secondActual = actual({
       observationId: "observation-2",
-      action: { ...actual().action, intent: "Open result", method: "keyboard", delayMs: 600 },
+      action: { ...actualTemplate.action, intent: "Open result", method: "keyboard", delayMs: 600 },
     });
     evaluator.append(compareShadowPrediction({ prediction: secondPrediction, actual: secondActual }));
 
@@ -129,9 +135,10 @@ describe("shadow learning foundation", () => {
       }),
     ).toThrow(/different Field generations/);
 
+    const actualTemplate = actual();
     const malformed = actual({
       action: {
-        ...actual().action,
+        ...actualTemplate.action,
         trajectory: [
           { tMs: 10, x: 0, y: 0 },
           { tMs: 10, x: 1, y: 1 },
