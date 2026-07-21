@@ -57,6 +57,10 @@ function snapshot(overrides: Partial<FieldSceneSnapshot> = {}): FieldSceneSnapsh
   });
 }
 
+function updateFresh(value: FieldSceneSnapshot): void {
+  new FieldSceneGraph(field).update(value);
+}
+
 describe("Field scene graph", () => {
   it("initializes and emits incremental desktop events", () => {
     const graph = new FieldSceneGraph(field);
@@ -118,13 +122,28 @@ describe("Field scene graph", () => {
     expect(() =>
       graph.update(snapshot({ field: { fieldId: field.fieldId, fieldGeneration: 2 }, sceneVersion: 2 })),
     ).toThrow(/cross Field generations/);
-    expect(() => snapshot({ elements: [{ ...snapshot().elements[0]!, windowId: "missing" }] })).toThrow(/listed window/);
-    expect(() => snapshot({ modal: { present: true, windowId: "missing", kind: "dialog" } })).toThrow(/Modal window/);
+
+    expect(() => updateFresh(snapshot({ elements: [{ ...snapshot().elements[0]!, windowId: "missing" }] }))).toThrow(
+      /listed window/,
+    );
+    expect(() => updateFresh(snapshot({ modal: { present: true, windowId: "missing", kind: "dialog" } }))).toThrow(
+      /Modal window/,
+    );
     expect(() =>
-      snapshot({
-        system: { desktopReady: true, secureDesktopActive: true, sessionLocked: false, inputQueueBusy: false },
-      }),
+      updateFresh(
+        snapshot({
+          system: { desktopReady: true, secureDesktopActive: true, sessionLocked: false, inputQueueBusy: false },
+        }),
+      ),
     ).toThrow(/cannot report the desktop ready/);
-    expect(() => snapshot({ cursor: { x: 2000, y: 100, visible: true } })).toThrow(/inside the display/);
+    expect(() => updateFresh(snapshot({ cursor: { x: 2000, y: 100, visible: true } }))).toThrow(/inside the display/);
+    expect(() =>
+      updateFresh(
+        snapshot({
+          activeWindowId: "window-a",
+          windows: snapshot().windows.map((window) => ({ ...window, isActive: false })),
+        }),
+      ),
+    ).toThrow(/must match/);
   });
 });
