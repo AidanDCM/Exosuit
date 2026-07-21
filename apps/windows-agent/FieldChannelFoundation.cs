@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -97,8 +98,8 @@ public static class FieldChannelAuthentication
         ["direction"] = envelope.Direction == FieldChannelDirection.HostToGuest ? "host_to_guest" : "guest_to_host",
         ["sequence"] = envelope.Sequence,
         ["messageType"] = ToWire(envelope.MessageType),
-        ["sentAt"] = envelope.SentAt.ToUniversalTime().ToString("O"),
-        ["expiresAt"] = envelope.ExpiresAt.ToUniversalTime().ToString("O"),
+        ["sentAt"] = WireDate(envelope.SentAt),
+        ["expiresAt"] = WireDate(envelope.ExpiresAt),
         ["nonce"] = envelope.Nonce,
         ["keyId"] = envelope.KeyId,
         ["payloadHash"] = envelope.PayloadHash,
@@ -117,6 +118,9 @@ public static class FieldChannelAuthentication
         FieldChannelMessageType.Shutdown => "shutdown",
         _ => throw new ArgumentOutOfRangeException(nameof(value)),
     };
+
+    private static string WireDate(DateTimeOffset value) =>
+        value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 
     private static void ValidateSecret(string secret)
     {
