@@ -123,6 +123,9 @@ describe("virtual desktop registry", () => {
       targetVirtualDesktopId: "desktop-b",
       requiresLocalApproval: true,
       automaticExecutionAllowed: false,
+      method: "manual",
+      status: "proposed",
+      basedOnSnapshotVersion: 1,
     });
     expect(() =>
       registry.createSwitchIntent({
@@ -140,6 +143,78 @@ describe("virtual desktop registry", () => {
         reason: "Unknown desktop.",
       }),
     ).toThrow(/not present/);
+    expect(() =>
+      registry.createSwitchIntent({
+        agentId: "agent-a",
+        windowsSessionId: "session-a",
+        targetVirtualDesktopId: "desktop-b",
+        reason: "Missing direction.",
+        method: "approved_hotkey",
+      }),
+    ).toThrow(/explicit direction/);
+  });
+
+  it("confirms a switch only from a newer matching observation", () => {
+    const registry = new VirtualDesktopRegistry();
+    registry.update(snapshot());
+    const intent = registry.createSwitchIntent({
+      agentId: "agent-a",
+      windowsSessionId: "session-a",
+      targetVirtualDesktopId: "desktop-b",
+      reason: "Continue the workflow on desktop B.",
+      method: "approved_hotkey",
+      direction: "right",
+      now: new Date("2026-07-21T15:00:00.000Z"),
+    });
+    expect(() => registry.confirmSwitchIntent(intent.intentId, snapshot())).toThrow(/newer snapshot version/);
+    expect(() =>
+      registry.confirmSwitchIntent(
+        intent.intentId,
+        snapshot({
+          version: 2,
+          capturedAt: "2026-07-21T15:00:01.000Z",
+          currentVirtualDesktopId: "desktop-a",
+        }),
+      ),
+    ).toThrow(/did not confirm/);
+
+    const confirmed = registry.confirmSwitchIntent(
+      intent.intentId,
+      snapshot({
+        version: 3,
+        capturedAt: "2026-07-21T15:00:02.000Z",
+        currentVirtualDesktopId: "desktop-b",
+      }),
+    );
+    expect(confirmed).toMatchObject({ status: "confirmed", targetVirtualDesktopId: "desktop-b" });
+    expect(confirmed.confirmedAt).toBe("2026-07-21T15:00:02.000Z");
+    expect(() => registry.cancelSwitchIntent(intent.intentId)).toThrow(/confirmed/);
+  });
+
+  it("expires and cancels pending switch intents", () => {
+    const registry = new VirtualDesktopRegistry();
+    registry.update(snapshot());
+    const expiring = registry.createSwitchIntent({
+      agentId: "agent-a",
+      windowsSessionId: "session-a",
+      targetVirtualDesktopId: "desktop-b",
+      reason: "Short-lived switch.",
+      ttlMs: 1_000,
+      now: new Date("2026-07-21T15:00:00.000Z"),
+    });
+    expect(registry.expireSwitchIntents(new Date("2026-07-21T15:00:01.001Z"))).toHaveLength(1);
+    expect(registry.getSwitchIntent(expiring.intentId)?.status).toBe("expired");
+    expect(() => registry.confirmSwitchIntent(expiring.intentId, snapshot({ version: 2 }))).toThrow(/expired/);
+
+    const registry2 = new VirtualDesktopRegistry();
+    registry2.update(snapshot());
+    const cancellable = registry2.createSwitchIntent({
+      agentId: "agent-a",
+      windowsSessionId: "session-a",
+      targetVirtualDesktopId: "desktop-b",
+      reason: "Operator changed their mind.",
+    });
+    expect(registry2.cancelSwitchIntent(cancellable.intentId).status).toBe("cancelled");
   });
 
   it("rejects stale versions, duplicate assignments, and cross-session windows", () => {
