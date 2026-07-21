@@ -64,12 +64,18 @@ jobs:
             tsconfig.json
             src/fieldManager.ts
             tests/fieldManager.test.ts
+            src/fieldProvisioningPlan.ts
+            tests/fieldProvisioningPlan.test.ts
             src/encryptedDemonstrationStore.ts
             tests/encryptedDemonstrationStore.test.ts
             src/fieldScene.ts
             tests/fieldScene.test.ts
             src/shadowLearning.ts
             tests/shadowLearning.test.ts
+            src/fieldPathScope.ts
+            tests/fieldPathScope.test.ts
+            src/fieldArtifactBroker.ts
+            tests/fieldArtifactBroker.test.ts
             tests/fixtures/field-contract-v1.json
             tests/fieldWireContract.test.ts
           )
@@ -172,6 +178,7 @@ jobs:
               docs/TEST_PLAN.md
               docs/GLOVE_FIELD_BOUNDARY.md
               docs/FIELD_ARCHITECTURE.md
+              docs/FIELD_IMPLEMENTATION_STATUS.md
               docs/FIELD_OWNER_MANUAL.md
               docs/FIELD_DEVELOPER_MANUAL.md
               docs/FIELD_TEST_PLAN.md
@@ -181,7 +188,9 @@ jobs:
               docs/qa/PARTS_AND_DONOR_TRACEABILITY.md
               docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md
               docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md
+              docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md
               docs/engineering_log/2026-07-21-glove-field-foundation.md
+              docs/engineering_log/2026-07-21-field-foundation-expansion.md
               docs/logs/ISSUE_AND_SOLUTION_LOG.md
               docs/logs/DECISION_LOG.md
               docs/logs/CHANGELOG_INTERNAL.md
@@ -190,15 +199,21 @@ jobs:
               src/demonstration.ts
               src/encryptedDemonstrationStore.ts
               src/fieldManager.ts
+              src/fieldProvisioningPlan.ts
               src/fieldScene.ts
               src/shadowLearning.ts
+              src/fieldPathScope.ts
+              src/fieldArtifactBroker.ts
               tests/fieldContracts.test.ts
               tests/fieldRegistry.test.ts
               tests/demonstration.test.ts
               tests/encryptedDemonstrationStore.test.ts
               tests/fieldManager.test.ts
+              tests/fieldProvisioningPlan.test.ts
               tests/fieldScene.test.ts
               tests/shadowLearning.test.ts
+              tests/fieldPathScope.test.ts
+              tests/fieldArtifactBroker.test.ts
               tests/fixtures/field-contract-v1.json
               tests/fieldWireContract.test.ts
               apps/windows-agent/FieldFoundation.cs
