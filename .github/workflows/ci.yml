@@ -59,12 +59,21 @@ jobs:
       - name: Verify TypeScript project surface
         shell: bash
         run: |
-          test -f package.json
-          test -f tsconfig.json
-          test -f src/fieldManager.ts
-          test -f tests/fieldManager.test.ts
-          test -f tests/fixtures/field-contract-v1.json
-          test -f tests/fieldWireContract.test.ts
+          required=(
+            package.json
+            tsconfig.json
+            src/fieldManager.ts
+            tests/fieldManager.test.ts
+            src/encryptedDemonstrationStore.ts
+            tests/encryptedDemonstrationStore.test.ts
+            src/fieldScene.ts
+            tests/fieldScene.test.ts
+            src/shadowLearning.ts
+            tests/shadowLearning.test.ts
+            tests/fixtures/field-contract-v1.json
+            tests/fieldWireContract.test.ts
+          )
+          for path in "${required[@]}"; do test -f "$path" || exit 1; done
       - name: Install dependencies
         run: npm install --ignore-scripts --fund=false
       - name: Repository safety validation
@@ -179,11 +188,17 @@ jobs:
               src/fieldContracts.ts
               src/fieldRegistry.ts
               src/demonstration.ts
+              src/encryptedDemonstrationStore.ts
               src/fieldManager.ts
+              src/fieldScene.ts
+              src/shadowLearning.ts
               tests/fieldContracts.test.ts
               tests/fieldRegistry.test.ts
               tests/demonstration.test.ts
+              tests/encryptedDemonstrationStore.test.ts
               tests/fieldManager.test.ts
+              tests/fieldScene.test.ts
+              tests/shadowLearning.test.ts
               tests/fixtures/field-contract-v1.json
               tests/fieldWireContract.test.ts
               apps/windows-agent/FieldFoundation.cs
