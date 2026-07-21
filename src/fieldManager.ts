@@ -70,10 +70,15 @@ function modeLifecycle(mode: FieldPolicy["mode"]): "teaching" | "shadowing" | "p
   return mode === "teach" ? "teaching" : mode === "shadow" ? "shadowing" : "piloting";
 }
 
+function fieldKey(field: FieldRef): string {
+  return `${field.fieldId}:${field.fieldGeneration}`;
+}
+
 export class FieldManager {
   readonly #registry: FieldRegistry;
   readonly #provisioner: FieldProvisioner;
   readonly #audit: FieldManagerEvent[] = [];
+  readonly #provisionedPolicyHashes = new Map<string, string>();
 
   constructor(options: { provisioner: FieldProvisioner; registry?: FieldRegistry }) {
     this.#provisioner = options.provisioner;
@@ -98,7 +103,9 @@ export class FieldManager {
     const ref = fieldRefSchema.parse(input.field);
     const current = this.#registry.get(ref);
     if (!current) throw new Error("Field generation must be planned before provisioning.");
-    if (current.lifecycle !== "planned") throw new Error("Only a planned field can begin first provisioning.");
+    if (current.lifecycle !== "planned" && current.lifecycle !== "stopped") {
+      throw new Error("Only a planned or stopped field can begin provisioning.");
+    }
     const policy = fieldPolicySchema.parse(input.policy);
     const attestation = fieldAttestationSchema.parse(input.attestation);
     verifyFieldAttestation({ attestation, policy, secret: input.attestationSecret, now: input.now });
@@ -113,10 +120,12 @@ export class FieldManager {
     this.#appendAudit("field_provisioning_started", input.actor, ref, { provider: this.#provisioner.name }, input.now);
     try {
       const evidence = await this.#provisioner.provision({ identity: current.identity, policy, attestation });
+      this.#provisionedPolicyHashes.set(fieldKey(ref), sha256Canonical(policy));
       const ready = this.#registry.transition({ field: ref, to: "ready", now: input.now });
-      this.#appendAudit("field_ready", input.actor, ref, evidence, input.now);
+      this.#appendAudit("field_ready", input.actor, ref, { ...evidence, policyHash: sha256Canonical(policy) }, input.now);
       return ready;
     } catch (error) {
+      this.#provisionedPolicyHashes.delete(fieldKey(ref));
       const reason = error instanceof Error ? error.message : "Unknown field provisioning failure.";
       const faulted = this.#registry.transition({ field: ref, to: "faulted", faultReason: reason, now: input.now });
       this.#appendAudit("field_faulted", input.actor, ref, { operation: "provision", reason }, input.now);
@@ -130,12 +139,20 @@ export class FieldManager {
     if (policy.field.fieldId !== ref.fieldId || policy.field.fieldGeneration !== ref.fieldGeneration) {
       throw new Error("Field mode policy does not match the requested field generation.");
     }
+    const now = input.now ?? new Date();
+    if (now.getTime() < new Date(policy.issuedAt).getTime()) throw new Error("Field policy is not valid yet.");
+    if (now.getTime() >= new Date(policy.expiresAt).getTime()) throw new Error("Field policy has expired.");
+    const provisionedHash = this.#provisionedPolicyHashes.get(fieldKey(ref));
+    if (!provisionedHash) throw new Error("Field has no provisioned policy binding.");
+    if (provisionedHash !== sha256Canonical(policy)) {
+      throw new Error("Field mode policy differs from the policy used for provisioning.");
+    }
     const current = this.#registry.get(ref);
     if (!current) throw new Error("Field generation is not registered.");
     if (current.lifecycle !== "ready") throw new Error("Field must be ready before entering an operating mode.");
     const lifecycle = modeLifecycle(policy.mode);
-    const updated = this.#registry.transition({ field: ref, to: lifecycle, now: input.now });
-    this.#appendAudit("field_mode_entered", input.actor, ref, { mode: policy.mode, policyId: policy.policyId }, input.now);
+    const updated = this.#registry.transition({ field: ref, to: lifecycle, now });
+    this.#appendAudit("field_mode_entered", input.actor, ref, { mode: policy.mode, policyId: policy.policyId, policyHash: provisionedHash }, now);
     return updated;
   }
 
@@ -154,7 +171,7 @@ export class FieldManager {
     const ref = fieldRefSchema.parse(input.field);
     const current = this.#registry.get(ref);
     if (!current) throw new Error("Field generation is not registered.");
-    const stopping = this.#registry.transition({ field: ref, to: "stopping", now: input.now });
+    this.#registry.transition({ field: ref, to: "stopping", now: input.now });
     this.#appendAudit("field_stopping", input.actor, ref, { from: current.lifecycle, reason: input.reason }, input.now);
     try {
       const evidence = await this.#provisioner.stop({ field: ref, reason: input.reason });
@@ -163,7 +180,7 @@ export class FieldManager {
       return stopped;
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Unknown field stop failure.";
-      const faulted = this.#registry.transition({ field: stopping.identity, to: "faulted", faultReason: reason, now: input.now });
+      const faulted = this.#registry.transition({ field: ref, to: "faulted", faultReason: reason, now: input.now });
       this.#appendAudit("field_faulted", input.actor, ref, { operation: "stop", reason }, input.now);
       return faulted;
     }
@@ -177,6 +194,7 @@ export class FieldManager {
       throw new Error("Field must be stopped, faulted, or unprovisioned before destruction.");
     }
     const evidence = await this.#provisioner.destroy({ field: ref });
+    this.#provisionedPolicyHashes.delete(fieldKey(ref));
     const destroyed = this.#registry.transition({ field: ref, to: "destroyed", now: input.now });
     this.#appendAudit("field_destroyed", input.actor, ref, evidence, input.now);
     return destroyed;
