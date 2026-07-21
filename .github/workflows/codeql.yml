@@ -37,7 +37,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Verify TypeScript project surface
         run: test -f package.json
       - name: Resolve dependency tree without scripts
