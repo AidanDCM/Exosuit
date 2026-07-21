@@ -1,0 +1,43 @@
+{
+  "contractVersion": 1,
+  "identity": {
+    "subsystem": "field",
+    "fieldId": "11111111-1111-4111-8111-111111111111",
+    "fieldGeneration": 3,
+    "agentId": "field-agent-fixture",
+    "machineId": "field-vm-fixture",
+    "windowsSessionId": "session-fixture",
+    "baseImageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "personalStateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "taskDiskId": "task-disk-fixture",
+    "createdAt": "2026-07-21T18:00:00.000Z"
+  },
+  "display": {
+    "monitorCount": 1,
+    "width": 1920,
+    "height": 1080,
+    "scalePercent": 100,
+    "browserZoomPercent": 100,
+    "keyboardLayout": "en-US",
+    "dynamicResolutionAllowed": false
+  },
+  "runtime": {
+    "subsystem": "field",
+    "lifecycle": "teaching",
+    "gloveAgentId": "glove-agent-fixture",
+    "updatedAt": "2026-07-21T18:01:00.000Z"
+  },
+  "demonstrationEvent": {
+    "eventId": "22222222-2222-4222-8222-222222222222",
+    "sequence": 4,
+    "occurredAt": "2026-07-21T18:01:01.000Z",
+    "source": "input",
+    "kind": "mouse_click",
+    "payload": {
+      "x": 842,
+      "y": 516,
+      "button": "left",
+      "durationMicroseconds": 318000
+    }
+  }
+}
