@@ -12,6 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:pulse": "vitest run tests/systemPulse.test.ts",
+    "validate:typescript": "npm run typecheck && npm test -- --reporter=verbose && npm run build && npm run test:pulse -- --reporter=verbose",
+    "validate": "npm run validate:typescript && npm run agent:test",
     "dev:mcp": "tsx src/index.ts",
     "start:mcp": "node dist/src/index.js",
     "agent:build": "dotnet build apps/windows-agent/Exosuit.Agent.csproj",
