@@ -2,7 +2,7 @@
 
 Exosuit is a private, model-independent computer embodiment platform for authorized AI pilots such as ChatGPT or Claude.
 
-The repository now contains two intentionally separate systems:
+The repository contains two intentionally separate systems:
 
 | System | Meaning | Responsibility |
 |---|---|---|
@@ -13,11 +13,11 @@ The pilot supplies intent. The Glove decides how to observe and act within local
 
 The goal is **human flexibility, machine precision, transparent operation, recoverable workflows, detailed owner teaching, and local user authority**—not hidden automation.
 
-Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before changing either subsystem.
+Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before changing either subsystem. Read [`docs/FIELD_IMPLEMENTATION_STATUS.md`](docs/FIELD_IMPLEMENTATION_STATUS.md) for exact current Field evidence.
 
 ## Current status
 
-**The Glove has a strong single-agent Windows core with bounded live acceptance. The Field now has an implemented contract and documentation foundation, but no live VM, recording, learning, or Pilot runtime. Production use remains denied.**
+**The Glove has a strong single-agent Windows core with bounded live acceptance. The Field now has broad pure/fake foundations for identity, policy, lifecycle, provisioning intent, teaching data, scene state, Shadow evaluation, and artifact boundaries, but no live VM, recording, predictive model, or Pilot runtime. Production use remains denied.**
 
 ### Glove foundation currently includes
 
@@ -51,23 +51,31 @@ Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before chang
 - hard-denied host desktop, host-drive write, privilege escalation, and security-control changes,
 - canonical policy hashing and short-lived HMAC-SHA256 Field attestation,
 - separate Field lifecycle and Glove-agent binding,
-- consent-bound demonstration episodes,
-- bounded ordered event streams,
+- fake-first Field Manager with exact provisioned-policy binding and hash-linked Field audit,
+- strict integrity-hashed Hyper-V Generation 2 provisioning plan with no arbitrary command field,
+- consent-bound demonstration episodes and bounded ordered event streams,
 - recursive secret-shaped payload redaction,
-- TypeScript and .NET pure tests,
-- dedicated Field architecture, owner, developer, test, audit, and Parts & Pieces manuals.
+- AES-256-GCM terminal demonstration storage, tamper detection, atomic writes, and deletion,
+- versioned Field scene graph and input-readiness guards,
+- Shadow prediction-only contracts and similarity metrics with `executionAllowed: false`,
+- Windows-specific Parts & Pieces path-scope adaptation,
+- bounded size/SHA-256/classification artifact-transfer broker foundation,
+- shared TypeScript/.NET Field wire fixture,
+- TypeScript and .NET pure tests written,
+- dedicated Field architecture, status, owner, developer, test, audit, and Parts & Pieces manuals.
 
 ### Field capabilities not implemented yet
 
-- Hyper-V provisioning and image management,
-- persistent personal-state and disposable task disks,
+- supported Hyper-V provider and image management,
+- actual persistent personal-state and disposable task-disk lifecycle,
 - host/guest transport,
-- guest bootstrap and display enforcement,
+- guest bootstrap, heartbeat, and display enforcement,
 - real Teach Mode input or visual recording,
-- scene graph,
-- Shadow prediction,
+- live Windows scene-graph producer,
+- actual Shadow retrieval/prediction model,
 - personal task, motor, typing, language, or timing models,
-- artifact and credential brokers,
+- live filesystem/cross-VM artifact transport,
+- credential broker,
 - autonomous Pilot integration,
 - live ChatGPT-to-Field acceptance.
 
@@ -75,9 +83,13 @@ Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before chang
 
 The single-agent Glove core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
 
-The Field foundation currently has source contracts, documentation, and tests written. That evidence does **not** prove Hyper-V, VM isolation, recording, behavioral learning, or autonomous operation. See [`docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md`](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md).
+The Field foundation currently has source contracts, documentation, and tests written. That evidence does **not** prove Hyper-V, VM isolation, recording, behavioral learning, or autonomous operation. See:
 
-GitHub-hosted workflow jobs recently failed before checkout with no steps allocated. The repository does not mislabel runner/account failures as passing CI. Exact branch validation remains required.
+- [`docs/FIELD_IMPLEMENTATION_STATUS.md`](docs/FIELD_IMPLEMENTATION_STATUS.md)
+- [`docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md`](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md)
+- [`docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md`](docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md)
+
+GitHub-hosted workflow jobs for the draft branch failed before checkout with zero allocated steps and no job logs. The repository does not mislabel runner/account failures as passing or failing code tests. Exact executable branch validation remains required.
 
 ## Architecture
 
@@ -118,11 +130,11 @@ The host must not control the guest by treating VMConnect or an RDP viewer as th
 
 ### Teach
 
-The owner controls the Field. The Glove records consent-bound task, input, visual, accessibility, system, correction, and outcome evidence. It does not inject input.
+The owner controls the Field. The Glove records consent-bound task, input, visual, accessibility, system, correction, and outcome evidence. It does not inject input. The live recorder is not implemented.
 
 ### Shadow
 
-The owner controls the Field. The Glove predicts the next intent, target, method, timing class, and expected result. It does not inject input.
+The owner controls the Field. The Glove predicts the next intent, target, method, timing class, and expected result. It does not inject input. Prediction schemas and metrics exist; an actual predictor/runtime does not.
 
 ### Pilot
 
@@ -162,7 +174,7 @@ An authorized pilot controls the Field through the Glove within a host-created, 
 - `desktop_get_workflow_audit`
 - `desktop_list_agents`
 
-No model-facing Field Manager or recording tool is enabled by this slice. Future Field tools must not create consent, sign policy, expose arbitrary Hyper-V commands, or grant host access.
+No model-facing Field Manager, policy, consent, recording, provisioning, or artifact-transfer tool is enabled by this branch. Future Field tools must not create consent, sign policy, expose arbitrary Hyper-V commands, accept arbitrary paths, or grant host access.
 
 ## Safety defaults
 
@@ -174,13 +186,14 @@ No model-facing Field Manager or recording tool is enabled by this slice. Future
 | screenshots | disabled; no Windows capture implementation |
 | Field VM | unimplemented |
 | Teach recording | unimplemented and disabled |
-| Shadow prediction | unimplemented |
+| Shadow prediction | schemas/metrics only; no runtime |
 | Pilot Field autonomy | unimplemented and denied |
-| Field host desktop access | hard false in policy |
-| Field host-drive write | hard false in policy |
+| Field host desktop access | hard false in policy and provisioning plan |
+| Field host-drive write | hard false in policy; broad mapping disabled |
 | privilege/security changes | hard false in policy |
 | credentials and secret-bearing controls | hard denied |
-| arbitrary shell through MCP | excluded |
+| arbitrary shell through MCP or Field plan | excluded |
+| ordinary sensitive/untrusted artifact export | blocked |
 
 ## Validation
 
@@ -229,12 +242,14 @@ Do not enable the Windows provider or physical input outside the disposable acce
 
 ### Field
 
+- [Field implementation status](docs/FIELD_IMPLEMENTATION_STATUS.md)
 - [Field architecture](docs/FIELD_ARCHITECTURE.md)
 - [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
 - [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
 - [Field test plan](docs/FIELD_TEST_PLAN.md)
 - [Glove/Field Parts traceability](docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md)
 - [Field foundation Atomic Audit](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md)
+- [Field foundation expansion audit](docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md)
 
 ### Logs
 
@@ -242,8 +257,9 @@ Do not enable the Windows provider or physical input outside the disposable acce
 - [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
 - [Decision log](docs/logs/DECISION_LOG.md)
 - [Field foundation engineering log](docs/engineering_log/2026-07-21-glove-field-foundation.md)
+- [Field expansion engineering log](docs/engineering_log/2026-07-21-field-foundation-expansion.md)
 
-`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` describes the implemented Glove. `docs/FIELD_ARCHITECTURE.md` explicitly separates implemented Field foundation from planned Field runtime.
+`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` describes the implemented Glove. `docs/FIELD_ARCHITECTURE.md` defines Field design. `docs/FIELD_IMPLEMENTATION_STATUS.md` is the exact current Field implementation/evidence inventory.
 
 ## Explicit exclusions
 
@@ -263,8 +279,9 @@ Exosuit must not implement or claim:
 
 ## Current holds
 
-- **PR state:** development branch; draft review required
-- **Merge to main:** hold
+- **PR state:** draft review required
+- **Merge to build branch:** hold pending executable validation and review
+- **Merge to main:** denied
 - **Production use:** denied
 - **Real accounts or consequential targets:** denied
 - **Normal personal desktop use:** denied
