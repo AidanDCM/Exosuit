@@ -11,6 +11,22 @@ const required = [
   "docs/ARCHITECTURE.md",
   "docs/SECURITY_MODEL.md",
   "docs/TEST_PLAN.md",
+  "docs/GLOVE_FIELD_BOUNDARY.md",
+  "docs/FIELD_ARCHITECTURE.md",
+  "docs/FIELD_OWNER_MANUAL.md",
+  "docs/FIELD_DEVELOPER_MANUAL.md",
+  "docs/FIELD_TEST_PLAN.md",
+  "docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md",
+  "docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md",
+  "docs/engineering_log/2026-07-21-glove-field-foundation.md",
+  "src/fieldContracts.ts",
+  "tests/fieldContracts.test.ts",
+  "src/fieldRegistry.ts",
+  "tests/fieldRegistry.test.ts",
+  "src/demonstration.ts",
+  "tests/demonstration.test.ts",
+  "apps/windows-agent/FieldFoundation.cs",
+  "apps/windows-agent.Tests/FieldFoundationTests.cs",
   "src/workflowRuntime.ts",
   "tests/workflowRuntime.test.ts",
   "src/fileCheckpointStore.ts",
@@ -48,7 +64,10 @@ const sourceFiles = [
   "src/contracts.ts",
   "src/coordinator.ts",
   "src/coordinatorMcp.ts",
+  "src/demonstration.ts",
   "src/encryptedCheckpointStore.ts",
+  "src/fieldContracts.ts",
+  "src/fieldRegistry.ts",
   "src/fileCheckpointStore.ts",
   "src/index.ts",
   "src/mcp.ts",
@@ -75,6 +94,9 @@ const forbiddenSourcePatterns = [
   { pattern: /from\s+["']node:child_process["']/, reason: "arbitrary process execution is excluded" },
   { pattern: /\b(?:exec|execFile|spawn|fork)Sync?\s*\(/, reason: "arbitrary process execution is excluded" },
   { pattern: /automaticExecutionAllowed\s*:\s*true/, reason: "virtual desktop switching must not be automatic" },
+  { pattern: /allowHostDesktopAccess\s*:\s*(?:z\.literal\()?true/, reason: "Field policy cannot enable host desktop access" },
+  { pattern: /allowHostDriveWrite\s*:\s*(?:z\.literal\()?true/, reason: "Field policy cannot enable broad host-drive write" },
+  { pattern: /allowPrivilegeEscalation\s*:\s*(?:z\.literal\()?true/, reason: "Field policy cannot enable privilege escalation" },
   { pattern: /\bsk-[A-Za-z0-9_-]{20,}/, reason: "credential-shaped value detected" },
   { pattern: /Bearer\s+[A-Za-z0-9._~+\/-]{20,}/, reason: "bearer credential-shaped value detected" },
   { pattern: /-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----/, reason: "private key material detected" },
@@ -119,6 +141,44 @@ const supportBundle = await readFile(resolve(root, "src/supportBundle.ts"), "utf
 for (const forbiddenField of ["screenshot", "clipboard", "windowtitle", "elementvalue", "rawpayload"]) {
   if (!supportBundle.toLowerCase().includes(forbiddenField)) {
     failures.push(`src/supportBundle.ts: missing privacy guard for ${forbiddenField}`);
+  }
+}
+
+const fieldContracts = await readFile(resolve(root, "src/fieldContracts.ts"), "utf8");
+for (const requiredInvariant of [
+  'subsystem: z.literal("field")',
+  "fieldGeneration: z.number().int().positive()",
+  "dynamicResolutionAllowed: z.literal(false)",
+  "allowHostDesktopAccess: z.literal(false)",
+  "allowHostDriveWrite: z.literal(false)",
+  "allowPrivilegeEscalation: z.literal(false)",
+  "timingSafeEqual",
+]) {
+  if (!fieldContracts.includes(requiredInvariant)) {
+    failures.push(`src/fieldContracts.ts: missing Field invariant ${requiredInvariant}`);
+  }
+}
+
+const demonstration = await readFile(resolve(root, "src/demonstration.ts"), "utf8");
+for (const requiredInvariant of [
+  "granted: z.literal(true)",
+  "Demonstration event limit reached",
+  "[REDACTED]",
+  "timestamp order",
+]) {
+  if (!demonstration.includes(requiredInvariant)) {
+    failures.push(`src/demonstration.ts: missing recording invariant ${requiredInvariant}`);
+  }
+}
+
+const boundary = await readFile(resolve(root, "docs/GLOVE_FIELD_BOUNDARY.md"), "utf8");
+for (const requiredStatement of [
+  "One repository, two products",
+  "The Glove is not the VM. The Field is not the agent.",
+  "Teach Mode requires explicit owner consent",
+]) {
+  if (!boundary.includes(requiredStatement)) {
+    failures.push(`docs/GLOVE_FIELD_BOUNDARY.md: missing boundary statement ${requiredStatement}`);
   }
 }
 
