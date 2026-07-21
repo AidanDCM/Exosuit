@@ -112,6 +112,10 @@ export class WorkspaceRegistry {
     return this.#snapshots.get(workspaceId);
   }
 
+  list(): WorkspaceSnapshot[] {
+    return [...this.#snapshots.values()].map((snapshot) => structuredClone(snapshot));
+  }
+
   requireFresh(reference: WindowReference): WorkspaceWindow {
     const snapshot = [...this.#snapshots.values()].find(
       (candidate) =>
