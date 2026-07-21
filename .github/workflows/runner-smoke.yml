@@ -1,0 +1,29 @@
+name: Runner Smoke Test
+
+on:
+  push:
+    branches: ["build/**"]
+    paths:
+      - ".github/workflows/runner-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Allocate ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm Linux runner
+        run: echo "ubuntu-latest runner allocated"
+
+  windows:
+    name: Allocate windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm Windows runner
+        shell: pwsh
+        run: Write-Output "windows-latest runner allocated"
