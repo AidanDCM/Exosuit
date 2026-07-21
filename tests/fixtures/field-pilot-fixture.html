@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exosuit Field Acceptance Fixture</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    section { border: 1px solid #bbb; padding: 1rem; margin: 1rem 0; }
+    button, input, select { margin: .25rem; padding: .5rem; }
+    [hidden] { display: none !important; }
+    #modal { position: fixed; inset: 20% 25%; background: white; border: 2px solid black; padding: 2rem; box-shadow: 0 0 0 9999px #0008; }
+    #status { min-height: 1.5rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Exosuit Field Acceptance Fixture</h1>
+  <p>This local page contains deterministic controls and deliberate failure cases. It performs no network requests.</p>
+
+  <section aria-labelledby="search-heading">
+    <h2 id="search-heading">Synthetic record search</h2>
+    <label for="query">Query</label>
+    <input id="query" name="query" autocomplete="off" />
+    <button id="search">Search</button>
+    <ul id="results" aria-live="polite"></ul>
+  </section>
+
+  <section aria-labelledby="delayed-heading">
+    <h2 id="delayed-heading">Delayed readiness</h2>
+    <button id="enable-later">Start delay</button>
+    <button id="delayed-action" disabled>Delayed action</button>
+  </section>
+
+  <section aria-labelledby="modal-heading">
+    <h2 id="modal-heading">Modal handling</h2>
+    <button id="open-modal">Open modal</button>
+  </section>
+
+  <section aria-labelledby="failure-heading">
+    <h2 id="failure-heading">Failure injection</h2>
+    <button id="no-effect-timeout">Transient timeout, no effect</button>
+    <button id="uncertain-effect">Possible unverified effect</button>
+    <button id="download">Create synthetic output</button>
+  </section>
+
+  <section aria-labelledby="credential-heading">
+    <h2 id="credential-heading">Sensitive-control classification</h2>
+    <label for="fixture-password">Fixture password field</label>
+    <input id="fixture-password" type="password" value="synthetic-do-not-record" />
+  </section>
+
+  <p id="status" role="status">ready</p>
+
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <h2 id="modal-title">Synthetic confirmation</h2>
+    <button id="confirm-modal">Confirm</button>
+    <button id="cancel-modal">Cancel</button>
+  </div>
+
+  <script>
+    const records = [
+      { id: "REC-001", name: "Atlas", score: 91 },
+      { id: "REC-002", name: "Borealis", score: 84 },
+      { id: "REC-003", name: "Cygnus", score: 96 }
+    ];
+    const status = document.querySelector("#status");
+    document.querySelector("#search").addEventListener("click", () => {
+      const query = document.querySelector("#query").value.trim().toLowerCase();
+      const matches = records.filter(record => record.name.toLowerCase().includes(query) || record.id.toLowerCase().includes(query));
+      const list = document.querySelector("#results");
+      list.replaceChildren(...matches.map(record => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.textContent = `${record.id} ${record.name} score ${record.score}`;
+        button.dataset.recordId = record.id;
+        button.addEventListener("click", () => { status.textContent = `selected:${record.id}`; });
+        item.append(button);
+        return item;
+      }));
+      status.textContent = `results:${matches.length}`;
+    });
+    document.querySelector("#enable-later").addEventListener("click", () => {
+      status.textContent = "delay-started";
+      setTimeout(() => {
+        document.querySelector("#delayed-action").disabled = false;
+        status.textContent = "delayed-action-enabled";
+      }, 1500);
+    });
+    document.querySelector("#delayed-action").addEventListener("click", () => { status.textContent = "delayed-action-complete"; });
+    const modal = document.querySelector("#modal");
+    document.querySelector("#open-modal").addEventListener("click", () => { modal.hidden = false; document.querySelector("#confirm-modal").focus(); });
+    document.querySelector("#confirm-modal").addEventListener("click", () => { modal.hidden = true; status.textContent = "modal-confirmed"; });
+    document.querySelector("#cancel-modal").addEventListener("click", () => { modal.hidden = true; status.textContent = "modal-cancelled"; });
+    document.querySelector("#no-effect-timeout").addEventListener("click", () => { status.textContent = "failure:transient-no-effect"; });
+    document.querySelector("#uncertain-effect").addEventListener("click", () => { status.textContent = "failure:possible-unverified-effect"; });
+    document.querySelector("#download").addEventListener("click", () => {
+      const payload = JSON.stringify({ fixture: "exosuit-field", selected: status.textContent, version: 1 }, null, 2);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+      link.download = "field-fixture-output.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+      status.textContent = "download-created";
+    });
+  </script>
+</body>
+</html>
