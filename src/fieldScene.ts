@@ -17,18 +17,20 @@ export const fieldSystemStateSchema = z.object({
 });
 export type FieldSystemState = z.infer<typeof fieldSystemStateSchema>;
 
-export const fieldModalStateSchema = z.object({
-  present: z.boolean(),
-  windowId: z.string().min(1).optional(),
-  kind: z.string().min(1).max(200).optional(),
-}).superRefine((value, context) => {
-  if (value.present && !value.windowId) {
-    context.addIssue({ code: "custom", path: ["windowId"], message: "A present modal requires a window ID." });
-  }
-  if (!value.present && (value.windowId !== undefined || value.kind !== undefined)) {
-    context.addIssue({ code: "custom", message: "An absent modal cannot carry window identity or kind." });
-  }
-});
+export const fieldModalStateSchema = z
+  .object({
+    present: z.boolean(),
+    windowId: z.string().min(1).optional(),
+    kind: z.string().min(1).max(200).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.present && !value.windowId) {
+      context.addIssue({ code: "custom", path: ["windowId"], message: "A present modal requires a window ID." });
+    }
+    if (!value.present && (value.windowId !== undefined || value.kind !== undefined)) {
+      context.addIssue({ code: "custom", message: "An absent modal cannot carry window identity or kind." });
+    }
+  });
 export type FieldModalState = z.infer<typeof fieldModalStateSchema>;
 
 export const fieldSceneSnapshotSchema = z.object({
@@ -76,10 +78,7 @@ export class FieldSceneGraph {
 
   update(input: FieldSceneSnapshot): FieldSceneEvent[] {
     const next = validateScene(fieldSceneSnapshotSchema.parse(input));
-    if (
-      next.field.fieldId !== this.#field.fieldId ||
-      next.field.fieldGeneration !== this.#field.fieldGeneration
-    ) {
+    if (next.field.fieldId !== this.#field.fieldId || next.field.fieldGeneration !== this.#field.fieldGeneration) {
       throw new Error("Scene snapshot cannot cross Field generations.");
     }
     if (this.#current) {
@@ -119,7 +118,7 @@ export class FieldSceneGraph {
       events.push(event("window_disappeared", next, { windowId }));
     }
     if (previous.activeWindowId !== next.activeWindowId) {
-      events.push(event("active_window_changed", next, { from: previous.activeWindowId, to: next.activeWindowId }));
+      events.push(event("active_window_changed", next, compact({ from: previous.activeWindowId, to: next.activeWindowId })));
     }
     if (JSON.stringify(previous.modal) !== JSON.stringify(next.modal)) {
       events.push(event("modal_changed", next, { from: previous.modal, to: next.modal }));
@@ -143,6 +142,15 @@ function validateScene(scene: FieldSceneSnapshot): FieldSceneSnapshot {
   if (scene.activeWindowId && !windows.has(scene.activeWindowId)) {
     throw new Error("Active window must exist in the Field scene window registry.");
   }
+  const activeWindows = scene.windows.filter((window) => window.isActive);
+  if (activeWindows.length > 1) throw new Error("Field scene may contain only one active window.");
+  if (scene.activeWindowId && (activeWindows.length !== 1 || activeWindows[0]!.id !== scene.activeWindowId)) {
+    throw new Error("Active window identity must match the window marked active.");
+  }
+  if (!scene.activeWindowId && activeWindows.length > 0) {
+    throw new Error("A window marked active requires activeWindowId.");
+  }
+
   const elementIds = new Set<string>();
   for (const element of scene.elements) {
     if (elementIds.has(element.id)) throw new Error("Field scene element IDs must be unique.");
@@ -155,8 +163,8 @@ function validateScene(scene: FieldSceneSnapshot): FieldSceneSnapshot {
   if (
     scene.cursor.x < 0 ||
     scene.cursor.y < 0 ||
-    scene.cursor.x > scene.display.width ||
-    scene.cursor.y > scene.display.height
+    scene.cursor.x >= scene.display.width ||
+    scene.cursor.y >= scene.display.height
   ) {
     throw new Error("Field cursor must remain inside the display contract.");
   }
@@ -193,4 +201,8 @@ function elementFingerprint(scene: FieldSceneSnapshot): string {
       bounds: element.bounds,
     })),
   );
+}
+
+function compact(input: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
 }
