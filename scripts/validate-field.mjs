@@ -24,13 +24,24 @@ const pairs = [
   ["src/fieldSupportBundle.ts", "tests/fieldSupportBundle.test.ts"],
 ];
 
+const windowsScripts = [
+  "scripts/windows/Test-ExosuitFieldHost.ps1",
+  "scripts/windows/Show-ExosuitFieldProvisioningPlan.ps1",
+  "scripts/windows/Invoke-ExosuitFieldProvisioning.ps1",
+  "scripts/windows/Remove-ExosuitFieldGeneration.ps1",
+  "scripts/windows/Initialize-ExosuitFieldGuest.ps1",
+];
+
 const required = [
   ...pairs.flat(),
+  ...windowsScripts,
+  "tests/windowsFieldScripts.test.ts",
   "tests/fieldSystemPulse.test.ts",
   "tests/fixtures/field-contract-v1.json",
   "tests/fixtures/field-channel-v1.json",
   "tests/fieldWireContract.test.ts",
   "tests/fieldChannelWireContract.test.ts",
+  "vm/field-host-config.example.json",
   "apps/windows-agent/FieldFoundation.cs",
   "apps/windows-agent/FieldChannelFoundation.cs",
   "apps/windows-agent.Tests/FieldFoundationTests.cs",
@@ -82,6 +93,7 @@ for (const path of sourcePaths) {
 
 const invariants = new Map([
   ["src/fieldContracts.ts", ["subsystem: z.literal(\"field\")", "allowHostDesktopAccess: z.literal(false)", "timingSafeEqual"]],
+  ["src/fieldProvisioningPlan.ts", ["runtimeOverlay", "differencing: z.literal(true)", "Runtime overlay must be a child"]],
   ["src/fieldChannel.ts", ["timingSafeEqual", "message ID was replayed", "nonce was replayed", "sequence must increase strictly"]],
   ["src/fieldHeartbeat.ts", ["Guest heartbeat expired", "boot identity changed", "cannot report the desktop ready"]],
   ["src/fieldCommand.ts", ["pilot_mode_required", "shutdown_admin_only", "Guest execution accepts only approved desktop routes"]],
@@ -95,6 +107,27 @@ const invariants = new Map([
 for (const [path, values] of invariants) {
   const content = source.get(path) ?? "";
   for (const value of values) if (!content.includes(value)) failures.push(`${path}: missing invariant ${value}`);
+}
+
+for (const path of windowsScripts) {
+  const content = await readFile(resolve(root, path), "utf8");
+  if (/\bInvoke-Expression\b|\biex\s+/i.test(content)) failures.push(`${path}: arbitrary PowerShell evaluation is forbidden`);
+  if (/DownloadString|Invoke-WebRequest|Start-BitsTransfer/i.test(content)) failures.push(`${path}: provisioning scripts must not download code or images`);
+}
+
+const applyScript = await readFile(resolve(root, "scripts/windows/Invoke-ExosuitFieldProvisioning.ps1"), "utf8");
+for (const invariant of [
+  "CREATE FIELD $fieldId GENERATION $generation",
+  "New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing",
+  "Filtered NAT apply is held",
+  "artifactBrokerOnly",
+]) {
+  if (!applyScript.includes(invariant)) failures.push(`scripts/windows/Invoke-ExosuitFieldProvisioning.ps1: missing invariant ${invariant}`);
+}
+
+const destroyScript = await readFile(resolve(root, "scripts/windows/Remove-ExosuitFieldGeneration.ps1"), "utf8");
+for (const invariant of ["DESTROY FIELD $fieldIdText GENERATION $FieldGeneration", "Refusing deletion through reparse point"]) {
+  if (!destroyScript.includes(invariant)) failures.push(`scripts/windows/Remove-ExosuitFieldGeneration.ps1: missing invariant ${invariant}`);
 }
 
 const channelFixture = JSON.parse(await readFile(resolve(root, "tests/fixtures/field-channel-v1.json"), "utf8"));
