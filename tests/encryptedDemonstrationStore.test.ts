@@ -20,7 +20,7 @@ function completedEpisode(options: { fieldId?: string; generation?: number; incl
     operatorId: "aidan",
     goal: "Inspect a fixture site and save the strongest result.",
     successCriteria: ["one result saved"],
-    consentGrantedAt: "2026-07-21T18:00:00.000Z",
+    consentGrantedAt: "2026-07-21T17:59:59.000Z",
     startedAt: "2026-07-21T18:00:00.000Z",
   });
   recorder.append({
@@ -71,10 +71,10 @@ describe("encrypted demonstration store", () => {
       operatorId: "aidan",
       goal: "Still recording.",
       successCriteria: ["not complete"],
-      consentGrantedAt: "2026-07-21T18:00:00.000Z",
+      consentGrantedAt: "2026-07-21T17:59:59.000Z",
       startedAt: "2026-07-21T18:00:00.000Z",
     }).snapshot();
-    await expect(store.save(recording)).rejects.toThrow(/terminal|completed or aborted/);
+    await expect(store.save(recording)).rejects.toThrow(/completed or aborted/);
 
     const episode = completedEpisode();
     const unsafe = {
@@ -92,6 +92,35 @@ describe("encrypted demonstration store", () => {
       ],
     };
     await expect(store.save(unsafe)).rejects.toThrow(/visual bytes/);
+  });
+
+  it("rejects noncontiguous duplicate or out-of-interval event timelines", async () => {
+    const path = await directory();
+    const store = new EncryptedFileDemonstrationStore({ directory: path, key: randomBytes(32) });
+    const episode = completedEpisode();
+    const first = episode.events[0]!;
+
+    await expect(
+      store.save({ ...episode, events: [{ ...first, sequence: 2 }] }),
+    ).rejects.toThrow(/sequence is not contiguous/);
+    await expect(
+      store.save({
+        ...episode,
+        events: [first, { ...first, sequence: 1 }],
+      }),
+    ).rejects.toThrow(/IDs must be unique/);
+    await expect(
+      store.save({
+        ...episode,
+        events: [{ ...first, occurredAt: "2026-07-21T18:00:02.000Z" }],
+      }),
+    ).rejects.toThrow(/outside the episode interval/);
+    await expect(
+      store.save({
+        ...episode,
+        consent: { ...episode.consent, grantedAt: "2026-07-21T18:00:00.500Z" },
+      }),
+    ).rejects.toThrow(/before recording starts/);
   });
 
   it("detects tampering and hides wrong-key files from listing", async () => {
