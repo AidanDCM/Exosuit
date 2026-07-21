@@ -14,6 +14,9 @@ import { createExosuitMcpServer } from "../src/server.js";
 
 const expectedTools = [
   "desktop_build_application_map",
+  "desktop_cancel_workflow",
+  "desktop_continue_approved_workflow_step",
+  "desktop_create_workflow",
   "desktop_emergency_stop",
   "desktop_execute_physical_proposal",
   "desktop_execute_proposal",
@@ -21,11 +24,22 @@ const expectedTools = [
   "desktop_get_application_map",
   "desktop_get_audit_log",
   "desktop_get_status",
+  "desktop_get_workflow",
+  "desktop_get_workflow_audit",
+  "desktop_get_workspace",
+  "desktop_list_agents",
   "desktop_list_application_maps",
+  "desktop_list_windows",
+  "desktop_list_workflow_artifacts",
+  "desktop_list_workflows",
   "desktop_match_application_map",
   "desktop_observe",
+  "desktop_pause_workflow",
   "desktop_propose_action",
   "desktop_propose_physical_input",
+  "desktop_refresh_workspace",
+  "desktop_resume_workflow",
+  "desktop_run_next_workflow_step",
 ].sort();
 
 describe("MCP protocol boundary", () => {
@@ -56,6 +70,12 @@ describe("MCP protocol boundary", () => {
         destructiveHint: false,
         idempotentHint: true,
       });
+      const workflowTool = tools.tools.find((tool) => tool.name === "desktop_run_next_workflow_step");
+      expect(workflowTool?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      });
 
       const statusResult = await client.callTool({ name: "desktop_get_status", arguments: {} });
       expect(statusResult.isError).not.toBe(true);
@@ -68,6 +88,15 @@ describe("MCP protocol boundary", () => {
       });
       const observed = z.object({ observation: observationSchema }).parse(observationResult.structuredContent);
       expect(observed.observation.elements.map((element) => element.id).sort()).toEqual(["el-editor", "el-save"]);
+
+      const workspaceResult = await client.callTool({
+        name: "desktop_refresh_workspace",
+        arguments: {},
+      });
+      expect(workspaceResult.isError).not.toBe(true);
+      expect(workspaceResult.structuredContent).toMatchObject({
+        workspace: { workspaceId: "local-workspace" },
+      });
 
       const mapResult = await client.callTool({
         name: "desktop_build_application_map",
