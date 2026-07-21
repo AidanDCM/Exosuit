@@ -2,12 +2,13 @@ name: Exosuit CI
 
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main, "build/**", "agent/**"]
     paths:
       - "src/**"
       - "tests/**"
       - "apps/**"
       - "docs/**"
+      - "scripts/**"
       - "package.json"
       - "tsconfig.json"
       - "vitest.config.ts"
@@ -25,6 +26,7 @@ on:
       - "tests/**"
       - "apps/**"
       - "docs/**"
+      - "scripts/**"
       - "package.json"
       - "tsconfig.json"
       - "vitest.config.ts"
@@ -59,6 +61,8 @@ jobs:
         run: test -f package.json && test -f tsconfig.json
       - name: Install dependencies
         run: npm install --ignore-scripts --fund=false
+      - name: Repository safety validation
+        run: npm run validate:repository
       - name: Typecheck
         shell: bash
         run: |
@@ -96,6 +100,12 @@ jobs:
         run: |
           if (-not (Test-Path 'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj')) {
             throw 'Windows agent test project is missing.'
+          }
+          if (-not (Test-Path 'apps/windows-agent/FieldFoundation.cs')) {
+            throw 'Field foundation source is missing.'
+          }
+          if (-not (Test-Path 'apps/windows-agent.Tests/FieldFoundationTests.cs')) {
+            throw 'Field foundation tests are missing.'
           }
       - name: Restore
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
@@ -144,13 +154,29 @@ jobs:
               docs/ARCHITECTURE.md
               docs/SECURITY_MODEL.md
               docs/TEST_PLAN.md
+              docs/GLOVE_FIELD_BOUNDARY.md
+              docs/FIELD_ARCHITECTURE.md
+              docs/FIELD_OWNER_MANUAL.md
+              docs/FIELD_DEVELOPER_MANUAL.md
+              docs/FIELD_TEST_PLAN.md
               docs/PARTS_REUSE_ADR.md
               docs/CODEX_HANDOFF.md
               docs/qa/ATOMIC_AUDIT_BASELINE.md
               docs/qa/PARTS_AND_DONOR_TRACEABILITY.md
+              docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md
+              docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md
+              docs/engineering_log/2026-07-21-glove-field-foundation.md
               docs/logs/ISSUE_AND_SOLUTION_LOG.md
               docs/logs/DECISION_LOG.md
               docs/logs/CHANGELOG_INTERNAL.md
+              src/fieldContracts.ts
+              src/fieldRegistry.ts
+              src/demonstration.ts
+              tests/fieldContracts.test.ts
+              tests/fieldRegistry.test.ts
+              tests/demonstration.test.ts
+              apps/windows-agent/FieldFoundation.cs
+              apps/windows-agent.Tests/FieldFoundationTests.cs
               .github/copilot-instructions.md
               .github/pull_request_template.md
             )
