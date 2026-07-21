@@ -120,7 +120,7 @@ The Glove can remain healthy while one Field faults. A Field can remain ready wh
 
 ### Teach
 
-The owner controls the Field. The Glove records only after explicit task- or session-scoped consent. It must not inject input.
+Teach Mode requires explicit owner consent. The owner controls the Field. The Glove records only after explicit task- or session-scoped consent. It must not inject input.
 
 ### Shadow
 
