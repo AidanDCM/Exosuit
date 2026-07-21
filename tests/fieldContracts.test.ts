@@ -123,9 +123,9 @@ describe("field contracts", () => {
     ).toThrow(/expired/);
     expect(() =>
       verifyFieldAttestation({
-        attestation: { ...attestation, signature: `${attestation.signature.slice(0, -1)}A` },
+        attestation,
         policy: policy(),
-        secret,
+        secret: "a-different-field-attestation-secret-that-is-long-enough",
         now: new Date("2026-07-21T18:00:30.000Z"),
       }),
     ).toThrow(/signature/);
