@@ -50,9 +50,22 @@ export const virtualDesktopSwitchIntentSchema = z.object({
 });
 export type VirtualDesktopSwitchIntent = z.infer<typeof virtualDesktopSwitchIntentSchema>;
 
+export const trackedVirtualDesktopSwitchIntentSchema = virtualDesktopSwitchIntentSchema.extend({
+  basedOnSnapshotVersion: z.number().int().nonnegative(),
+  method: z.enum(["manual", "approved_hotkey"]),
+  direction: z.enum(["left", "right"]).optional(),
+  expiresAt: z.string().datetime(),
+  status: z.enum(["proposed", "confirmed", "expired", "cancelled"]),
+  confirmedAt: z.string().datetime().optional(),
+});
+export type TrackedVirtualDesktopSwitchIntent = z.infer<
+  typeof trackedVirtualDesktopSwitchIntentSchema
+>;
+
 export class VirtualDesktopRegistry {
   readonly #snapshots = new Map<string, VirtualDesktopSnapshot>();
   readonly #transitions: VirtualDesktopTransition[] = [];
+  readonly #switchIntents = new Map<string, TrackedVirtualDesktopSwitchIntent>();
 
   update(input: VirtualDesktopSnapshot): {
     snapshot: VirtualDesktopSnapshot;
@@ -79,6 +92,7 @@ export class VirtualDesktopRegistry {
       this.#transitions.push(transition);
     }
     this.#snapshots.set(key, snapshot);
+    this.expireSwitchIntents(new Date(snapshot.capturedAt));
     return {
       snapshot: structuredClone(snapshot),
       ...(transition ? { transition: structuredClone(transition) } : {}),
@@ -121,7 +135,11 @@ export class VirtualDesktopRegistry {
     windowsSessionId: string;
     targetVirtualDesktopId: string;
     reason: string;
-  }): VirtualDesktopSwitchIntent {
+    method?: "manual" | "approved_hotkey";
+    direction?: "left" | "right";
+    ttlMs?: number;
+    now?: Date;
+  }): TrackedVirtualDesktopSwitchIntent {
     const snapshot = this.#snapshots.get(sessionKey(input.agentId, input.windowsSessionId));
     if (!snapshot) throw new Error("A fresh virtual-desktop snapshot is required.");
     if (!snapshot.knownVirtualDesktopIds.includes(input.targetVirtualDesktopId)) {
@@ -130,17 +148,113 @@ export class VirtualDesktopRegistry {
     if (snapshot.currentVirtualDesktopId === input.targetVirtualDesktopId) {
       throw new Error("The requested virtual desktop is already current.");
     }
-    return virtualDesktopSwitchIntentSchema.parse({
+    const method = input.method ?? "manual";
+    if (method === "approved_hotkey" && !input.direction) {
+      throw new Error("An approved hotkey switch requires an explicit direction.");
+    }
+    if (method === "manual" && input.direction) {
+      throw new Error("Manual virtual-desktop switching must not specify a hotkey direction.");
+    }
+    const now = input.now ?? new Date();
+    const ttlMs = input.ttlMs ?? 30_000;
+    if (!Number.isInteger(ttlMs) || ttlMs < 1_000 || ttlMs > 300_000) {
+      throw new Error("Virtual-desktop switch intent ttlMs must be between 1000 and 300000.");
+    }
+    const intent = trackedVirtualDesktopSwitchIntentSchema.parse({
       intentId: randomUUID(),
       agentId: input.agentId,
       windowsSessionId: input.windowsSessionId,
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
       fromVirtualDesktopId: snapshot.currentVirtualDesktopId,
       targetVirtualDesktopId: input.targetVirtualDesktopId,
       reason: input.reason,
       requiresLocalApproval: true,
       automaticExecutionAllowed: false,
+      basedOnSnapshotVersion: snapshot.version,
+      method,
+      ...(input.direction ? { direction: input.direction } : {}),
+      expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+      status: "proposed",
     });
+    this.#switchIntents.set(intent.intentId, intent);
+    return structuredClone(intent);
+  }
+
+  confirmSwitchIntent(
+    intentId: string,
+    observedSnapshot: VirtualDesktopSnapshot,
+  ): TrackedVirtualDesktopSwitchIntent {
+    const intent = this.#requireProposedIntent(intentId);
+    const observedAt = Date.parse(observedSnapshot.capturedAt);
+    if (Date.parse(intent.expiresAt) <= observedAt) {
+      this.#switchIntents.set(intentId, { ...intent, status: "expired" });
+      throw new Error("Virtual-desktop switch intent expired before confirmation.");
+    }
+    if (
+      observedSnapshot.agentId !== intent.agentId ||
+      observedSnapshot.windowsSessionId !== intent.windowsSessionId
+    ) {
+      throw new Error("Virtual-desktop switch confirmation came from another session.");
+    }
+    if (observedSnapshot.version <= intent.basedOnSnapshotVersion) {
+      throw new Error("Virtual-desktop switch confirmation requires a newer snapshot version.");
+    }
+    const result = this.update(observedSnapshot);
+    if (result.snapshot.currentVirtualDesktopId !== intent.targetVirtualDesktopId) {
+      throw new Error("Fresh observation did not confirm the requested virtual desktop.");
+    }
+    const confirmed = trackedVirtualDesktopSwitchIntentSchema.parse({
+      ...intent,
+      status: "confirmed",
+      confirmedAt: observedSnapshot.capturedAt,
+    });
+    this.#switchIntents.set(intentId, confirmed);
+    return structuredClone(confirmed);
+  }
+
+  cancelSwitchIntent(intentId: string): TrackedVirtualDesktopSwitchIntent {
+    const intent = this.#requireProposedIntent(intentId);
+    const cancelled = trackedVirtualDesktopSwitchIntentSchema.parse({
+      ...intent,
+      status: "cancelled",
+    });
+    this.#switchIntents.set(intentId, cancelled);
+    return structuredClone(cancelled);
+  }
+
+  getSwitchIntent(intentId: string): TrackedVirtualDesktopSwitchIntent | undefined {
+    const intent = this.#switchIntents.get(intentId);
+    return intent ? structuredClone(intent) : undefined;
+  }
+
+  listSwitchIntents(agentId?: string, windowsSessionId?: string): TrackedVirtualDesktopSwitchIntent[] {
+    return [...this.#switchIntents.values()]
+      .filter(
+        (intent) =>
+          (!agentId || intent.agentId === agentId) &&
+          (!windowsSessionId || intent.windowsSessionId === windowsSessionId),
+      )
+      .map((intent) => structuredClone(intent));
+  }
+
+  expireSwitchIntents(now = new Date()): TrackedVirtualDesktopSwitchIntent[] {
+    const expired: TrackedVirtualDesktopSwitchIntent[] = [];
+    for (const [intentId, intent] of this.#switchIntents) {
+      if (intent.status !== "proposed" || Date.parse(intent.expiresAt) > now.getTime()) continue;
+      const next = trackedVirtualDesktopSwitchIntentSchema.parse({ ...intent, status: "expired" });
+      this.#switchIntents.set(intentId, next);
+      expired.push(structuredClone(next));
+    }
+    return expired;
+  }
+
+  #requireProposedIntent(intentId: string): TrackedVirtualDesktopSwitchIntent {
+    const intent = this.#switchIntents.get(intentId);
+    if (!intent) throw new Error("Virtual-desktop switch intent was not found.");
+    if (intent.status !== "proposed") {
+      throw new Error(`Virtual-desktop switch intent is ${intent.status}.`);
+    }
+    return intent;
   }
 }
 
