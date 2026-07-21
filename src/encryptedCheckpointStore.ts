@@ -28,6 +28,7 @@ const payloadSchema = z.object({
 });
 
 type Payload = z.infer<typeof payloadSchema>;
+type Envelope = z.infer<typeof encryptedEnvelopeSchema>;
 
 export class EncryptedFileWorkflowCheckpointStore implements WorkflowCheckpointStore {
   readonly #directory: string;
@@ -92,14 +93,54 @@ export class EncryptedFileWorkflowCheckpointStore implements WorkflowCheckpointS
       if (isMissing(error)) return undefined;
       throw error;
     }
+    const envelope = this.#parseEnvelope(data);
+    if (envelope.workflowKey !== sha256(workflowId)) {
+      throw new Error("Encrypted workflow checkpoint identity does not match the requested workflow.");
+    }
+    const payload = this.#decrypt(envelope);
+    this.#validatePayloadIdentity(payload, workflowId);
+    return structuredClone(payload);
+  }
+
+  async list(): Promise<string[]> {
+    let names: string[];
+    try {
+      names = await readdir(this.#directory);
+    } catch (error) {
+      if (isMissing(error)) return [];
+      throw error;
+    }
+    const ids: string[] = [];
+    for (const name of names.filter((item) => item.endsWith(".encrypted-checkpoint.json")).sort()) {
+      try {
+        const data = await readFile(join(this.#directory, name), "utf8");
+        const envelope = this.#parseEnvelope(data);
+        const payload = this.#decrypt(envelope);
+        const workflowId = payload.workflow.definition.workflowId;
+        this.#validatePayloadIdentity(payload, workflowId);
+        if (envelope.workflowKey !== sha256(workflowId)) continue;
+        ids.push(workflowId);
+      } catch {
+        // Invalid, unauthenticated, or wrong-key files are never advertised as resumable.
+      }
+    }
+    return [...new Set(ids)].sort();
+  }
+
+  async delete(workflowId: string): Promise<void> {
+    await unlink(this.#pathFor(workflowId)).catch((error: unknown) => {
+      if (!isMissing(error)) throw error;
+    });
+  }
+
+  #parseEnvelope(data: string): Envelope {
     if (Buffer.byteLength(data, "utf8") > this.#maxBytes * 2) {
       throw new Error("Stored encrypted checkpoint exceeds the configured size limit.");
     }
-    const envelope = encryptedEnvelopeSchema.parse(JSON.parse(data) as unknown);
-    const expectedWorkflowKey = sha256(workflowId);
-    if (envelope.workflowKey !== expectedWorkflowKey) {
-      throw new Error("Encrypted workflow checkpoint identity does not match the requested workflow.");
-    }
+    return encryptedEnvelopeSchema.parse(JSON.parse(data) as unknown);
+  }
+
+  #decrypt(envelope: Envelope): Payload {
     const decipher = createDecipheriv(
       "aes-256-gcm",
       this.#key,
@@ -116,7 +157,10 @@ export class EncryptedFileWorkflowCheckpointStore implements WorkflowCheckpointS
     } catch {
       throw new Error("Encrypted workflow checkpoint authentication failed.");
     }
-    const payload = payloadSchema.parse(JSON.parse(plaintext.toString("utf8")) as unknown);
+    return payloadSchema.parse(JSON.parse(plaintext.toString("utf8")) as unknown);
+  }
+
+  #validatePayloadIdentity(payload: Payload, workflowId: string): void {
     if (payload.workflow.definition.workflowId !== workflowId) {
       throw new Error("Decrypted workflow identity does not match the requested workflow.");
     }
@@ -125,36 +169,6 @@ export class EncryptedFileWorkflowCheckpointStore implements WorkflowCheckpointS
         throw new Error("Decrypted artifact identity does not match the checkpoint workflow.");
       }
     }
-    return structuredClone(payload);
-  }
-
-  async list(): Promise<string[]> {
-    let names: string[];
-    try {
-      names = await readdir(this.#directory);
-    } catch (error) {
-      if (isMissing(error)) return [];
-      throw error;
-    }
-    const ids: string[] = [];
-    for (const name of names.filter((item) => item.endsWith(".encrypted-checkpoint.json")).sort()) {
-      try {
-        const data = await readFile(join(this.#directory, name), "utf8");
-        const envelope = encryptedEnvelopeSchema.parse(JSON.parse(data) as unknown);
-        // File names and envelopes intentionally contain only a one-way workflow key.
-        // The workflow ID is recovered only after authenticated decryption by direct load.
-        ids.push(envelope.workflowKey);
-      } catch {
-        // Invalid files are ignored during inventory and fail explicitly on direct load.
-      }
-    }
-    return ids;
-  }
-
-  async delete(workflowId: string): Promise<void> {
-    await unlink(this.#pathFor(workflowId)).catch((error: unknown) => {
-      if (!isMissing(error)) throw error;
-    });
   }
 
   #pathFor(workflowId: string): string {
