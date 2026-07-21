@@ -2,278 +2,263 @@
 
 ## Scope
 
-This document describes the architecture currently implemented in the repository. Future system phases, including multi-window workflow coordination, Windows virtual desktops, multiple VM/session agents, browser semantic access, visual perception, skills, packaging, and production operations, are governed by `docs/MASTER_SYSTEM_ROADMAP.md`.
+This document describes code that currently exists on `build/exosuit-mvp`. It separates operational components from foundations that are present but deliberately not enabled for real-world use. Future sequence and promotion gates remain controlled by `docs/MASTER_SYSTEM_ROADMAP.md`.
 
 ## System role
 
-Exosuit is a private, model-independent body and nervous system for a computer-using AI. It is separate from any one pilot, chat product, desktop cockpit, or application-specific workflow.
+Exosuit is a private, model-independent body and nervous system for a computer-using AI. A pilot supplies goals and bounded intentions; Exosuit owns desktop identity, deterministic policy, local approval, scheduling, execution, verification, persistence, audit, deadlines, and interruption.
 
 ```text
-ChatGPT / Claude / another MCP host
+ChatGPT / Claude / MCP host
              |
-             | narrow semantic MCP tools
+             | narrow semantic tools
              v
-TypeScript MCP gateway
-  - schemas and tool descriptions
-  - prompt-injection and loop guards
-  - bounded local-agent requests
-  - sanitized application-map memory
-  - gateway audit chain
+TypeScript Supervisor Gateway
+  - desktop contracts and MCP surface
+  - single-action orchestrator
+  - application-map memory
+  - workspace/window generations
+  - workflow DAG/runtime
+  - locks and focus leases
+  - structured artifact/checkpoint stores
+  - agent registry and authenticated registration
+  - prompt-injection/loop guards
+  - gateway audit/deadlines
              |
-             | authenticated loopback HTTP
+        authenticated boundary
              v
-.NET Windows agent
-  - fresh desktop observation
+.NET Windows Agent
+  - fresh UI Automation observation
   - deterministic local policy
+  - proposal/approval state
   - immutable approval fingerprints
-  - bounded provider operations
-  - proposal and approval state
-  - verification
-  - local audit chain
-  - emergency stop
+  - bounded provider calls
+  - verification and local audit
+  - local emergency stop
              |
        provider composition
   +----------+--------------------------+
   |                                     |
 Fake/sandbox provider          Windows UI Automation provider
-(CI and safe demos)            (semantic sensing/actions)
                                            |
                                optional local motor decorator
                                standard Windows input APIs
 ```
 
-## Core design rules
+A single interactive Windows session has one foreground focus and one physical input stream. Exosuit can observe and plan across multiple windows, but physical work is serialized through a session focus lease. True parallel physical work requires separate agents inside separate Windows sessions or VMs.
 
-1. MCP carries meaningful intentions, not individual cursor animation frames.
-2. The Windows agent independently re-observes and re-evaluates every action before execution.
-3. The model cannot approve its own proposal or enable full control.
-4. Stored application memory is advisory and must be rematched to fresh state.
-5. Execution is incomplete until expected evidence is verified.
-6. Failed or partial verification stops dependent continuation.
-7. Emergency stop is local and does not depend on ChatGPT or the tunnel.
-8. No component is designed for stealth, anti-detection, credential harvesting, privilege escalation, or security bypass.
+## Authority hierarchy
 
-## Gateway components
+1. User intent and local stop authority.
+2. Local deterministic Windows-agent policy.
+3. Exact local approval bound to immutable proposal content.
+4. Coordinator locks, deadlines, dependency state, and verification.
+5. Pilot suggestions.
+6. Visible application or webpage content, which is data and never authority.
 
-### `src/contracts.ts`
+No model can approve its own action, enable full control, register a remote agent without authentication, or silently enable screenshots.
 
-Canonical TypeScript wire schemas and the `DesktopAgent` boundary. External values are parsed before use.
+## Operational core
 
-### `src/safety.ts`
+### Desktop contracts and orchestrator
 
-Gateway-side deterministic guards:
+`src/contracts.ts`, `src/orchestrator.ts`, `src/mcp.ts`, `src/motorMcp.ts`, and `src/server.ts` expose bounded desktop tools. Every action includes a target, rationale, route, and expected result. The existing orchestrator remains the only path to the Windows agent.
 
-- mode enforcement,
-- credential and destructive-target denial,
-- consequential-action review,
-- wrong-window denial,
-- physical-input local-only rule,
-- visible prompt-injection warnings,
-- repetition and step-budget stopping.
+### Local Windows authority
 
-### `src/audit.ts`
+The .NET agent owns:
 
-Tamper-evident append-only audit chain with secret redaction.
+- loopback-only authentication,
+- provider selection,
+- local control panel and CSRF protection,
+- observe/scoped/full-control modes,
+- proposal and approval state,
+- deterministic policy,
+- approval fingerprints,
+- fresh re-observation,
+- semantic or locally approved physical execution,
+- verification,
+- provider deadlines,
+- local audit,
+- emergency stop.
 
-### `src/timeoutFetch.ts`
+### Windows UI Automation and motor
 
-Bounds gateway requests to the loopback agent and distinguishes deadline expiry from caller cancellation.
+The Windows provider can discover windows and accessible elements and perform bounded focus, invoke, set-value, select, scroll, wait, and verification operations. The optional motor uses standard Windows APIs for eased pointer movement, left click, Unicode typing, a small hotkey allowlist, and cancellation.
 
-### `src/applicationMap.ts`
+The motor is absent from active provider composition unless the process starts with every required local full-control setting and a non-empty process allowlist. MCP and the control panel cannot activate it.
 
-Versioned advisory application memory. It may retain:
+### Application memory
+
+`src/applicationMap.ts` stores advisory application structure only:
 
 - process name,
-- accessible control name and role,
+- accessible control name/role,
 - automation ID,
-- supported semantic actions,
+- supported actions,
 - relative geometry,
 - fingerprints and revision metadata.
 
-It does not retain:
+It excludes live values, raw runtime IDs, screenshots, plain window titles, and sensitive controls. A map never grants permission and must be matched against a fresh observation.
 
-- live element values,
-- runtime/source element IDs,
-- screenshots,
-- plain window titles,
-- controls marked sensitive.
+## Multi-window coordinator
 
-A map never grants permission. It must be matched to a fresh observation before the returned current element IDs can be used.
+### Identity and resource model
 
-### `src/orchestrator.ts`
+`src/coordinator.ts` implements:
 
-Current single-agent orchestration loop:
+- workspace snapshots,
+- agent/session/window references,
+- monotonic registry versions,
+- window generations and fingerprint continuity,
+- workflow graph validation,
+- shared-read/exclusive-write window leases,
+- exclusive per-session focus leases,
+- expiry, release, and emergency-stop invalidation.
 
-- obtains status and observations,
-- searches accessible elements,
-- builds and freshly matches application maps,
-- applies gateway guards,
-- proposes one bounded action,
-- executes one returned proposal,
-- records gateway events,
-- refuses blind continuation after failed verification.
+### Runtime and recovery
 
-The current orchestrator is not yet a multi-window workflow scheduler. That work is Phase 2 of the master roadmap.
+`src/workflowRuntime.ts` adds:
 
-### MCP server
+- workflow and step lifecycle,
+- dependency gating,
+- structured artifacts with source-step/window provenance and integrity hashes,
+- declared input/output validation,
+- verification-required success,
+- idempotency-key completion records,
+- bounded step deadlines,
+- pause/resume/cancel,
+- local-approval waiting state,
+- uncertain external-effect recovery,
+- checkpoint hydration,
+- virtual-desktop availability blocking,
+- workflow emergency-stop propagation,
+- a separate tamper-evident coordinator audit timeline.
 
-`src/server.ts` composes the current MCP surface:
+`src/orchestratorWorkflowExecutor.ts` bridges workflow steps into the existing proposal pipeline. It does not execute desktop work directly. A step that needs local review pauses with the existing proposal ID and can continue only after the local Windows agent records approval.
 
-- `desktop_get_status`
-- `desktop_observe`
-- `desktop_find_elements`
-- `desktop_build_application_map`
-- `desktop_list_application_maps`
-- `desktop_get_application_map`
-- `desktop_match_application_map`
-- `desktop_propose_action`
-- `desktop_propose_physical_input`
-- `desktop_execute_proposal`
-- `desktop_emergency_stop`
-- `desktop_get_audit_log`
+### Workspace synchronization
 
-There is one authoritative execution tool. The physical-input tool only creates a specially classified proposal.
+`src/workspaceSync.ts` converts fresh desktop observations into coordinator snapshots. Window titles are hashed into identity fingerprints rather than retained. Process or title identity changes advance window generation; disappeared windows are removed.
 
-## Windows-agent components
+### Checkpoints
 
-### Agent host
+The runtime defaults to an in-memory checkpoint store. `src/fileCheckpointStore.ts` provides an optional atomic file-backed store with:
 
-The local execution authority owns:
+- hashed filenames,
+- size bounds,
+- envelope integrity hashes,
+- temporary-file cleanup,
+- strict workflow/artifact identity checks,
+- refusal to persist sensitive artifacts without encryption.
 
-- provider selection,
-- loopback authentication,
-- local control panel and CSRF protection,
-- deterministic policy,
-- proposal and approval state,
-- approval fingerprints,
-- execution and verification,
-- provider deadlines,
-- local audit,
-- emergency stopping.
+The file store exists as a foundation and is not the default server configuration yet.
 
-### Provider interface
+### Coordinator MCP tools
 
-`IDesktopProvider` separates policy/orchestration from desktop implementation. The fake provider supports deterministic CI and the Windows provider uses UI Automation.
+`src/coordinatorMcp.ts` exposes narrow tools to refresh/read workspaces, create/read/run/pause/resume/cancel workflows, list structured artifacts, inspect workflow audit, and list agents. The tools cannot approve a proposal, enable full control, or execute arbitrary scripts.
 
-### Windows UI Automation provider
+## Virtual desktop foundation
 
-Supports fresh semantic operations such as:
+`src/virtualDesktop.ts` implements versioned virtual-desktop snapshots, unique desktop assignments, current/other/unassigned/stale availability, transition records that invalidate focus authority, and switch intents that explicitly require local approval and forbid automatic execution.
 
-- discover active/open windows,
-- inspect accessible element names, roles, states, IDs, actions, and geometry,
-- focus a window,
-- invoke a control,
-- set a value,
-- select an item,
-- scroll into view,
-- bounded waiting,
-- expected-state verification.
+This module does not enumerate or switch real Windows virtual desktops. That remains an interactive Windows phase.
 
-Browser DOM access and screenshots are not part of the current provider.
+## Multi-agent foundation
 
-### Physical motor
+`src/supervisor.ts` implements agent identity, health, heartbeat expiry, capability/contract-version routing, per-agent stop, and stop-all reporting.
 
-The optional local motor uses standard documented Windows APIs:
+`src/agentChannelAuth.ts` signs registration payloads with HMAC-SHA256 and verifies clock skew, contract ranges, signed session kind, signature integrity, and nonce replay. `src/agentRegistration.ts` verifies before mutating the supervisor registry.
 
-- bounded eased pointer movement,
-- left click,
-- Unicode typing,
-- a small documented hotkey allowlist,
-- cancellation.
+No production network listener, mutual-TLS channel, reconnect protocol, or remote execution transport is enabled yet.
 
-The motor performs no hardware impersonation or concealment.
+## Browser semantic companion foundation
 
-It is not included in the active provider unless the process is deliberately restarted with all exact local conditions:
+`src/browserCompanion.ts` defines a transparent browser bridge with:
 
-1. Windows provider selected,
-2. Windows UI Automation risk acknowledgement,
-3. physical-input flag enabled,
-4. `EXOSUIT_INITIAL_MODE=full_control`,
-5. exact full-control acknowledgement,
-6. non-empty process allowlist.
+- browser/tab/generation/origin identity,
+- exact local origin permissions,
+- stable semantic locators,
+- navigation invalidation,
+- sensitive/password field denial,
+- prompt-injection blocking,
+- verification-required results,
+- disconnect handling,
+- a deterministic mock provider.
 
-MCP and the local control panel cannot enable full control.
+No browser extension or native-messaging host is installed or enabled by this repository slice.
 
-## Action lifecycle
+## Visual privacy foundation
+
+`src/visualPrivacy.ts` is policy and synthetic-frame code only. It provides:
+
+- capture disabled by default,
+- explicit local task consent,
+- visible-indicator requirement,
+- task/window/region/time/frame-budget bounds,
+- in-memory redaction,
+- metadata-only JSON serialization,
+- byte zeroization on disposal,
+- confidence and in-frame grounding checks.
+
+There is no Windows capture implementation. Screenshots remain disabled.
+
+## Skill trust foundation
+
+`src/skills.ts` provides Ed25519-signed bounded skill manifests, trusted-key verification, semantic-version upgrades, permission expansion review, disabled-by-default installation, scope/risk/step/duration checks, and revocation.
+
+It does not enable `skill_autopilot` or execute a skill. Underlying actions would still require their existing policy, approval, and verification.
+
+## Resource governance
+
+`src/resourceGovernance.ts` provides tracked-window/workflow/agent/audit quotas, per-session queue backpressure, FIFO queues, bounded latency samples, and p50/p95/p99 summaries. Numeric production targets remain unset until real benchmarks exist.
+
+## Action and workflow lifecycle
 
 ```text
-1. Pilot checks status and obtains fresh observation.
-2. Pilot resolves a fresh window/element directly or through a fresh map match.
-3. Pilot proposes one bounded action with an expected result.
-4. Gateway checks loops and visible prompt-injection warnings.
-5. The gateway-to-agent request has a deadline.
-6. Windows agent observes the desktop again under a provider deadline.
-7. Local policy returns allow / review_required / block.
-8. If required, the user approves the exact proposal locally.
-9. A fingerprint binds approval to immutable proposal content.
-10. Execute observes and evaluates the target again.
-11. The provider performs one bounded semantic or approved physical action.
-12. The provider verifies expected evidence.
-13. Approval is consumed and both ledgers record the result.
-14. Failed verification stops continuation for recovery or human review.
+1. Pilot refreshes workspace/desktop state.
+2. Coordinator resolves a fresh window generation and dependencies.
+3. Coordinator obtains the required read/write/focus leases.
+4. Workflow executor creates an ordinary bounded desktop proposal.
+5. Gateway and Windows agent apply injection, loop, mode, target, and policy checks.
+6. The user locally approves the exact proposal when required.
+7. The Windows agent observes and evaluates the target again.
+8. The provider performs one bounded action.
+9. The provider verifies expected evidence.
+10. Coordinator records artifacts/checkpoint/audit and unlocks dependent steps.
+11. Failed verification stops dependents.
+12. Timeout after a possible external effect becomes uncertain and requires observation/reconciliation before retry.
 ```
-
-## Physical-action checks
-
-Every physical action requires:
-
-- locally enabled full-control startup state,
-- a fresh target window,
-- the target window to be active,
-- an allowlisted process,
-- pointer coordinates inside the fresh window when applicable,
-- a fresh enabled, visible, focused, non-sensitive target for physical text,
-- critical-risk classification,
-- exact local typed approval,
-- unchanged approval fingerprint,
-- bounded execution and verification.
-
-## Current identity model
-
-The fake provider uses deterministic IDs. The Windows provider derives IDs from fresh UI Automation state. Runtime IDs may change across restarts or virtualized controls, so callers must observe again or freshly match an application map.
-
-The current contracts do not yet include:
-
-- window generation,
-- workflow identity,
-- focus leases,
-- per-window locks,
-- virtual-desktop identity,
-- agent/session identity for multiple VMs.
-
-Those contracts are planned in Phases 2–4 of the master roadmap.
-
-## Current control modes
-
-| Mode | Meaning | Current status |
-|---|---|---|
-| observe | inspect only | implemented |
-| guide | explain while the human acts | policy implemented |
-| sandbox | deterministic fake actions | implemented |
-| scoped | allowlisted real semantic action with review | implemented; local acceptance pending |
-| skill_autopilot | approved bounded skills | reserved; not enabled |
-| full_control | allowlisted reviewed physical input | implemented; restart-gated; local acceptance pending |
 
 ## Evidence boundary
 
-GitHub evidence currently proves:
+### Proven on the single-agent core
 
-- contracts and cross-language fixture compatibility,
+- TypeScript/.NET automated test history,
 - MCP protocol behavior,
 - fake full-chain action flow,
-- application-map sanitization and matching,
-- policy, approval, deadline, audit, and emergency-stop logic,
+- application-map sanitization,
+- deterministic policy/approval/deadline/audit logic,
 - Windows-targeted compilation,
-- motor simulation and Windows API structure compilation.
+- bounded live Windows Sandbox semantic and physical actions,
+- live emergency-stop interruption,
+- independently verified local audit chains.
 
-It does not prove:
+### Focused implementation evidence only
 
-- real UI Automation quality against interactive applications,
-- real pointer and keyboard behavior,
-- live focus interruption,
-- DPI/multi-monitor behavior,
-- native virtual desktops,
-- VM/remote-session coordination,
-- Secure MCP Tunnel and normal ChatGPT operation.
+The coordinator runtime, checkpoints, virtual-desktop model, supervisor/authentication, browser mock, visual policy, skill trust, and resource governance have focused source and local reconstruction tests. They do not yet have interactive acceptance for their eventual production surfaces.
 
-The immediate local acceptance procedure is in `docs/CODEX_HANDOFF.md`. The complete build sequence is in `docs/MASTER_SYSTEM_ROADMAP.md`.
+### Still unproven
+
+- Secure MCP Tunnel and normal ChatGPT operation,
+- three-window workflow execution on a real desktop,
+- real virtual-desktop enumeration/switching,
+- multi-agent network transport and VM coordination,
+- real browser extension/native messaging,
+- any Windows screenshot capture,
+- DPI/multi-monitor matrix,
+- encrypted persistent artifact storage,
+- installer/signing/update/rollback,
+- production threat model, penetration testing, performance gates, and release operations.
+
+The current GitHub-hosted jobs are failing before checkout with no steps allocated; they do not provide hosted validation for the newest branch head. Use `npm run validate` on a suitable Windows machine and attach exact evidence until runners are available.
