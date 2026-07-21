@@ -43,7 +43,9 @@ describe("Windows Field administration scripts", () => {
     for (const root of ["C:\\Exosuit\\Agent", "C:\\Field\\Inbox", "C:\\Field\\Outbox", "C:\\Field\\Quarantine"]) {
       expect(guest).toContain(root);
     }
-    expect(guest).toContain("heartbeat is not declared started");
+    expect(guest).toContain("[string]$ManifestDigest");
+    expect(guest).toContain("deliberately omitted here");
+    expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
   });
 });
