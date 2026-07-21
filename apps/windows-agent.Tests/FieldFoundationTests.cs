@@ -43,7 +43,9 @@ public sealed class FieldFoundationTests
         Assert.Throws<InvalidOperationException>(() => state.Transition(FieldLifecycle.Piloting));
         state.Transition(FieldLifecycle.Provisioning);
         Assert.Throws<InvalidOperationException>(() => state.Transition(FieldLifecycle.Faulted));
-        Assert.Contains("heartbeat", state.Transition(FieldLifecycle.Faulted, "Guest heartbeat expired.").FaultReason, StringComparison.OrdinalIgnoreCase);
+        var faulted = state.Transition(FieldLifecycle.Faulted, "Guest heartbeat expired.");
+        Assert.NotNull(faulted.FaultReason);
+        Assert.Contains("heartbeat", faulted.FaultReason!, StringComparison.OrdinalIgnoreCase);
         Assert.Throws<InvalidOperationException>(() => state.Transition(FieldLifecycle.Ready));
     }
 
