@@ -16,13 +16,14 @@ export const fieldProvisioningStepSchema = z.enum([
   "verify_host_capabilities",
   "verify_base_image",
   "verify_personal_state",
+  "create_runtime_overlay",
   "create_task_disk",
   "create_generation_2_vm",
   "configure_compute",
   "configure_secure_boot",
   "configure_network",
   "configure_host_integrations",
-  "attach_base_image",
+  "attach_runtime_overlay",
   "attach_personal_state",
   "attach_task_disk",
   "start_vm",
@@ -67,6 +68,15 @@ export const fieldProvisioningPlanSchema = z
             imageId: z.string().min(1).max(300),
             digest: sha256DigestSchema,
             readOnly: z.literal(true),
+          })
+          .strict(),
+        runtimeOverlay: z
+          .object({
+            diskId: z.string().min(1).max(300),
+            parentImageId: z.string().min(1).max(300),
+            disposable: z.literal(true),
+            differencing: z.literal(true),
+            maximumBytes: z.number().int().min(8_589_934_592).max(1_099_511_627_776),
           })
           .strict(),
         personalState: z
@@ -120,6 +130,12 @@ export const fieldProvisioningPlanSchema = z
     if (plan.storage.baseImage.digest !== plan.identity.baseImageDigest) {
       context.addIssue({ code: "custom", path: ["storage", "baseImage", "digest"], message: "Base-image digest must match Field identity." });
     }
+    if (plan.storage.runtimeOverlay.parentImageId !== plan.storage.baseImage.imageId) {
+      context.addIssue({ code: "custom", path: ["storage", "runtimeOverlay", "parentImageId"], message: "Runtime overlay must be a child of the approved base image." });
+    }
+    if (plan.storage.runtimeOverlay.diskId === plan.storage.taskDisk.diskId) {
+      context.addIssue({ code: "custom", path: ["storage", "runtimeOverlay", "diskId"], message: "Runtime overlay and task disk identities must remain separate." });
+    }
     if (plan.storage.taskDisk.diskId !== plan.identity.taskDiskId) {
       context.addIssue({ code: "custom", path: ["storage", "taskDisk", "diskId"], message: "Task disk must match Field identity." });
     }
@@ -148,6 +164,8 @@ export function createFieldProvisioningPlan(input: {
   identity: FieldIdentity;
   display: FieldDisplayContract;
   baseImageId: string;
+  runtimeOverlayDiskId?: string;
+  runtimeOverlayMaximumBytes?: number;
   personalStateDiskId?: string;
   virtualProcessors?: number;
   startupMemoryMiB?: number;
@@ -189,6 +207,13 @@ export function createFieldProvisioningPlan(input: {
     },
     storage: {
       baseImage: { imageId: input.baseImageId, digest: identity.baseImageDigest, readOnly: true as const },
+      runtimeOverlay: {
+        diskId: input.runtimeOverlayDiskId ?? `${identity.fieldId}-g${identity.fieldGeneration}-os-overlay`,
+        parentImageId: input.baseImageId,
+        disposable: true as const,
+        differencing: true as const,
+        maximumBytes: input.runtimeOverlayMaximumBytes ?? 128 * 1024 * 1024 * 1024,
+      },
       ...(identity.personalStateDigest
         ? {
             personalState: {
@@ -234,13 +259,14 @@ function requiredSteps(personalState: boolean): FieldProvisioningStep[] {
     "verify_host_capabilities",
     "verify_base_image",
     ...(personalState ? (["verify_personal_state"] as const) : []),
+    "create_runtime_overlay",
     "create_task_disk",
     "create_generation_2_vm",
     "configure_compute",
     "configure_secure_boot",
     "configure_network",
     "configure_host_integrations",
-    "attach_base_image",
+    "attach_runtime_overlay",
     ...(personalState ? (["attach_personal_state"] as const) : []),
     "attach_task_disk",
     "start_vm",
