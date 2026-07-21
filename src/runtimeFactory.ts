@@ -8,6 +8,7 @@ export type WorkflowRuntimeBundle = {
   runtime: WorkflowRuntime;
   persistenceMode: WorkflowPersistenceMode;
   stateDirectory?: string;
+  checkpointStore?: WorkflowCheckpointStore;
 };
 
 export function createWorkflowRuntimeFromEnvironment(
@@ -52,6 +53,7 @@ export function createWorkflowRuntimeFromEnvironment(
     runtime: new WorkflowRuntime({ checkpoints }),
     persistenceMode,
     stateDirectory,
+    checkpointStore: checkpoints,
   };
 }
 
