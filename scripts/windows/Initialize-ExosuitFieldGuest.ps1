@@ -4,6 +4,10 @@ param(
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ManifestPath,
 
+    [Parameter(Mandatory)]
+    [ValidatePattern('^[a-f0-9]{64}$')]
+    [string]$ManifestDigest,
+
     [Parameter()]
     [string]$ReportPath = 'C:\Exosuit\Diagnostics\bootstrap-report.json'
 )
@@ -96,19 +100,18 @@ Add-Check -Name 'channel_key' -Passed (-not [string]::IsNullOrWhiteSpace($manife
 Add-Check -Name 'policy_binding' -Passed ($manifest.policyHash -match '^[a-f0-9]{64}$') -Summary 'Policy hash shape was checked.'
 
 $sessionLocked = $false
-$secureDesktopActive = $false
 try {
     $process = Get-Process -Name LogonUI -ErrorAction SilentlyContinue
     $sessionLocked = $null -ne $process
 } catch {}
 Add-Check -Name 'session_unlocked' -Passed (-not $sessionLocked) -Summary 'Interactive session lock state was checked.'
-Add-Check -Name 'secure_desktop_inactive' -Passed (-not $secureDesktopActive) -Summary 'Secure Desktop requires runtime agent confirmation; bootstrap assumes inactive only for this local check.' -Evidence @{ requiresRuntimeConfirmation = $true }
+Add-Check -Name 'secure_desktop_inactive' -Passed $false -Summary 'Secure Desktop must be confirmed by the running guest agent; bootstrap alone cannot declare this check passed.' -Evidence @{ pendingRuntimeConfirmation = $true }
 Add-Check -Name 'heartbeat_started' -Passed $false -Summary 'Heartbeat is not declared started until the guest agent authenticates its channel.' -Evidence @{ pendingAgentStart = $true }
 
 $report = [ordered]@{
     contractVersion = 1
     identity = $manifest.identity
-    manifestDigest = if ($manifest.manifestDigest) { $manifest.manifestDigest } else { '0' * 64 }
+    manifestDigest = $ManifestDigest
     reportedAt = [DateTimeOffset]::UtcNow.ToString('O')
     checks = $checks
 }
@@ -117,7 +120,8 @@ $reportDirectory = Split-Path -Parent $ReportPath
 if ($PSCmdlet.ShouldProcess($ReportPath, 'Write Field bootstrap report')) {
     New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null
     $temporary = "$ReportPath.$([Guid]::NewGuid().ToString('N')).tmp"
-    $report | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $temporary -Encoding utf8NoBOM
+    $json = $report | ConvertTo-Json -Depth 50
+    [IO.File]::WriteAllText($temporary, $json, [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $temporary -Destination $ReportPath -Force
 }
 
