@@ -30,19 +30,20 @@ export function createWorkflowRuntimeFromEnvironment(
     return { runtime: new WorkflowRuntime(), persistenceMode: "memory" };
   }
 
+  const optionalLimit = maxCheckpointBytes === undefined ? {} : { maxCheckpointBytes };
   let checkpoints: WorkflowCheckpointStore;
   let persistenceMode: WorkflowPersistenceMode;
   if (encryptionKey) {
     checkpoints = new EncryptedFileWorkflowCheckpointStore({
       directory: stateDirectory,
       key: encryptionKey,
-      maxCheckpointBytes,
+      ...optionalLimit,
     });
     persistenceMode = "encrypted_file";
   } else {
     checkpoints = new FileWorkflowCheckpointStore({
       directory: stateDirectory,
-      maxCheckpointBytes,
+      ...optionalLimit,
     });
     persistenceMode = "file";
   }
