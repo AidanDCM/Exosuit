@@ -53,9 +53,7 @@ export class EncryptedFileDemonstrationStore implements DemonstrationEpisodeStor
 
   async save(input: DemonstrationEpisode): Promise<void> {
     const episode = sanitizeEpisode(demonstrationEpisodeSchema.parse(input));
-    if (episode.status === "recording" || !episode.endedAt || !episode.outcome) {
-      throw new Error("Only completed or aborted demonstration episodes may be persisted.");
-    }
+    validateTerminalEpisode(episode);
     rejectInlineVisualBytes(episode);
     const plaintext = Buffer.from(JSON.stringify(episode), "utf8");
     if (plaintext.byteLength > this.#maxEpisodeBytes) {
@@ -129,7 +127,7 @@ export class EncryptedFileDemonstrationStore implements DemonstrationEpisodeStor
         this.#validateEnvelopeIdentity(envelope, episode, episode.episodeId);
         ids.push(episode.episodeId);
       } catch {
-        // Invalid, unauthenticated, oversized, or wrong-key files are never advertised.
+        // Invalid, unauthenticated, oversized, wrong-key, or internally inconsistent files are never advertised.
       }
     }
     return [...new Set(ids)].sort();
@@ -199,9 +197,7 @@ export class EncryptedFileDemonstrationStore implements DemonstrationEpisodeStor
     if (envelope.fieldKey !== expectedFieldKey) {
       throw new Error("Decrypted demonstration Field identity does not match the envelope.");
     }
-    if (episode.status === "recording" || !episode.endedAt || !episode.outcome) {
-      throw new Error("Stored demonstration is not in a terminal state.");
-    }
+    validateTerminalEpisode(episode);
     rejectInlineVisualBytes(episode);
   }
 
@@ -216,6 +212,31 @@ function sanitizeEpisode(episode: DemonstrationEpisode): DemonstrationEpisode {
     ...episode,
     events: episode.events.map((event) => ({ ...event, payload: redactDemonstrationPayload(event.payload) })),
   });
+}
+
+function validateTerminalEpisode(episode: DemonstrationEpisode): void {
+  if (episode.status === "recording" || !episode.endedAt || !episode.outcome) {
+    throw new Error("Only completed or aborted demonstration episodes may be persisted.");
+  }
+  const startedAt = new Date(episode.startedAt).getTime();
+  const endedAt = new Date(episode.endedAt).getTime();
+  const consentAt = new Date(episode.consent.grantedAt).getTime();
+  if (endedAt < startedAt) throw new Error("Demonstration episode ends before it starts.");
+  if (consentAt > startedAt) throw new Error("Demonstration consent must be granted before recording starts.");
+
+  const eventIds = new Set<string>();
+  let previousTime = startedAt;
+  for (const [index, event] of episode.events.entries()) {
+    if (event.sequence !== index) throw new Error("Demonstration event sequence is not contiguous.");
+    if (eventIds.has(event.eventId)) throw new Error("Demonstration event IDs must be unique.");
+    eventIds.add(event.eventId);
+    const eventTime = new Date(event.occurredAt).getTime();
+    if (eventTime < previousTime) throw new Error("Demonstration event timestamps are not ordered.");
+    if (eventTime < startedAt || eventTime > endedAt) {
+      throw new Error("Demonstration event timestamp falls outside the episode interval.");
+    }
+    previousTime = eventTime;
+  }
 }
 
 function rejectInlineVisualBytes(value: unknown, path = "episode"): void {
