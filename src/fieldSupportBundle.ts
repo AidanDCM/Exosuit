@@ -12,7 +12,7 @@ export const fieldSupportBundleInputSchema = z.object({
   lifecycle: z.string().min(1).max(100),
   health: healthSchema,
   bootstrapStatus: z.enum(["not_started", "not_ready", "ready", "failed"]),
-  recorderState,
+  recorderState: recorderStateSchema,
   visualCaptureEnabled: z.boolean(),
   visualUsage: z.object({
     frameCount: z.number().int().nonnegative(),
