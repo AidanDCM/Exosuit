@@ -25,8 +25,13 @@ const required = [
   "tests/fieldRegistry.test.ts",
   "src/demonstration.ts",
   "tests/demonstration.test.ts",
+  "src/fieldManager.ts",
+  "tests/fieldManager.test.ts",
+  "tests/fixtures/field-contract-v1.json",
+  "tests/fieldWireContract.test.ts",
   "apps/windows-agent/FieldFoundation.cs",
   "apps/windows-agent.Tests/FieldFoundationTests.cs",
+  "apps/windows-agent.Tests/FieldWireContractTests.cs",
   "src/workflowRuntime.ts",
   "tests/workflowRuntime.test.ts",
   "src/fileCheckpointStore.ts",
@@ -67,6 +72,7 @@ const sourceFiles = [
   "src/demonstration.ts",
   "src/encryptedCheckpointStore.ts",
   "src/fieldContracts.ts",
+  "src/fieldManager.ts",
   "src/fieldRegistry.ts",
   "src/fileCheckpointStore.ts",
   "src/index.ts",
@@ -132,16 +138,12 @@ for (const requiredInvariant of [
   "automaticExecutionAllowed: false",
   "newer snapshot version",
 ]) {
-  if (!virtualDesktop.includes(requiredInvariant)) {
-    failures.push(`src/virtualDesktop.ts: missing invariant ${requiredInvariant}`);
-  }
+  if (!virtualDesktop.includes(requiredInvariant)) failures.push(`src/virtualDesktop.ts: missing invariant ${requiredInvariant}`);
 }
 
 const supportBundle = await readFile(resolve(root, "src/supportBundle.ts"), "utf8");
 for (const forbiddenField of ["screenshot", "clipboard", "windowtitle", "elementvalue", "rawpayload"]) {
-  if (!supportBundle.toLowerCase().includes(forbiddenField)) {
-    failures.push(`src/supportBundle.ts: missing privacy guard for ${forbiddenField}`);
-  }
+  if (!supportBundle.toLowerCase().includes(forbiddenField)) failures.push(`src/supportBundle.ts: missing privacy guard for ${forbiddenField}`);
 }
 
 const fieldContracts = await readFile(resolve(root, "src/fieldContracts.ts"), "utf8");
@@ -154,9 +156,19 @@ for (const requiredInvariant of [
   "allowPrivilegeEscalation: z.literal(false)",
   "timingSafeEqual",
 ]) {
-  if (!fieldContracts.includes(requiredInvariant)) {
-    failures.push(`src/fieldContracts.ts: missing Field invariant ${requiredInvariant}`);
-  }
+  if (!fieldContracts.includes(requiredInvariant)) failures.push(`src/fieldContracts.ts: missing Field invariant ${requiredInvariant}`);
+}
+
+const fieldManager = await readFile(resolve(root, "src/fieldManager.ts"), "utf8");
+for (const requiredInvariant of [
+  "FakeFieldProvisioner",
+  "#provisionedPolicyHashes",
+  "differs from the policy used for provisioning",
+  "field_provisioning_started",
+  "field_destroyed",
+  "verifyAudit",
+]) {
+  if (!fieldManager.includes(requiredInvariant)) failures.push(`src/fieldManager.ts: missing Field Manager invariant ${requiredInvariant}`);
 }
 
 const demonstration = await readFile(resolve(root, "src/demonstration.ts"), "utf8");
@@ -166,9 +178,7 @@ for (const requiredInvariant of [
   "[REDACTED]",
   "timestamp order",
 ]) {
-  if (!demonstration.includes(requiredInvariant)) {
-    failures.push(`src/demonstration.ts: missing recording invariant ${requiredInvariant}`);
-  }
+  if (!demonstration.includes(requiredInvariant)) failures.push(`src/demonstration.ts: missing recording invariant ${requiredInvariant}`);
 }
 
 const boundary = await readFile(resolve(root, "docs/GLOVE_FIELD_BOUNDARY.md"), "utf8");
@@ -177,9 +187,7 @@ for (const requiredStatement of [
   "The Glove is not the VM. The Field is not the agent.",
   "Teach Mode requires explicit owner consent",
 ]) {
-  if (!boundary.includes(requiredStatement)) {
-    failures.push(`docs/GLOVE_FIELD_BOUNDARY.md: missing boundary statement ${requiredStatement}`);
-  }
+  if (!boundary.includes(requiredStatement)) failures.push(`docs/GLOVE_FIELD_BOUNDARY.md: missing boundary statement ${requiredStatement}`);
 }
 
 if (failures.length > 0) {
