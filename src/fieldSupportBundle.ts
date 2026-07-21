@@ -17,6 +17,8 @@ export const fieldSupportBundleInputSchema = z.object({
   visualUsage: z.object({
     frameCount: z.number().int().nonnegative(),
     totalBytes: z.number().int().nonnegative(),
+    maximumFrameCount: z.number().int().nonnegative().optional(),
+    maximumSessionBytes: z.number().int().nonnegative().optional(),
   }).strict(),
   artifactSummary: z.object({
     prepared: z.number().int().nonnegative(),
