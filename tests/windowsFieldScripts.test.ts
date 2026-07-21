@@ -40,8 +40,8 @@ describe("Windows Field administration scripts", () => {
     expect(host).not.toMatch(/Enable-WindowsOptionalFeature|Disable-WindowsOptionalFeature|New-VM|Remove-VM/);
 
     const guest = await script("Initialize-ExosuitFieldGuest.ps1");
-    for (const root of ["C:\\\\Exosuit\\\\Agent", "C:\\\\Field\\\\Inbox", "C:\\\\Field\\\\Outbox", "C:\\\\Field\\\\Quarantine"]) {
-      expect(guest).toMatch(new RegExp(root));
+    for (const root of ["C:\\Exosuit\\Agent", "C:\\Field\\Inbox", "C:\\Field\\Outbox", "C:\\Field\\Quarantine"]) {
+      expect(guest).toContain(root);
     }
     expect(guest).toContain("heartbeat is not declared started");
     expect(guest).not.toContain("Invoke-Expression");
