@@ -48,9 +48,10 @@ describe("authenticated Field channel", () => {
         now: new Date("2026-07-21T18:00:30.000Z"),
       }),
     ).toThrow(/payload hash/);
+    const changedSignature = `${original.signature.slice(0, -1)}${original.signature.endsWith("A") ? "B" : "A"}`;
     expect(() =>
       verifyFieldChannelEnvelope({
-        envelope: { ...original, signature: `${original.signature.slice(0, -1)}A` },
+        envelope: { ...original, signature: changedSignature },
         secret,
         expectedField: field,
         expectedDirection: "guest_to_host",
