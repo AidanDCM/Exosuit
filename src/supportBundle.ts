@@ -19,20 +19,20 @@ export const supportBundleInputSchema = z.object({
     agents: z.number().int().nonnegative(),
     installedSkills: z.number().int().nonnegative(),
     applicationMaps: z.number().int().nonnegative(),
-  }),
+  }).strict(),
   agents: z.array(z.object({
     agentIdHash: z.string().regex(/^[a-f0-9]{64}$/),
     sessionKind: z.string().min(1).max(100),
     health: healthStateSchema,
     capabilities: z.array(z.string().min(1).max(100)).max(100),
     softwareVersion: z.string().min(1).max(100),
-  })).max(10_000),
+  }).strict()).max(10_000),
   workflowStates: z.record(z.string(), z.number().int().nonnegative()),
   auditSummary: z.object({
     eventCount: z.number().int().nonnegative(),
     eventTypes: z.record(z.string(), z.number().int().nonnegative()),
     chainValid: z.boolean(),
-  }),
+  }).strict(),
   performanceSummary: z.array(z.object({
     metric: z.string().min(1).max(200),
     count: z.number().int().nonnegative(),
@@ -40,10 +40,10 @@ export const supportBundleInputSchema = z.object({
     p95: z.number().finite().nonnegative(),
     p99: z.number().finite().nonnegative(),
     maximum: z.number().finite().nonnegative(),
-  })).max(1_000),
+  }).strict()).max(1_000),
   recentErrorCodes: z.array(z.string().min(1).max(200)).max(1_000),
   configurationFlags: z.record(z.string(), z.boolean()),
-});
+}).strict();
 export type SupportBundleInput = z.infer<typeof supportBundleInputSchema>;
 
 export const supportBundleSchema = z.object({
@@ -52,7 +52,7 @@ export const supportBundleSchema = z.object({
   generatedAt: z.string().datetime(),
   data: supportBundleInputSchema.omit({ generatedAt: true }),
   integrityHash: z.string().regex(/^[a-f0-9]{64}$/),
-});
+}).strict();
 export type SupportBundle = z.infer<typeof supportBundleSchema>;
 
 const forbiddenKeyPatterns = [
