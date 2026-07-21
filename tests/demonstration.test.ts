@@ -57,8 +57,8 @@ describe("demonstration recorder", () => {
     });
   });
 
-  it("rejects out-of-order timestamps, post-completion writes, and event overflow", () => {
-    const session = recorder(1);
+  it("rejects out-of-order timestamps", () => {
+    const session = recorder(2);
     session.append({
       source: "visual",
       kind: "frame_changed",
@@ -72,10 +72,32 @@ describe("demonstration recorder", () => {
         occurredAt: "2026-07-21T18:00:01.000Z",
         payload: { x: 2, y: 3 },
       }),
-    ).toThrow(/limit|timestamp/);
+    ).toThrow(/timestamp order/);
+  });
+
+  it("rejects post-completion writes and event overflow", () => {
+    const limited = recorder(1);
+    limited.append({
+      source: "visual",
+      kind: "frame_changed",
+      occurredAt: "2026-07-21T18:00:00.100Z",
+      payload: { changedPixels: 22 },
+    });
+    expect(() =>
+      limited.append({
+        source: "input",
+        kind: "click",
+        occurredAt: "2026-07-21T18:00:00.200Z",
+        payload: { x: 2, y: 3 },
+      }),
+    ).toThrow(/event limit/);
 
     const completeSession = recorder();
-    completeSession.complete({ successful: false, summary: "Demonstration intentionally ended." });
+    completeSession.complete({
+      successful: false,
+      summary: "Demonstration intentionally ended.",
+      endedAt: "2026-07-21T18:00:01.000Z",
+    });
     expect(() =>
       completeSession.append({ source: "input", kind: "click", payload: { x: 1, y: 1 } }),
     ).toThrow(/recording/);
