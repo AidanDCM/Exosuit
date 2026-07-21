@@ -1,0 +1,23 @@
+{
+  "contractVersion": 1,
+  "storageRoot": "C:\\ProgramData\\Exosuit\\Fields",
+  "baseImages": [
+    {
+      "imageId": "exosuit-field-base-v1",
+      "path": "C:\\ProgramData\\Exosuit\\Images\\exosuit-field-base-v1.vhdx",
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "personalStateDisks": [
+    {
+      "diskId": "aidan-personal-state-v1",
+      "path": "C:\\ProgramData\\Exosuit\\PersonalState\\aidan-personal-state-v1.vhdx",
+      "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "networkSwitches": {
+    "isolated": "Exosuit-Field-Isolated",
+    "natFiltered": "Exosuit-Field-NAT"
+  },
+  "viewerEnabled": true
+}
