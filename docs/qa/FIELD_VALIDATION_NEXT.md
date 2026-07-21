@@ -1,3 +1,0 @@
-# Validation Next
-
-Execute validation.
