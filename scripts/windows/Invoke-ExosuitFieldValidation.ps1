@@ -21,7 +21,8 @@ $steps = [System.Collections.Generic.List[object]]::new()
 function Invoke-ValidationStep {
     param(
         [Parameter(Mandatory)][string]$Name,
-        [Parameter(Mandatory)][scriptblock]$Action
+        [Parameter(Mandatory)][scriptblock]$Action,
+        [Parameter()][switch]$NonBlocking
     )
     $started = [DateTimeOffset]::UtcNow
     $logPath = Join-Path $runRoot "$Name.log"
@@ -36,7 +37,7 @@ function Invoke-ValidationStep {
         $errorMessage = $null
     } catch {
         if ($exitCode -eq 0) { $exitCode = 1 }
-        $status = 'failed'
+        $status = if ($NonBlocking) { 'reported_failure' } else { 'failed' }
         $errorMessage = $_.Exception.Message
         $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
     }
@@ -45,6 +46,7 @@ function Invoke-ValidationStep {
         name = $Name
         status = $status
         exitCode = $exitCode
+        blocking = -not [bool]$NonBlocking
         startedAt = $started.ToString('O')
         completedAt = $completed.ToString('O')
         durationMilliseconds = [math]::Round(($completed - $started).TotalMilliseconds)
@@ -72,13 +74,19 @@ try {
         gitCommit = (& git rev-parse HEAD 2>$null)
         gitBranch = (& git branch --show-current 2>$null)
         workingTree = (& git status --porcelain 2>$null)
+        packageLockPresent = Test-Path -LiteralPath (Join-Path $RepositoryRoot 'package-lock.json') -PathType Leaf
     }
     [IO.File]::WriteAllText((Join-Path $runRoot 'environment.json'), ($environment | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 
     if (-not $SkipDependencyInstall) {
-        Invoke-ValidationStep -Name 'npm-install' -Action { npm install --ignore-scripts --fund=false }
+        if (Test-Path -LiteralPath (Join-Path $RepositoryRoot 'package-lock.json') -PathType Leaf) {
+            Invoke-ValidationStep -Name 'npm-ci' -Action { npm ci --ignore-scripts --fund=false }
+        } else {
+            Invoke-ValidationStep -Name 'npm-install' -Action { npm install --ignore-scripts --fund=false }
+        }
     }
     Invoke-ValidationStep -Name 'repository-contract' -Action { npm run validate:repository }
+    Invoke-ValidationStep -Name 'master-plan-contract' -Action { npm run validate:plan }
     Invoke-ValidationStep -Name 'field-contract' -Action { npm run validate:field-contract }
     Invoke-ValidationStep -Name 'typescript-typecheck' -Action { npm run typecheck }
     Invoke-ValidationStep -Name 'field-tests' -Action { npm run test:field -- --reporter=verbose }
@@ -90,6 +98,7 @@ try {
     Invoke-ValidationStep -Name 'dotnet-build' -Action { dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror }
     Invoke-ValidationStep -Name 'dotnet-tests' -Action { dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=field-validation.trx" --collect:"XPlat Code Coverage" }
     Invoke-ValidationStep -Name 'host-capability-check' -Action { & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" }
+    Invoke-ValidationStep -Name 'production-readiness-report' -NonBlocking -Action { npm run assess:production }
     $overallStatus = 'passed'
 } catch {
     $overallStatus = 'failed'
@@ -105,8 +114,9 @@ try {
         evidenceRoot = $runRoot
         steps = $steps
         error = $overallError
+        productionReadiness = 'The production-readiness report is informational during L0 and is expected to remain denied until every release gate has exact evidence and owner approval.'
         claimBoundary = if ($overallStatus -eq 'passed') {
-            'This proves repository, TypeScript, .NET pure logic, and host capability checks on this machine. It does not prove interactive Hyper-V, Teach hooks, visual capture, or Pilot execution.'
+            'This proves repository, plan, TypeScript, .NET pure logic, PowerShell parse/runtime entrypoints, and host capability checks on this machine. It does not prove interactive Hyper-V, Teach hooks, visual capture, learning, ChatGPT Field operation, or Pilot execution.'
         } else {
             'Validation did not complete. No passing claim may be made.'
         }
