@@ -1,0 +1,38 @@
+{
+  "contractVersion": 1,
+  "candidateCommit": null,
+  "candidateVersion": null,
+  "generatedAt": "2026-07-22T19:15:00Z",
+  "ownerApproved": false,
+  "productionDecision": "denied",
+  "unresolvedBlockers": [
+    "No executable current-head validation",
+    "No reproducible Node lockfile",
+    "Mutable personal-state disk identity contradiction",
+    "No live Hyper-V, channel, readiness, scene, Teach, artifact, Shadow, personal-model, Assisted, Pilot, ChatGPT, packaging, security, or operations evidence"
+  ],
+  "gates": [
+    { "gate": "source_validation", "status": "not_run", "evidence": [] },
+    { "gate": "dependency_reproducibility", "status": "blocked", "evidence": [] },
+    { "gate": "glove_windows_acceptance", "status": "not_run", "evidence": [] },
+    { "gate": "glove_multiwindow_acceptance", "status": "not_run", "evidence": [] },
+    { "gate": "field_hyperv_lifecycle", "status": "not_run", "evidence": [] },
+    { "gate": "field_authenticated_channel", "status": "not_run", "evidence": [] },
+    { "gate": "field_guest_readiness", "status": "not_run", "evidence": [] },
+    { "gate": "field_scene_production", "status": "not_run", "evidence": [] },
+    { "gate": "teach_privacy_and_recording", "status": "not_run", "evidence": [] },
+    { "gate": "artifact_transfer", "status": "not_run", "evidence": [] },
+    { "gate": "shadow_no_input", "status": "not_run", "evidence": [] },
+    { "gate": "correction_mode", "status": "not_run", "evidence": [] },
+    { "gate": "personal_models", "status": "not_run", "evidence": [] },
+    { "gate": "assisted_mode", "status": "not_run", "evidence": [] },
+    { "gate": "synthetic_pilot", "status": "not_run", "evidence": [] },
+    { "gate": "chatgpt_mcp_acceptance", "status": "not_run", "evidence": [] },
+    { "gate": "owner_acceptance", "status": "not_run", "evidence": [] },
+    { "gate": "reliability_and_performance", "status": "not_run", "evidence": [] },
+    { "gate": "cockpit_and_human_factors", "status": "not_run", "evidence": [] },
+    { "gate": "packaging_signing_update_rollback", "status": "not_run", "evidence": [] },
+    { "gate": "security_privacy_penetration", "status": "not_run", "evidence": [] },
+    { "gate": "operations_incident_response", "status": "not_run", "evidence": [] }
+  ]
+}
