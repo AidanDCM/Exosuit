@@ -2,7 +2,18 @@
 
 ## Mandatory acknowledgement
 
-Before changing Exosuit, read `README.md`, `DEVELOPER_OPERATING_SYSTEM.md`, `OWNER_MANUAL.md`, `docs/GLOVE_FIELD_BOUNDARY.md`, `docs/SECURITY_MODEL.md`, `docs/TEST_PLAN.md`, and the latest file in `docs/qa/`.
+Before changing Exosuit, read:
+
+- `README.md`
+- `docs/MASTER_SYSTEM_ROADMAP.md`
+- `DEVELOPER_OPERATING_SYSTEM.md`
+- `OWNER_MANUAL.md`
+- `docs/GLOVE_FIELD_BOUNDARY.md`
+- `docs/SECURITY_MODEL.md`
+- `docs/TEST_PLAN.md`
+- the latest applicable file in `docs/qa/`
+
+`docs/MASTER_SYSTEM_ROADMAP.md` is the single authoritative plan for the complete Glove and Field program. A change that conflicts with it must update the plan, decision log, threat model, tests, manuals, and rollback before implementation proceeds.
 
 Before changing any Field-owned surface, also read:
 
@@ -21,6 +32,7 @@ Acknowledge internally:
 ```text
 I understand Exosuit is a high-risk desktop execution and behavioral-recording system.
 I understand the Glove and Field are separate subsystems with separate identities, lifecycles, policies, evidence, and failure states.
+I have read the complete master plan and will not skip its phase dependencies or promotion gates.
 I will preserve deny-by-default behavior, local permission ownership, recording consent, audit logging, verification, and emergency stopping.
 I will not claim live behavior passed unless I ran it and captured evidence.
 I will make one reviewable slice at a time and document rollback.
@@ -32,6 +44,7 @@ I will make one reviewable slice at a time and document rollback.
 - The **Glove** owns sensing, planning, policy, action execution, verification, recovery, audit, and stop.
 - The **Field** owns the isolated Windows environment, display, VM/storage lifecycle, task workspace, and owner-consented demonstration surface.
 - Do not collapse Glove and Field identity, lifecycle, policy, or evidence into one generic desktop object.
+- A browser is an ordinary Windows application. Do not make an AI browser, DOM channel, Playwright, extension, or browser-special controller a required execution path.
 - Do not add stealth, anti-detection, anti-cheat, credential scraping, security bypass, privilege escalation, covert recording, or deceptive-impersonation features.
 - Do not let MCP or model output enable `full_control`, create Field policy, sign Field attestation, grant recording consent, rotate keys, delete demonstrations, or approve sensitive export.
 - Do not bind the Windows agent beyond a reviewed authenticated architecture.
@@ -52,30 +65,34 @@ I will make one reviewable slice at a time and document rollback.
 11. An action that cannot be safely verified must stop or ask; it must not continue blindly.
 12. Teach Mode requires explicit owner consent and must not inject input.
 13. Shadow Mode predicts only and must not inject input.
-14. Personal behavior models may influence style and strategy but may not weaken isolation, policy, verification, deadlines, audit, or stop.
-15. The host must not control a guest by treating VMConnect/RDP pixels as the guest desktop; one agent runs inside each controlled Windows session.
-16. The base image is immutable. A Field boots from a disposable differencing overlay.
-17. A model cannot administer Fields. Local owner and service authority remain separate from pilot authority.
-18. Host/guest messages require authentication, expiration, exact generation, direction, sequence, nonce, and replay protection.
-19. A possible unverified external effect must reconcile before retry; emergency-stop failure is release-blocking.
-20. Destruction must be confined to one exact disposable Field generation and must not target the base or personal-state disks.
+14. Correction and Assisted modes may not weaken policy, verification, audit, stop, or data boundaries.
+15. Personal behavior models may influence style and strategy but may not weaken isolation, policy, verification, deadlines, audit, or stop.
+16. The host must not control a guest by treating VMConnect/RDP pixels as the guest desktop; one agent runs inside each controlled Windows session.
+17. The base image is immutable. A Field boots from a disposable differencing overlay.
+18. A model cannot administer Fields. Local owner and service authority remain separate from pilot authority.
+19. Host/guest messages require authentication, expiration, exact generation, direction, sequence, nonce, and replay protection.
+20. A possible unverified external effect must reconcile before retry; emergency-stop failure is release-blocking.
+21. Destruction must be confined to one exact disposable Field generation and must not target the base or personal-state disks.
+22. Demonstration and model deletion must propagate according to the approved retention policy.
+23. No phase may be promoted before the dependencies and evidence gate in the master plan pass.
 
 ## Required change report
 
 Every meaningful change must record:
 
-- goal,
-- subsystem ownership: Glove, Field, or shared,
-- files changed,
-- identity/generation and policy impact,
-- Parts & Pieces and donor patterns considered,
-- questions and assumptions,
-- tests added or updated,
-- commands actually run,
-- results and evidence class,
-- assumptions and unvalidated areas,
-- security and privacy impact,
-- rollback or disable path,
+- goal;
+- master-plan phase and promotion gate;
+- subsystem ownership: Glove, Field, or shared;
+- files changed;
+- identity/generation and policy impact;
+- Parts & Pieces and donor patterns considered;
+- questions and assumptions;
+- tests added or updated;
+- commands actually run;
+- results and evidence class;
+- assumptions and unvalidated areas;
+- security and privacy impact;
+- rollback or disable path;
 - next recommended slice.
 
 Use a new file under `docs/engineering_log/YYYY-MM-DD-<slug>.md`; do not append competing changes to one shared engineering log.
@@ -84,6 +101,7 @@ Use a new file under `docs/engineering_log/YYYY-MM-DD-<slug>.md`; do not append 
 
 A Field change must explicitly answer:
 
+- Which master-plan phase owns this work?
 - Does this alter environment authority or Glove authority?
 - How is Field generation invalidated after rebuild or rollback?
 - Can the pilot create or expand the policy?
@@ -101,6 +119,7 @@ At minimum, run:
 
 ```bash
 npm run validate:repository
+npm run validate:plan
 npm run validate:field-contract
 npm run typecheck
 npm run test:field -- --reporter=verbose
@@ -133,3 +152,4 @@ For changes to the MCP boundary, policy, provider interface, audit ledger, authe
 - Do not merge real-input or real-recording capability until the dedicated local acceptance and privacy matrices are complete.
 - Do not use donor repository tests as Exosuit evidence.
 - Do not call a GitHub runner allocation failure a repository test failure or pass.
+- Do not shorten or bypass the master plan to make a phase appear complete.
