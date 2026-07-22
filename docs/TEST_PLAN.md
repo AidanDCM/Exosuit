@@ -1,383 +1,415 @@
-# Exosuit Test Plan
+# Exosuit Glove and Shared-System Test Plan
 
-## Authority and scope
+**Authority:** `docs/MASTER_SYSTEM_ROADMAP.md`  
+**Applies to:** Exosuit Glove and the authenticated Glove–Field integration  
+**Field-specific companion:** `docs/FIELD_TEST_PLAN.md`
 
-This document defines how Exosuit claims are proven. The implementation sequence and feature dependencies are controlled by `docs/MASTER_SYSTEM_ROADMAP.md`.
+## 1. Purpose
 
-A feature is never considered complete merely because it compiles or because its donor pattern worked elsewhere.
+This document defines how Glove and combined-system claims are tested. A feature is not complete because it compiles, because a fake provider passes, or because a donor project contained a similar test.
 
-## Evidence levels
+Every result must state:
 
-1. **Static review** — contracts and code paths appear internally consistent.
-2. **Unit test** — pure logic behaves as asserted.
-3. **Fake-provider integration** — the full software chain works without a real desktop.
-4. **GitHub-hosted platform build/test** — target-specific assemblies compile and pure tests execute on hosted runners.
-5. **Interactive Windows integration** — real UI Automation, focus, control panel, motor, and desktop behavior work in an isolated session.
-6. **Multi-window integration** — a real workflow coordinates multiple windows with locks, focus leases, checkpoints, and recovery.
-7. **Virtual-desktop integration** — native desktop identity, pause/resume, and switching rules work interactively.
-8. **Multi-agent/session integration** — separate agents or VMs coordinate through authenticated supervisor contracts.
-9. **ChatGPT MCP acceptance** — a normal ChatGPT conversation calls the reviewed private app and receives verified results.
-10. **Production-candidate evidence** — packaging, signing, update/rollback, performance, privacy, threat-model, and operational gates pass.
+- exact branch and commit;
+- subsystem: Glove, Field, or shared boundary;
+- environment and versions;
+- command or procedure;
+- expected and actual result;
+- evidence artifact;
+- evidence level;
+- residual risk;
+- rollback or disable path.
+
+## 2. Evidence levels
+
+| Level | Meaning |
+|---|---|
+| E0 | source/static review only |
+| E1 | deterministic unit tests |
+| E2 | fake-provider or simulated full-chain integration |
+| E3 | hosted build/test on the target operating system |
+| E4 | isolated interactive Windows acceptance |
+| E5 | real multi-window workflow acceptance |
+| E6 | authenticated Glove–Field host/guest acceptance |
+| E7 | normal ChatGPT MCP acceptance |
+| E8 | low-risk owner acceptance |
+| E9 | production-candidate packaging, security, privacy, performance, and operations |
 
 Lower evidence never implies a higher level.
 
-## Current automated TypeScript matrix
+## 3. Current claim boundary
 
-| Area | Positive tests | Deny/failure tests |
-|---|---|---|
-| contracts | valid bounded actions and canonical fixture | malformed action, missing expectation, oversized keys, schema drift |
-| permission | observe and sandbox semantic action | mutation in read-only mode, credentials, raw input, wrong window |
-| consequential targets | local review classification | no automatic execution |
-| prompt injection | clean accessible labels | hostile visible instructions flagged and mutation blocked |
-| loop control | normal progression | repeated action and step-budget stop |
-| audit | append, redact, verify | tampering detected |
-| HTTP agent | loopback URL and strong token | remote URL and weak token rejected |
-| gateway deadline | successful response and bounded default | timeout, malformed setting, caller-cancellation distinction |
-| application-map sanitization | safe descriptors and fingerprints | sensitive controls, values, runtime IDs, and plain titles excluded |
-| application-map matching | fresh IDs and confidence | sensitive fresh controls and missing controls remain unmatched |
-| application-map persistence | atomic save, hydrate, version increment | invalid files skipped and old versions pruned |
-| fake agent | semantic execute and verify | emergency-stop lock |
-| MCP protocol | discovery, annotations, map/proposal/execute/stop | physical proposal blocked in sandbox, unexpected tool mismatch |
-| system pulse | observe → find → propose → execute → verify → audit → stop | mutation after stop blocked |
+### Glove single-action core
 
-Commands:
+Source and earlier evidence cover:
+
+- MCP contracts and protocol tests;
+- fake desktop and full-chain fake pulse;
+- Windows UI Automation provider;
+- bounded semantic actions and verification;
+- pointer movement, left click, Unicode typing, and bounded hotkeys;
+- deterministic policy, local approval, audit, deadlines, and emergency stop;
+- bounded earlier Windows Sandbox acceptance.
+
+The current combined branch still requires exact-head execution.
+
+### Glove coordinator and advanced foundations
+
+Source/fake foundations exist for:
+
+- multi-window workflows;
+- focus and window leases;
+- artifacts and checkpoints;
+- uncertain-effect recovery;
+- virtual desktops;
+- supervisor/agent registration;
+- visual policy;
+- browser companion foundation;
+- signed skill manifests;
+- resource governance.
+
+These do not have complete interactive production evidence.
+
+### Field
+
+Field evidence is controlled by `docs/FIELD_TEST_PLAN.md` and the L0–L20 phases in the master plan.
+
+## 4. Mandatory automated validation
+
+### TypeScript
 
 ```bash
+npm run validate:repository
+npm run validate:plan
+npm run validate:field-contract
 npm run typecheck
+npm run test:field -- --reporter=verbose
+npm run test:field-pulse -- --reporter=verbose
 npm test -- --reporter=verbose
 npm run build
 npm run test:pulse -- --reporter=verbose
 ```
 
-## Current automated .NET matrix
-
-| Area | Tests |
-|---|---|
-| local policy | sandbox allow, observe deny, sensitive deny, wrong-window deny, raw-input denial |
-| full-control startup | incomplete configuration fails closed; exact contract enables test state |
-| raw-input policy | allowlist, active window, in-window coordinates, focused-field requirement, typed review |
-| fake provider | semantic value set and verification |
-| motor math | exact endpoints and finite coordinates |
-| simulated motor | move, click, type, hotkey, cancellation, bounded profile |
-| standard Windows motor | P/Invoke and composition compile with warnings as errors |
-| audit ledger | redaction, hash verification, tamper failure |
-| approval binding | stable fingerprint, modified proposal rejection, approval removal |
-| provider deadline | hung operation times out, caller cancellation remains distinct, configuration bounded |
-| wire format | snake-case enums and canonical fixture compatibility with TypeScript |
-
-Commands:
+### .NET
 
 ```powershell
 dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
-dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release -warnaserror
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-## CI jobs
+### Windows evidence runner
 
-### TypeScript
+```powershell
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
+```
 
-- install dependencies with scripts disabled,
-- strict typecheck,
-- unit/integration tests,
-- production build,
-- full-chain system pulse,
-- diagnostics artifact.
+The runner must preserve the exact commit, tool versions, per-step logs, and summary JSON.
 
-### Windows agent
+## 5. Glove contract and policy matrix
 
-- restore on GitHub-hosted Windows,
-- warnings-as-errors build,
-- .NET tests,
-- TRX and coverage artifacts.
+Positive tests:
 
-### Repository contract
+- bounded observe request;
+- bounded semantic action with target and expected result;
+- locally approved physical proposal;
+- fresh target and window generation;
+- successful verification;
+- audit append and independent chain verification;
+- local emergency stop.
 
-Required non-empty documents include:
+Negative tests:
 
-- README,
-- owner/developer operating manuals,
-- master system roadmap,
-- current architecture,
-- security model,
-- test plan,
-- reuse ADR,
-- Codex handoff,
-- audit baseline and donor traceability,
-- issue, decision, and internal change logs,
-- contributor/PR instructions.
+- malformed action;
+- missing expected result;
+- mutation in observe mode;
+- wrong process/window/generation;
+- credential or sensitive target;
+- unsupported physical primitive;
+- raw input without local full-control startup;
+- proposal changed after approval;
+- expired approval;
+- prompt-injection text treated as authority;
+- repeated action or loop budget exhaustion;
+- provider timeout;
+- mutation after emergency stop.
 
-The contract also scans non-document source for committed credential-shaped values.
-
-### Dependency security
-
-For the current private repository:
-
-- npm direct/transitive vulnerability audit fails on high or critical advisories,
-- NuGet direct/transitive vulnerability audit,
-- reports retained as artifacts.
-
-Conditional CodeQL jobs may run when repository settings support SARIF upload.
-
-## Phase 1 — Interactive core acceptance
-
-Run only in a disposable Windows VM or dedicated test account. The complete sequence is in `docs/CODEX_HANDOFF.md`.
-
-Required categories:
+## 6. Windows-agent matrix
 
 ### Startup and authentication
 
-- weak token prevents startup,
-- Windows provider requires exact acknowledgement,
-- service listens only on loopback,
-- missing/wrong token returns 401,
-- incomplete physical-input configuration fails closed,
-- control panel cannot enable full control.
+- loopback-only listener;
+- strong token required;
+- missing/wrong token denied;
+- Windows provider acknowledgement required;
+- physical input disabled unless every startup gate passes;
+- control panel and MCP cannot enable physical input;
+- CSRF and local control-panel protections.
 
-### Observe-only UI Automation
+### UI Automation
 
-- enumerate Notepad and Calculator,
-- active window matches the foreground window,
-- accessible roles/names/states/actions/bounds are sensible,
-- sensitive values omitted,
-- caps and disappeared targets fail cleanly.
+- enumerate top-level windows;
+- active window matches foreground state;
+- safe names, roles, states, actions, and bounds;
+- sensitive values omitted;
+- runtime caps enforced;
+- disappeared or stale targets fail cleanly;
+- focus, invoke, value, selection, scroll, wait, and verification;
+- unsupported/custom surfaces report uncertainty rather than success.
 
-### Application memory
+### Motor
 
-- persisted map has no live values, runtime IDs, screenshots, plain titles, or sensitive controls,
-- reopened application rematches to current IDs,
-- changed title produces warning,
-- missing control remains unmatched,
-- map never creates permission or execution.
+Current primitives:
 
-### Scoped semantic action
+- pointer move;
+- left click;
+- Unicode typing;
+- bounded hotkeys;
+- cancellation.
 
-- disposable Notepad action,
-- local review,
-- fresh execution check,
-- result verification,
-- approval consumption,
-- wrong-window and missing-target denial.
+Required production expansion tests:
 
-### Physical input
+- right, middle, and double click;
+- mouse down/up;
+- drag;
+- vertical and horizontal wheel;
+- key down/up;
+- named key press;
+- focus theft during every primitive;
+- target movement during every primitive;
+- emergency-stop latency during every primitive;
+- no input outside active allowlisted window;
+- host cursor unaffected when operating a Field guest.
 
-- restart-only activation,
-- pointer movement and click inside allowlisted active window,
-- typing only into fresh focused field,
-- harmless documented hotkey,
-- out-of-window, wrong-process, inactive-window, unfocused-field, expired, modified, and timed-out denials,
-- emergency-stop latency during movement and typing.
+### Display/session matrix
 
-### Display and environment
+- 100%, 125%, and 150% scaling;
+- primary and secondary monitor where supported;
+- minimized/restored windows;
+- lock/unlock;
+- Secure Desktop;
+- standard/elevated target boundaries;
+- RDP and VM session changes;
+- screen resolution changes fail closed where fixed display is required.
 
-- 100%, 125%, and 150% DPI,
-- primary and secondary monitor,
-- minimized/restored window,
-- virtualized controls,
-- standard versus elevated target,
-- lock/unlock and remote-session transitions.
+## 7. Application-map tests
 
-### ChatGPT acceptance
+- exclude live values, raw runtime IDs, screenshots, plain titles, and sensitive controls;
+- store process, role, automation ID, safe actions, relative geometry, fingerprint, and revision;
+- reopen and rematch current runtime IDs;
+- missing controls remain unmatched;
+- changed identity emits warning;
+- application maps never create permission;
+- execution always begins with fresh observation.
 
-- Secure MCP Tunnel health,
-- exact expected tool allowlist,
-- normal ChatGPT conversation performs status/observe/map/propose/execute/verify/stop,
-- ChatGPT never claims success before verified result,
-- local approvals remain authoritative.
+## 8. Multi-window coordinator tests
 
-## Phase 2 — Multi-window Workspace Coordinator test matrix
+### Fake and deterministic
 
-### GitHub/fake tests
+- three or more windows in one workspace;
+- monotonic workspace and window generations;
+- DAG validation and cycle rejection;
+- A → B → C structured artifact transfer;
+- provenance and integrity hashes;
+- parallel read-only observations;
+- serialized physical work per session;
+- shared-read and exclusive-write conflicts;
+- focus-lease acquisition, expiry, cancellation, and emergency invalidation;
+- deterministic lock ordering;
+- close/reopen generation change;
+- modal interruption;
+- failed verification blocks dependents;
+- checkpoint save and hydrate;
+- crash before, during, and after action;
+- uncertain external effect reconciles before retry;
+- no duplicate simulated effect;
+- pause, resume, cancel, and emergency propagation;
+- audit reconstructs full workflow.
 
-- at least three fake windows in one workspace,
-- stable window generation tracking,
-- workflow DAG validation and cycle rejection,
-- A → B → C structured artifact flow,
-- artifact provenance and integrity hash,
-- parallel read-only observations,
-- one physical execution slot per session,
-- focus lease acquisition, expiry, cancellation, and recovery,
-- per-window read/write lock conflicts,
-- deadlock-avoidance ordering,
-- window close/reopen generation invalidation,
-- unexpected modal dialog pauses workflow,
-- failed verification blocks dependent steps,
-- workflow checkpoint save/hydrate,
-- crash before/during/after action,
-- no duplicate simulated external effect after uncertain recovery,
-- emergency stop cancels queued/dependent work,
-- audit timeline reconstructs the workflow.
+### Interactive Windows
 
-### Interactive Windows tests
+- Notepad, Calculator, and the synthetic Field fixture;
+- repeated focus switching;
+- owner steals focus mid-action;
+- target minimizes/restores;
+- target closes/reopens;
+- modal appears between steps;
+- structured transfer without clipboard;
+- measured scheduler, focus, action, verification, and recovery latency.
 
-- coordinate Notepad, Calculator, and a disposable browser/test app,
-- user manually changes focus during execution,
-- target minimized/restored,
-- one target closes and reopens,
-- modal dialog appears between steps,
-- structured transfer works without clipboard,
-- physical actions remain serialized,
-- latency and recovery measured.
+Promotion requires both deterministic and interactive evidence on compatible contracts.
 
-### Promotion gate
+## 9. Virtual desktop tests
 
-Multi-window support requires both fake DAG evidence and interactive three-window evidence on compatible contracts.
+If retained:
 
-## Phase 3 — Virtual-desktop test matrix
+- real desktop identity, not title inference;
+- inactive desktop blocks execution;
+- workflow pauses with explicit reason;
+- switching requires local approval by default;
+- switch invalidates focus authority;
+- target moves between desktops;
+- desktop disappears or ID changes;
+- resume begins with fresh observation;
+- emergency stop during switching.
 
-### GitHub/fake tests
+## 10. Multi-agent and session tests
 
-- windows across several fake desktop IDs,
-- inactive desktop blocks action,
-- workflow pauses with explicit reason,
-- desktop switch invalidates focus lease,
-- target moves to another desktop,
-- desktop ID disappears/changes,
-- resume begins with fresh observation.
+- authenticated registration;
+- capability and contract negotiation;
+- heartbeat and stale-agent state;
+- two independent session branches;
+- one disconnects mid-step;
+- artifact integrity across agents;
+- per-agent and global stop;
+- unreachable-agent reporting;
+- restart and state hydration;
+- key rotation and replay protection;
+- VM suspend/resume and snapshot rollback;
+- the host never operates guest internals through VM viewer pixels.
 
-### Interactive Windows tests
+## 11. Browser rule and tests
 
-- two or more native virtual desktops,
-- manual switching,
-- optional locally approved switch gesture,
-- window movement between desktops,
-- Task View transitions,
-- emergency stop during switch,
-- no silent automatic desktop movement by default.
+The browser is an ordinary Windows application. Production acceptance does not depend on Playwright, a DOM bridge, an extension, or a special AI browser.
 
-## Phase 4 — Multi-agent/VM test matrix
+Required tests:
 
-### GitHub/simulated tests
+- browser launch through desktop controls;
+- address/search field grounding through UI Automation or vision;
+- tabs/windows treated as visible application state;
+- navigation and reload invalidate stale state;
+- loading, popup, download, and changed-layout handling;
+- password and credential fields denied or delegated to credential broker;
+- hostile page content remains untrusted;
+- independent verification of navigation and task result.
 
-- authenticated registration,
-- heartbeat and stale-agent state,
-- contract/capability negotiation,
-- two independent agent branches execute concurrently,
-- one agent disconnects mid-step,
-- structured artifact transfer integrity,
-- per-agent stop,
-- global stop with unreachable-agent reporting,
-- supervisor restart and state hydration,
-- version mismatch prevents unsafe routing.
+Any optional semantic browser companion remains disabled until separately reviewed and may never replace fresh desktop verification.
 
-### Local/VM tests
+## 12. Visual observation tests
 
-- agent inside a Windows VM,
-- two agents in separate sessions where resources permit,
-- VM suspend/resume and snapshot rollback,
-- network interruption and reconnect,
-- RDP/cloud session behavior,
-- no host-side assumption that a VM display window exposes guest internals.
-
-## Phase 5 — Browser companion test matrix
-
-- origin/tab/generation identity,
-- navigation invalidates stale locators,
-- permission and origin allowlists,
-- password and sensitive-field denial,
-- iframe and shadow-root fixtures,
-- hostile page text remains untrusted,
-- extension disconnect fallback,
-- browser version compatibility,
-- independent verification of semantic result.
-
-## Phase 6 — Visual sensor test matrix
-
-This phase remains blocked until privacy review.
+Visual observation remains blocked until its privacy phase passes.
 
 Required evidence:
 
-- capture off by default,
-- local visible capture indicator,
-- explicit per-task enablement,
-- window/region bounds enforced,
-- sensitive-region redaction fixtures,
-- image data ephemeral by default,
-- no image bytes in logs or application maps,
-- deletion/retention verification,
-- confidence thresholds and uncertain-state stopping.
+- disabled by default;
+- explicit task consent;
+- persistent capture indicator;
+- independent local stop;
+- window/region scope;
+- sensitive-region redaction before persistence;
+- protected/blank surface behavior;
+- frame, byte, time, and queue budgets;
+- no raw image bytes in normal audit or application maps;
+- encrypted external blobs where retained;
+- expiration and deletion certificate;
+- uncertain grounding stops execution.
 
-## Phase 7+ — Skills, recovery, packaging, and production
+## 13. Glove–Field integration tests
 
-Each later roadmap phase must add its own detailed test section before implementation begins. At minimum:
+- exact Field ID and generation binding;
+- exact Glove agent/session binding;
+- signed policy and attestation;
+- authenticated direction/sequence/nonce/key/payload/expiry checks;
+- persistent replay state across restart;
+- heartbeat degradation and fault;
+- lock and Secure Desktop block input;
+- Teach and Shadow have no input authority;
+- Pilot requires current scene, exact policy, action ordinal, budget, route, and capability;
+- emergency stop remains independent of model and normal channel;
+- generation replacement rejects stale messages and commands.
 
-### Skills
+## 14. ChatGPT MCP acceptance
 
-- manifest schema/signature,
-- scope and permission-diff review,
-- bounded steps/duration/risk,
-- simulation,
-- revocation and rollback.
+- reviewed narrow tool allowlist only;
+- no Field administration, consent, key rotation, deletion, sensitive export, or raw Hyper-V commands;
+- status and observation work in a normal conversation;
+- proposals use current state;
+- local policy and approval remain authoritative;
+- success is reported only after verification;
+- cancellation and emergency stop work without relying on the conversation;
+- complete sanitized audit references the request.
 
-### Reliability and persistence
+## 15. Reliability and recovery
 
-- duplicate delivery,
-- uncertain external effect,
-- crash/restart checkpoints,
-- migrations and rollback,
-- corruption and support-bundle redaction.
+- provider timeout before effect;
+- timeout during possible effect;
+- crash before action;
+- crash during action;
+- crash after effect before checkpoint;
+- duplicate message or delivery;
+- stale checkpoint;
+- corrupted checkpoint or audit;
+- storage full;
+- migration forward and rollback;
+- no blind retry after possible external effect;
+- dead-letter/frozen state is visible;
+- support bundle excludes private content.
 
-### Performance
+## 16. Performance and resource tests
 
-- benchmark harness,
-- percentile latency,
-- emergency-stop latency,
-- idle/active resource limits,
-- overload and backpressure.
+Establish measured targets for:
 
-### Packaging and updates
+- observation latency;
+- scene update latency;
+- action proposal latency;
+- focus-switch latency;
+- motor start and completion latency;
+- verification latency;
+- emergency-stop latency;
+- workflow scheduler overhead;
+- idle and active CPU;
+- memory by windows, workflows, agents, scene size, and replay state;
+- audit and demonstration storage growth;
+- backpressure and overload degradation.
 
-- signed installer,
-- SBOM,
-- reproducible build manifest,
-- staged update,
-- atomic rollback,
-- no update during active workflow,
-- uninstall/data-removal verification.
+Report p50, p95, p99, maximum, sample count, environment, and regression threshold.
 
-### Security and privacy
+## 17. Supply-chain and packaging tests
 
-- full threat model,
-- abuse cases,
-- transport and local interface review,
-- penetration test,
-- retention inventory,
-- incident response and release-blocking severity policy.
+- committed reviewed lockfiles;
+- `npm ci --ignore-scripts`;
+- npm and NuGet vulnerability audits;
+- SBOM;
+- reproducible build manifest;
+- signed binaries and installer;
+- clean install, upgrade, downgrade where supported, rollback, uninstall, and data removal;
+- configuration and storage migration;
+- update blocked during active workflow;
+- signature and integrity failure behavior.
 
-## Universal fault-injection catalog
+## 18. Security, privacy, and abuse tests
 
-- invalid or schema-incompatible agent response,
-- gateway timeout/disconnect,
-- provider timeout,
-- expired or modified proposal,
-- active-window change,
-- target generation change,
-- missing/disabled/offscreen/unfocused element,
-- provider exception,
-- verification mismatch,
-- malformed application-map file,
-- stale title fingerprint,
-- unmatched map controls,
-- corrupt audit or workflow event,
-- repeated identical action,
-- task step-budget exhaustion,
-- lost focus lease,
-- lock conflict or deadlock attempt,
-- agent heartbeat loss,
-- supervisor restart,
-- virtual-desktop mismatch,
-- duplicate external-effect delivery.
+- threat-model review;
+- prompt-injection and hostile-content fixtures;
+- authority escalation attempts;
+- credential harvesting denial;
+- host path and reparse attacks;
+- message tampering/replay;
+- consent bypass;
+- covert-recording prevention;
+- policy substitution;
+- stale generation;
+- stop-path sabotage;
+- support-bundle privacy;
+- penetration test of local interfaces;
+- incident-response and key-revocation drill.
 
-Every escaped fault becomes a regression test.
+## 19. Production release gate
 
-## Promotion rules
+Production is denied until all of the following are true on one signed release candidate:
 
-- **GitHub validated:** CI and supported security audits pass on the reviewed commit.
-- **Windows validated:** Phase 1 local matrix passes with evidence.
-- **Multi-window validated:** Phase 2 fake and interactive evidence passes.
-- **Virtual-desktop validated:** Phase 3 fake and interactive evidence passes.
-- **Multi-agent validated:** Phase 4 simulated and real-session evidence passes.
-- **ChatGPT connected:** private app acceptance passes against the reviewed tool list.
-- **Production candidate:** packaging, rollback, performance, threat-model, privacy, and operational gates pass.
+- current-head automated suites pass;
+- required interactive Glove and Field matrices pass;
+- normal ChatGPT acceptance passes;
+- no unresolved critical/high security finding;
+- privacy and deletion evidence passes;
+- performance targets pass;
+- installer, signing, update, rollback, and uninstall pass;
+- operational manuals and incident response are approved;
+- owner signs the production readiness decision.
 
-No document, PR, release note, or user-facing message may promote a feature beyond its proven evidence state.
+## 20. Current verdict
+
+See `docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md`.
+
+Current production status: **DENIED**.
