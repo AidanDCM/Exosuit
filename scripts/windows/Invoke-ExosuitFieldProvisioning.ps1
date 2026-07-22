@@ -1,0 +1,216 @@
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+param(
+    [Parameter(Mandatory)]
+    [ValidateScript({ Test-Path $_ -PathType Leaf })]
+    [string]$PlanPath,
+
+    [Parameter(Mandatory)]
+    [ValidateScript({ Test-Path $_ -PathType Leaf })]
+    [string]$HostConfigPath,
+
+    [Parameter()]
+    [switch]$Apply,
+
+    [Parameter()]
+    [string]$TypedConfirmation,
+
+    [Parameter()]
+    [string]$EvidenceDirectory = "$env:ProgramData\Exosuit\Evidence"
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Get-FileDigest {
+    param([Parameter(Mandatory)][string]$Path)
+    (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Assert-ChildPath {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Target)
+    $rootPath = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+    $targetPath = [System.IO.Path]::GetFullPath($Target)
+    if (-not $targetPath.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Target escapes approved Field storage root: $targetPath"
+    }
+}
+
+$plan = Get-Content -LiteralPath $PlanPath -Raw | ConvertFrom-Json -Depth 100
+$config = Get-Content -LiteralPath $HostConfigPath -Raw | ConvertFrom-Json -Depth 50
+if ($plan.contractVersion -ne 1 -or $config.contractVersion -ne 1) { throw 'Unsupported Field provisioning or host configuration contract version.' }
+if ($plan.hypervisor -ne 'hyper-v' -or $plan.vmGeneration -ne 2) { throw 'Only Hyper-V Generation 2 Field plans are supported.' }
+if ($plan.identity.subsystem -ne 'field') { throw 'Provisioning plan does not contain a Field identity.' }
+if ($plan.hostIntegrations.clipboard -ne $false -or $plan.hostIntegrations.broadDriveMapping -ne $false -or $plan.hostIntegrations.hostInputInjection -ne $false -or $plan.hostIntegrations.artifactBrokerOnly -ne $true) {
+    throw 'Provisioning plan violates the Field host-integration boundary.'
+}
+if ($plan.security.secureBoot -ne $true -or $plan.security.nestedVirtualization -ne $false) { throw 'Provisioning security settings are outside the approved contract.' }
+if ($plan.storage.baseImage.readOnly -ne $true) { throw 'Base image must remain immutable.' }
+if ($plan.storage.runtimeOverlay.disposable -ne $true -or $plan.storage.runtimeOverlay.differencing -ne $true) { throw 'Runtime OS disk must be a disposable differencing overlay.' }
+if ($plan.storage.runtimeOverlay.parentImageId -ne $plan.storage.baseImage.imageId) { throw 'Runtime overlay parent identity does not match the base image.' }
+if ($plan.storage.taskDisk.disposable -ne $true) { throw 'Task disk must be disposable.' }
+if ($plan.network.hostLanAccess -ne $false -or $plan.network.inboundConnections -ne $false) { throw 'Network plan attempts to enable forbidden connectivity.' }
+if ($plan.network.mode -eq 'nat_filtered') { throw 'Filtered NAT apply is held until a reviewed firewall/origin-enforcement provider exists.' }
+
+$fieldId = [Guid]::Parse([string]$plan.identity.fieldId).ToString()
+$generation = [int]$plan.identity.fieldGeneration
+if ($generation -lt 1) { throw 'Field generation is invalid.' }
+$expectedConfirmation = "CREATE FIELD $fieldId GENERATION $generation"
+if ($Apply -and $TypedConfirmation -cne $expectedConfirmation) {
+    throw "Apply requires exact typed confirmation: $expectedConfirmation"
+}
+
+$hostCheckJson = & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" -StoragePath $config.storageRoot
+$hostCheckExit = $LASTEXITCODE
+$hostCheck = $hostCheckJson | ConvertFrom-Json -Depth 20
+if ($hostCheckExit -ne 0 -or -not $hostCheck.ready) { throw 'Host capability check did not pass.' }
+
+$baseMatches = @($config.baseImages | Where-Object { $_.imageId -eq $plan.storage.baseImage.imageId })
+if ($baseMatches.Count -ne 1) { throw 'Host configuration must resolve exactly one approved base image.' }
+$base = $baseMatches[0]
+if (-not (Test-Path -LiteralPath $base.path -PathType Leaf)) { throw "Base image is missing: $($base.path)" }
+$baseDigest = Get-FileDigest -Path $base.path
+if ($baseDigest -ne $plan.storage.baseImage.digest -or $baseDigest -ne $base.digest) { throw 'Base image digest mismatch.' }
+
+$personal = $null
+if ($null -ne $plan.storage.personalState) {
+    $personalMatches = @($config.personalStateDisks | Where-Object { $_.diskId -eq $plan.storage.personalState.diskId })
+    if ($personalMatches.Count -ne 1) { throw 'Host configuration must resolve exactly one approved personal-state disk.' }
+    $personal = $personalMatches[0]
+    if (-not (Test-Path -LiteralPath $personal.path -PathType Leaf)) { throw "Personal-state disk is missing: $($personal.path)" }
+    $personalDigest = Get-FileDigest -Path $personal.path
+    if ($personalDigest -ne $plan.storage.personalState.digest -or $personalDigest -ne $personal.digest) { throw 'Personal-state disk digest mismatch.' }
+}
+
+$storageRoot = [System.IO.Path]::GetFullPath([string]$config.storageRoot)
+if ([System.IO.Path]::GetPathRoot($storageRoot) -eq $storageRoot) { throw 'Field storage root cannot be an entire drive.' }
+$generationRoot = Join-Path $storageRoot (Join-Path $fieldId "generation-$generation")
+$vmName = "Exosuit-Field-$fieldId-G$generation"
+$vmPath = Join-Path $generationRoot 'VM'
+$runtimeOverlayPath = Join-Path $generationRoot "$($plan.storage.runtimeOverlay.diskId).vhdx"
+$taskDiskPath = Join-Path $generationRoot "$($plan.storage.taskDisk.diskId).vhdx"
+Assert-ChildPath -Root $storageRoot -Target $generationRoot
+Assert-ChildPath -Root $storageRoot -Target $runtimeOverlayPath
+Assert-ChildPath -Root $storageRoot -Target $taskDiskPath
+
+$switchName = $null
+if ($plan.network.mode -eq 'isolated') {
+    $switchName = [string]$config.networkSwitches.isolated
+    if ([string]::IsNullOrWhiteSpace($switchName)) { throw 'Isolated virtual switch is not configured.' }
+    $switch = Get-VMSwitch -Name $switchName -ErrorAction Stop
+    if ($switch.SwitchType -ne 'Private') { throw 'The configured isolated switch must be a Hyper-V Private switch.' }
+}
+
+$summary = [ordered]@{
+    contractVersion = 1
+    generatedAt = [DateTimeOffset]::UtcNow.ToString('O')
+    applyRequested = [bool]$Apply
+    planId = [string]$plan.planId
+    planHash = [string]$plan.planHash
+    field = [ordered]@{ fieldId = $fieldId; fieldGeneration = $generation }
+    vmName = $vmName
+    generationRoot = $generationRoot
+    runtimeOverlayPath = $runtimeOverlayPath
+    taskDiskPath = $taskDiskPath
+    networkMode = [string]$plan.network.mode
+    switchName = $switchName
+    completedSteps = [System.Collections.Generic.List[string]]::new()
+    rollbackSteps = [System.Collections.Generic.List[string]]::new()
+    status = if ($Apply) { 'applying' } else { 'dry_run' }
+    error = $null
+}
+
+if (-not $Apply) {
+    $summary.status = 'dry_run_complete'
+    $summary.warning = "No mutation performed. Re-run with -Apply and -TypedConfirmation '$expectedConfirmation'."
+    $summary | ConvertTo-Json -Depth 20
+    return
+}
+
+if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) { throw "VM already exists: $vmName" }
+if (Test-Path -LiteralPath $generationRoot) { throw "Field generation directory already exists: $generationRoot" }
+
+try {
+    if ($PSCmdlet.ShouldProcess($generationRoot, 'Create Field generation storage')) {
+        New-Item -ItemType Directory -Path $generationRoot -Force | Out-Null
+        $summary.completedSteps.Add('create_generation_root')
+        $summary.rollbackSteps.Insert(0, 'remove_generation_root')
+    }
+    if ($PSCmdlet.ShouldProcess($runtimeOverlayPath, 'Create disposable differencing OS overlay')) {
+        New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing | Out-Null
+        $summary.completedSteps.Add('create_runtime_overlay')
+    }
+    if ($PSCmdlet.ShouldProcess($taskDiskPath, 'Create disposable task disk')) {
+        New-VHD -Path $taskDiskPath -Dynamic -SizeBytes ([UInt64]$plan.storage.taskDisk.maximumBytes) | Out-Null
+        $summary.completedSteps.Add('create_task_disk')
+    }
+
+    $newVmParameters = @{
+        Name = $vmName
+        Generation = 2
+        MemoryStartupBytes = [UInt64]$plan.compute.startupMemoryMiB * 1MB
+        VHDPath = $runtimeOverlayPath
+        Path = $vmPath
+    }
+    if ($switchName) { $newVmParameters.SwitchName = $switchName }
+    if ($PSCmdlet.ShouldProcess($vmName, 'Create Hyper-V Field VM')) {
+        New-VM @newVmParameters | Out-Null
+        $summary.completedSteps.Add('create_vm')
+        $summary.rollbackSteps.Insert(0, 'remove_vm')
+    }
+
+    Set-VMProcessor -VMName $vmName -Count ([int]$plan.compute.virtualProcessors) -ExposeVirtualizationExtensions $false
+    if ($plan.compute.dynamicMemory) {
+        Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $true -MinimumBytes ([UInt64]$plan.compute.minimumMemoryMiB * 1MB) -StartupBytes ([UInt64]$plan.compute.startupMemoryMiB * 1MB) -MaximumBytes ([UInt64]$plan.compute.maximumMemoryMiB * 1MB)
+    } else {
+        Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false -StartupBytes ([UInt64]$plan.compute.startupMemoryMiB * 1MB)
+    }
+    Set-VMFirmware -VMName $vmName -EnableSecureBoot On -SecureBootTemplate 'MicrosoftWindows'
+    Set-VM -VMName $vmName -CheckpointType $(if ($plan.security.checkpoints -eq 'production') { 'Production' } else { 'Disabled' }) -AutomaticCheckpointsEnabled $false
+    $summary.completedSteps.Add('configure_vm')
+
+    if ($plan.security.tpmRequired) {
+        Set-VMKeyProtector -VMName $vmName -NewLocalKeyProtector
+        Enable-VMTPM -VMName $vmName
+        $summary.completedSteps.Add('enable_tpm')
+    }
+
+    if ($personal) {
+        Add-VMHardDiskDrive -VMName $vmName -ControllerType SCSI -Path $personal.path | Out-Null
+        $summary.completedSteps.Add('attach_personal_state')
+    }
+    Add-VMHardDiskDrive -VMName $vmName -ControllerType SCSI -Path $taskDiskPath | Out-Null
+    $summary.completedSteps.Add('attach_task_disk')
+
+    if ($plan.network.mode -eq 'disabled') {
+        Get-VMNetworkAdapter -VMName $vmName -ErrorAction SilentlyContinue | Remove-VMNetworkAdapter -Confirm:$false
+        $summary.completedSteps.Add('remove_network_adapter')
+    }
+
+    if ($PSCmdlet.ShouldProcess($vmName, 'Start Hyper-V Field VM')) {
+        Start-VM -Name $vmName | Out-Null
+        $summary.completedSteps.Add('start_vm')
+    }
+    $summary.status = 'started_pending_guest_validation'
+} catch {
+    $summary.status = 'failed_rolling_back'
+    $summary.error = $_.Exception.Message
+    try {
+        $vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
+        if ($vm) {
+            if ($vm.State -ne 'Off') { Stop-VM -Name $vmName -TurnOff -Force -Confirm:$false -ErrorAction SilentlyContinue }
+            Remove-VM -Name $vmName -Force -Confirm:$false -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $generationRoot) { Remove-Item -LiteralPath $generationRoot -Recurse -Force }
+        $summary.status = 'failed_rolled_back'
+    } catch {
+        $summary.status = 'failed_rollback_incomplete'
+        $summary.rollbackError = $_.Exception.Message
+    }
+    throw
+} finally {
+    New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
+    $evidencePath = Join-Path $EvidenceDirectory "field-provision-$fieldId-g$generation-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()).json"
+    $summary | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $evidencePath -Encoding utf8NoBOM
+}
+
+$summary | ConvertTo-Json -Depth 20

@@ -1,0 +1,32 @@
+{
+  "contractVersion": 1,
+  "fixtureId": "exosuit-field-pilot-fixture-v1",
+  "entryPoint": "field-pilot-fixture.html",
+  "networkRequired": false,
+  "containsRealCredentials": false,
+  "containsPersonalData": false,
+  "expectedControls": [
+    "query",
+    "search",
+    "results",
+    "enable-later",
+    "delayed-action",
+    "open-modal",
+    "confirm-modal",
+    "cancel-modal",
+    "no-effect-timeout",
+    "uncertain-effect",
+    "download",
+    "fixture-password",
+    "status"
+  ],
+  "expectedFailureStates": [
+    "failure:transient-no-effect",
+    "failure:possible-unverified-effect"
+  ],
+  "expectedOutput": {
+    "filename": "field-fixture-output.json",
+    "mediaType": "application/json"
+  },
+  "reset": "Reload the local page and delete the generated output from the disposable task disk."
+}

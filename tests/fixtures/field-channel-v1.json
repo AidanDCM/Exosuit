@@ -1,0 +1,27 @@
+{
+  "secret": "field-channel-test-secret-that-is-at-least-thirty-two-characters",
+  "expectedDirection": "guest_to_host",
+  "expectedKeyId": "field-channel-key-1",
+  "verifyAt": "2026-07-21T18:00:30.000Z",
+  "envelope": {
+    "contractVersion": 1,
+    "messageId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "field": {
+      "fieldId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "fieldGeneration": 1
+    },
+    "direction": "guest_to_host",
+    "sequence": 7,
+    "messageType": "heartbeat",
+    "sentAt": "2026-07-21T18:00:00.000Z",
+    "expiresAt": "2026-07-21T18:01:00.000Z",
+    "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+    "keyId": "field-channel-key-1",
+    "payloadHash": "1b5130072c4824e9ff4bbed304a0cec7825e64cdd49bddc0b25db0dadc5d2471",
+    "payload": {
+      "healthy": true,
+      "queueDepth": 0
+    },
+    "signature": "MyFGbZzyJCi3oBZrMTvobtZxJm10RzQHL2fKEonef2M"
+  }
+}
