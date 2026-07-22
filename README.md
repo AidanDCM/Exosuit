@@ -2,198 +2,193 @@
 
 Exosuit is a private, model-independent computer embodiment platform for authorized AI pilots such as ChatGPT or Claude.
 
-The repository contains two intentionally separate systems:
+## Read the complete plan first
+
+The full product, architecture, learning program, implementation order, tests, audits, failure cases, evidence gates, rollback, and production requirements are written in:
+
+> **[`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — Exosuit Complete Master System Plan**
+
+That document is the single planning authority for the repository. It covers the complete program from exact-head validation through Hyper-V, Teach, Shadow, Correction, personal task/motor/typing/timing/language models, Assisted Mode, synthetic Pilot, ChatGPT acceptance, owner acceptance, packaging, security, privacy, and production operations.
+
+Do not treat a narrower architecture note, GitHub issue, PR description, or implementation-status file as a replacement for the master plan.
+
+## One repository, two separate systems
 
 | System | Meaning | Responsibility |
 |---|---|---|
-| **Exosuit Glove** | the body, hand, and nervous system | sensing, planning, policy, execution, verification, workflow state, audit, and emergency stop |
-| **Exosuit Field** | the controlled computer and teaching environment | isolated Windows session, stable display, applications, storage, task workspace, recording surface, and VM lifecycle |
+| **Exosuit Glove** | body, hand, and nervous system | sensing, planning support, policy, semantic and physical execution, verification, workflow state, recovery, audit, and emergency stop |
+| **Exosuit Field** | controlled computer and teaching environment | isolated Windows session, stable display, applications, VM/storage lifecycle, task workspace, and owner-consented demonstration surface |
 
-The pilot supplies intent. The Glove decides how to observe and act within local policy. The Field supplies the computer environment in which the Glove learns and works. They share one repository but have separate identities, lifecycles, policies, evidence, tests, manuals, and failure states.
+> **The Glove is not the VM. The Field is not the agent.**
 
-The goal is **human flexibility, machine precision, transparent operation, recoverable workflows, detailed owner teaching, and local user authority**—not hidden automation.
+They share one repository but retain separate identities, generations, lifecycles, policies, evidence, tests, manuals, failure states, and rollback paths.
 
-Read [`docs/GLOVE_FIELD_BOUNDARY.md`](docs/GLOVE_FIELD_BOUNDARY.md) before changing either subsystem. Read [`docs/FIELD_IMPLEMENTATION_STATUS.md`](docs/FIELD_IMPLEMENTATION_STATUS.md) for exact Field evidence and limitations.
+The pilot supplies intent. The Glove observes and acts within local policy. The Field supplies the Windows environment in which the owner teaches and the Glove later works.
+
+## Product goal
+
+The target is a transparent, owner-authorized desktop agent that can:
+
+- watch complete tasks performed inside the Field after explicit consent;
+- record what was visible, what changed, what the owner did, how it was done, and when;
+- learn task order, attention, reading, mouse, typing, timing, language, and correction patterns as separate versioned models;
+- predict behavior in Shadow Mode without input authority;
+- collect owner corrections;
+- perform validated substeps in Assisted Mode;
+- complete bounded workflows in Pilot Mode with fresh perception, verification, recovery, audit, and immediate local interruption.
+
+The system may become highly personalized. It must not claim that an AI-performed action proves the owner personally performed it.
+
+## Browser rule
+
+A browser is an ordinary Windows application inside the Field.
+
+The required product path does not depend on Playwright, DOM automation, an AI browser, or a browser extension as the main controller. Exosuit uses fresh Windows accessibility state, policy-bound visual state when needed, and ordinary guest-local mouse and keyboard input.
 
 ## Current status
 
-**The Glove has a strong single-agent Windows core with bounded live acceptance. The Field has broad source-only and fake/pure foundations—including guarded Hyper-V tooling—but no current-head executable validation, live authenticated VM integration, real recording hooks, predictive model, or Pilot runtime. Production use remains denied.**
+### Glove
 
-### Glove foundation
+The Glove has substantial implemented source and bounded Windows evidence for:
 
-- tool-only MCP server suitable for a private ChatGPT app,
-- real MCP client/server protocol tests,
-- fake desktop provider for deterministic testing,
-- Windows UI Automation sensing and semantic actions,
-- standard Windows pointer, click, Unicode typing, and bounded hotkey motor code,
-- restart-only and allowlist-only physical-input activation,
-- proposal → deterministic policy → local approval → fresh recheck → execution → verification,
-- immutable approval fingerprints,
-- gateway/provider deadlines and local emergency stop,
-- sanitized versioned application maps,
-- dual tamper-evident audit ledgers,
-- prompt-injection and loop guards,
-- local approval/control panel,
-- multi-window workflows, focus leases, queues, artifacts, checkpoints, and recovery,
-- virtual-desktop and multi-agent foundations,
-- disabled-by-default visual, browser-companion, skill, and resource-governance foundations.
+- MCP contracts;
+- fake desktop providers and protocol tests;
+- Windows UI Automation observation and semantic actions;
+- pointer movement, click, Unicode typing, and hotkeys;
+- local policy and approval;
+- multi-window workflow foundations;
+- checkpoints and no-blind-retry recovery;
+- tamper-evident audits;
+- emergency stop.
 
-### Field source foundation
+### Field
 
-- explicit `glove` and `field` subsystem vocabulary,
-- Field ID and monotonically increasing generation,
-- agent, machine, Windows-session, image, personal-state, task-disk, and boot identity,
-- fixed single-monitor display contract,
-- bounded Teach, Shadow, and Pilot policy,
-- hard-denied host desktop, broad host-drive write, privilege escalation, and security-control changes,
-- canonical policy hashing and short-lived HMAC-SHA256 Field attestation,
-- separate Field lifecycle and Glove-agent binding,
-- fake-first Field Manager with exact provisioned-policy binding and hash-linked Field audit,
-- Hyper-V Generation 2 desired-state plan with immutable base image, disposable differencing OS overlay, optional persistent personal-state disk, and separate disposable task disk,
-- local owner/service/pilot administration separation,
-- authenticated replay-resistant host/guest message contracts,
-- guest heartbeat and liveness evaluation,
-- guest bootstrap manifest and readiness evaluator,
-- typed guest commands with exact policy, scene, action-budget, route, and capability checks,
-- Teach recorder state machine with explicit consent, visible-state contract, pause/resume/abort/fault, and no input authority,
-- consent-bound demonstration episodes and ordered event streams,
-- recursive secret-shaped payload redaction,
-- AES-256-GCM terminal demonstration storage, tamper detection, atomic writes, and deletion,
-- visual consent, region/change-only modes, external blob references, redaction, budgets, and retention,
-- versioned Field scene graph and input-readiness guards,
-- Shadow prediction-only contracts and metrics with `executionAllowed: false`,
-- Windows-specific Parts & Pieces path-scope adaptation,
-- bounded size/SHA-256/classification artifact broker,
-- deterministic no-blind-retry recovery,
-- privacy-safe support bundles,
-- TypeScript/.NET shared Field and signed-channel fixtures,
-- full fake Field system pulse,
-- guarded PowerShell host checks, plan resolver, apply/rollback, guest bootstrap, destruction, and evidence runner,
-- dedicated architecture, status, owner, developer, runbook, test, threat, failure-injection, audit, and Parts & Pieces documentation.
+The Field branch contains substantial source-only and fake/pure foundations for:
 
-### Not live or not proven
+- Field identity and monotonically increasing generation;
+- signed policy and attestation;
+- Hyper-V Generation 2 desired state;
+- immutable base image and disposable differencing OS overlay;
+- optional persistent personal state and separate task disk;
+- guarded Windows host, apply, rollback, bootstrap, destroy, and validation scripts;
+- authenticated replay-resistant host/guest channel contracts;
+- heartbeat and readiness contracts;
+- typed guest command authorization;
+- Teach recorder state and encrypted demonstration storage;
+- visual retention policy;
+- scene graph;
+- Shadow comparison metrics with execution disabled;
+- path and artifact boundaries;
+- recovery and privacy-safe diagnostics;
+- TypeScript/.NET wire fixtures;
+- synthetic acceptance application;
+- manuals, audits, threat model, failure matrix, and CI contracts.
 
-- current-head TypeScript, .NET, and PowerShell execution evidence,
-- supported reviewed Hyper-V provider integrated behind `FieldProvisioner`,
-- actual VM creation and isolation evidence,
-- base-image immutability and destruction-confinement evidence,
-- real host/guest transport, persistent replay state, and key rotation,
-- running guest bootstrap and heartbeat service,
-- live Windows scene producer,
-- real Teach input/UI Automation hooks and visible recorder UI,
-- visual capture/blob store and deletion evidence,
-- demonstration segmentation/retrieval or actual Shadow predictor,
-- personal task, motor, typing, language, or timing models,
-- live filesystem/cross-VM artifact transfer,
-- credential broker,
-- Pilot integration into the Windows policy/execution loop,
-- connected ChatGPT-to-Field acceptance,
-- installer, signing, updater, penetration test, or production operations.
+### Not yet proven live
 
-## Evidence boundary
+- current-head compilation and executable test evidence;
+- real Hyper-V provisioning and isolation;
+- live host/guest transport;
+- guest bootstrap and heartbeat service;
+- live scene production;
+- live consented Teach recording;
+- actual demonstration processing and retrieval;
+- actual Shadow predictor;
+- personal task, motor, typing, timing, language, and correction models;
+- live cross-VM artifact transport;
+- Pilot integration;
+- ChatGPT-to-Field acceptance;
+- real website operation;
+- production readiness.
 
-The single-agent Glove core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
+## Current execution gate
 
-The Field has source contracts, fake/pure implementations, scripts, and tests written. That does **not** prove Hyper-V isolation, live recording, behavioral learning, or autonomous operation.
+The next mandatory phase is L0 in the master plan and GitHub issue #12.
 
-GitHub-hosted workflow jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no job logs. The repository does not mislabel runner/account failures as passing or failing code tests. Exact executable branch validation remains required.
-
-## Architecture
-
-```text
-ChatGPT / Claude / another MCP host
-                 |
-          narrow MCP tools
-                 v
-        Exosuit Glove Supervisor
-  - action and workflow planning
-  - demonstration retrieval
-  - personal policy selection
-  - verification, recovery, audit
-                 |
-        authenticated Field boundary
-                 v
-       Exosuit Glove Agent in guest
-  - fresh Windows UI Automation
-  - optional bounded visual state
-  - deterministic local policy
-  - typed guest command authorization
-  - local reflex and motor control
-  - verification and emergency stop
-                 |
-                 v
-           Exosuit Field VM
-  - immutable parent base VHDX
-  - disposable OS differencing overlay
-  - optional persistent personal state
-  - separate disposable task disk
-  - fixed display contract
-  - Teach / Shadow / Pilot lifecycle
-```
-
-The host must not control the guest by treating VMConnect or an RDP viewer as the guest desktop. One Glove agent runs inside every controlled Windows session or VM.
-
-## Field modes
-
-### Teach
-
-The owner controls the Field. The Glove records consent-bound task, input, visual, accessibility, system, correction, and outcome evidence. It does not inject input. The state machine and storage exist; live hooks and visible UI do not.
-
-### Shadow
-
-The owner controls the Field. The Glove predicts the next intent, target, method, timing class, and expected result. It does not inject input. Prediction schemas and metrics exist; an actual predictor/runtime does not.
-
-### Pilot
-
-An authorized pilot controls the Field through the Glove within a host-created, signed, bounded policy. Guest command authorization exists as a pure module; it is not wired into a live agent or enabled.
-
-## Current MCP surface
-
-The current MCP surface remains the existing Glove desktop and coordinator tools. No model-facing Field administration, policy, consent, recording, provisioning, key-management, deletion, sensitive-export, or raw Hyper-V tool is enabled.
-
-A model cannot administer the Field. Future read/status tools must preserve that boundary.
-
-## Safety defaults
-
-| Capability | Default |
-|---|---|
-| Glove desktop provider | fake |
-| real Windows mode | observe |
-| physical input | disabled |
-| screenshots | disabled; no Windows capture implementation |
-| Field provisioning scripts | dry-run/no apply unless exact local confirmation |
-| filtered NAT | apply held |
-| host clipboard/broad drive mapping/host input | disabled |
-| base image | immutable parent only |
-| runtime OS state | disposable differencing overlay |
-| Teach recording | source state machine only; live hooks disabled |
-| Shadow | schemas/metrics only; execution literal false |
-| Pilot Field autonomy | denied |
-| Field administration by model | blocked |
-| credentials and secret-bearing controls | hard denied |
-| arbitrary shell through MCP, Field plan, or guest command | excluded |
-| ordinary sensitive/untrusted artifact export | blocked |
-
-## Validation
-
-Install dependencies with scripts disabled, then run:
-
-```bash
-npm install --ignore-scripts
-npm run validate:field
-npm run validate:typescript
-```
-
-On Windows, use the evidence-preserving runner:
+On an authenticated Windows checkout of the exact branch head:
 
 ```powershell
 ./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
-Individual commands include:
+This runner is intended to preserve exact evidence for repository validation, the master-plan validator, Field validation, TypeScript, tests, builds, PowerShell parsing, .NET, and the read-only Hyper-V host check.
+
+Hosted GitHub jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no logs. That is an infrastructure block—not a repository pass or failure.
+
+## Architecture summary
+
+```text
+Owner / local administration
+         |
+         +-------------------------+
+         |                         |
+         v                         v
+Exosuit Glove Supervisor     Exosuit Field Manager
+         |                         |
+         +------ authenticated ----+
+                        |
+                        v
+              Exosuit Field VM
+     +--------------------------------------+
+     | Glove Agent inside Windows session   |
+     | - UI Automation and scene state      |
+     | - policy-bound vision                |
+     | - local reflex and motor             |
+     | - Teach recorder                     |
+     | - verification and emergency stop    |
+     +--------------------------------------+
+     | normal Windows desktop/applications  |
+     +--------------------------------------+
+```
+
+The host must not operate the guest by treating VMConnect or an RDP viewer as the guest desktop. One Glove agent runs inside every controlled Windows session.
+
+## Field modes
+
+### Teach
+
+The owner operates. Exosuit records only after explicit consent, with visible state and an independent stop. Teach never injects input.
+
+### Shadow
+
+The owner operates. Exosuit predicts the next intent, target, method, expected result, timing, and optional trajectory. Shadow cannot execute.
+
+### Correction
+
+The owner takes over when the system diverges. The difference becomes structured correction data.
+
+### Assisted
+
+Exosuit performs validated substeps while the owner remains the primary operator.
+
+### Pilot
+
+An authorized pilot operates a validated workflow through the Glove within a host-created, signed, bounded policy. Pilot does not administer the Field.
+
+## Safety defaults
+
+| Capability | Default |
+|---|---|
+| desktop provider | fake or observe-only until approved |
+| physical input | disabled |
+| Field provisioning | dry-run unless exact local confirmation |
+| host clipboard, broad drive mapping, host input | disabled |
+| base image | immutable parent only |
+| runtime OS state | disposable differencing overlay |
+| recording | disabled until consented live acceptance |
+| Shadow execution | structurally false |
+| Pilot autonomy | denied until phased validation |
+| model Field administration | blocked |
+| arbitrary shell through MCP | excluded |
+| credentials in demonstrations or model context | prohibited |
+| sensitive or untrusted ordinary export | blocked |
+
+## Validation commands
 
 ```bash
+npm install --ignore-scripts
 npm run validate:repository
+npm run validate:plan
 npm run validate:field-contract
 npm run typecheck
 npm run test:field -- --reporter=verbose
@@ -209,58 +204,43 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-Do not enable real Field operation outside the sequence in [`docs/FIELD_WINDOWS_RUNBOOK.md`](docs/FIELD_WINDOWS_RUNBOOK.md).
+## Primary documents
 
-## Planning, manuals, and evidence
-
-### Shared and Glove
-
+- [Complete Master System Plan](docs/MASTER_SYSTEM_ROADMAP.md)
 - [Glove/Field boundary](docs/GLOVE_FIELD_BOUNDARY.md)
-- [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Implemented Glove architecture](docs/ARCHITECTURE.md)
-- [Security model](docs/SECURITY_MODEL.md)
-- [Glove test plan](docs/TEST_PLAN.md)
-- [Codex/local acceptance handoff](docs/CODEX_HANDOFF.md)
-
-### Field
-
 - [Field implementation status](docs/FIELD_IMPLEMENTATION_STATUS.md)
+- [Implemented Glove architecture](docs/ARCHITECTURE.md)
 - [Field architecture](docs/FIELD_ARCHITECTURE.md)
-- [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
-- [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
+- [Security model](docs/SECURITY_MODEL.md)
+- [Shared/Glove test plan](docs/TEST_PLAN.md)
 - [Field test plan](docs/FIELD_TEST_PLAN.md)
 - [Windows and Hyper-V runbook](docs/FIELD_WINDOWS_RUNBOOK.md)
+- [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
+- [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
 - [Field threat model](docs/qa/FIELD_THREAT_MODEL.md)
 - [Field failure-injection matrix](docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md)
-- [Glove/Field Parts traceability](docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md)
-- [Field foundation audits](docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md)
-- [Field expansion audit](docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md)
+- [Execution issue index](docs/qa/FIELD_EXECUTION_ISSUE_INDEX.md)
 
 ## Explicit exclusions
 
 Exosuit must not implement or claim:
 
-- stealth or undetectable automation,
-- anti-bot or anti-cheat evasion,
-- kernel or hardware impersonation for concealment,
-- credential harvesting,
-- privilege escalation,
-- arbitrary remote shell execution,
-- recording without explicit owner consent,
-- host-wide input capture,
-- covert surveillance,
-- bypassing application or platform security controls,
-- that behavioral imitation proves a human performed an action.
+- stealth or undetectable automation;
+- anti-bot or anti-cheat evasion;
+- kernel or hardware concealment;
+- credential harvesting;
+- privilege escalation;
+- arbitrary remote shell execution;
+- recording without owner consent;
+- covert surveillance;
+- bypassing platform security controls;
+- guaranteed indistinguishability from a person;
+- that behavioral imitation proves a human acted.
 
 ## Current holds
 
-- **PR state:** draft review required
-- **Merge to build branch:** hold pending executable validation and review
-- **Merge to main:** denied
-- **Production use:** denied
-- **Real accounts or consequential targets:** denied
-- **Normal personal desktop use:** denied
-- **Live Field VM:** unproven and disabled
-- **Teach/Shadow/Pilot runtime:** disabled
-- **Connected ChatGPT Field acceptance:** pending
-- **Packaging, signing, updater, release rollback, privacy operations, penetration testing, and production support:** pending
+- PR #11 remains draft.
+- Merge to `build/exosuit-mvp` is held pending L0 executable validation and review.
+- Merge to `main` is denied.
+- Live recording, Shadow prediction, Pilot operation, real accounts, and consequential tasks are denied.
+- Packaging, signing, updater, privacy operations, penetration testing, and production support remain pending later master-plan phases.
