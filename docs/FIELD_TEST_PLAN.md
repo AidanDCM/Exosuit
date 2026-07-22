@@ -1,452 +1,523 @@
 # Exosuit Field Test Plan
 
-**Status:** Foundation test plan; live runtime tests pending implementation  
-**Created:** 2026-07-21T13:32:27-04:00
+**Authority:** `docs/MASTER_SYSTEM_ROADMAP.md`  
+**Applies to:** Exosuit Field and the authenticated Field boundary with the Glove  
+**Shared companion:** `docs/TEST_PLAN.md`
 
-## Purpose
+## 1. Purpose
 
-This plan proves the Exosuit Field independently from the Exosuit Glove while also proving their authenticated boundary. Tests must state which subsystem and evidence level they cover.
+This plan defines the evidence required to promote Field capabilities from source foundation to production. It proves the Field independently from the Glove and then proves the combined boundary.
 
-## Evidence vocabulary
+A Field claim must state:
+
+- exact Field ID and generation;
+- exact Glove agent and Windows session;
+- exact commit and binary versions;
+- Field lifecycle and mode;
+- policy, attestation, key, scene, and model versions;
+- command/procedure;
+- expected and actual result;
+- evidence level;
+- artifact locations and integrity hashes;
+- residual risk;
+- rollback/destruction result.
+
+## 2. Evidence levels
 
 | Level | Meaning |
 |---|---|
-| `static_inspection` | source, schema, or documentation review only |
-| `typescript_unit` | deterministic TypeScript test without Windows/VM |
-| `dotnet_unit` | deterministic .NET test without interactive Windows behavior |
-| `fake_integration` | full contract path against fake Field or fake agent |
-| `windows_guest_manual` | reproducible operator procedure inside a dedicated guest |
-| `windows_guest_automated` | automation running inside a dedicated guest session |
-| `hyperv_host_guest` | host provisioning and guest communication evidence |
-| `chatgpt_mcp_connected` | normal ChatGPT MCP request reaches the reviewed Field path |
-| `owner_accepted` | owner reviewed exact evidence and accepted promotion |
-| `production_candidate` | packaging, operations, privacy, threat, performance, and rollback gates pass |
-
-A test at one level does not prove a higher level.
-
-## Foundation contract matrix
-
-### Field identity
-
-Positive:
-
-- valid Field identity parses,
-- `subsystem` equals `field`,
-- positive generation accepted,
-- optional personal-state digest accepted.
-
-Negative:
-
-- empty Field ID,
-- generation zero or negative,
-- `glove` used as Field subsystem,
-- malformed image digest,
-- empty session, machine, agent, or task-disk identity.
-
-### Display contract
-
-Positive:
-
-- one monitor,
-- 1920x1080,
-- 100% scale,
-- 100% browser zoom,
-- fixed resolution.
-
-Negative:
-
-- multiple monitors in initial contract,
-- dynamic resolution enabled,
-- unsupported size or scale,
-- empty keyboard layout.
-
-### Policy
-
-Positive:
-
-- Teach policy with consent,
-- Shadow policy with no recording capability,
-- Pilot policy with bounded processes/capabilities,
-- short expiry and finite budgets.
-
-Negative:
-
-- Teach without consent,
-- duplicate processes or capabilities,
-- expiry before issue,
-- host desktop access true,
-- host drive write true,
-- privilege escalation true,
-- security-control changes true,
-- action or runtime budget outside bounds.
-
-### Attestation
-
-Positive:
-
-- canonical policy hash,
-- HMAC signature verification,
-- exact Field generation binding,
-- valid time window.
-
-Negative:
-
-- modified policy,
-- wrong generation,
-- wrong key,
-- malformed signature,
-- expired attestation,
-- not-yet-valid attestation,
-- expired policy,
-- short attestation secret.
-
-### Field lifecycle
-
-Test every allowed edge:
-
-```text
-planned -> provisioning
-planned -> destroyed
-provisioning -> ready | faulted | stopping
-ready -> teaching | shadowing | piloting | stopping | faulted
-teaching | shadowing | piloting -> ready | stopping | faulted
-stopping -> stopped | faulted
-stopped -> provisioning | destroyed
-faulted -> stopping | destroyed
-```
-
-Test forbidden direct edges, terminal destroyed state, repeated registration, stale generation, wrong Glove binding, and fault without reason.
-
-### Demonstration episode
-
-Positive:
-
-- explicit consent,
-- ordered events,
-- all five source classes,
-- completion and abort,
-- source summary,
-- artifact references,
-- nested secret-shaped key redaction.
-
-Negative:
-
-- no consent,
-- empty goal or success criteria,
-- event after completion,
-- timestamp regression,
-- event overflow,
-- malformed event source,
-- end before start,
-- secret classification without approved handling,
-- cross-Field episode merge.
-
-## Cross-language contract plan
-
-Add `tests/fixtures/field-contract-v1.json` before Field Manager wiring. Both TypeScript and .NET must parse and validate:
-
-- Field identity,
-- display contract,
-- policy subset shared with guest,
-- lifecycle report,
-- demonstration event metadata,
-- fault report.
-
-Required tests:
-
-- TypeScript fixture parse,
-- .NET fixture parse,
-- enum wire-name agreement,
-- date/time agreement,
-- unknown-version rejection,
-- missing-generation rejection.
-
-## Field Manager fake integration
-
-Before invoking Hyper-V, implement a fake manager with tests for:
-
-- create planned Field,
-- provision to ready,
-- start mode,
-- stop,
-- destroy,
-- increment generation after rebuild,
-- preserve personal-state reference while replacing task disk,
-- deny concurrent writers to the same Field generation,
-- heartbeat expiry,
-- policy/attestation mismatch,
-- cancellation during provisioning,
-- idempotent cleanup.
-
-## Hyper-V host tests
-
-Run only on a dedicated Windows host with virtualization enabled.
-
-### Capability and preflight
-
-- edition and Hyper-V capability detected,
-- sufficient memory and disk,
-- required virtual switch state,
-- base image exists and hash matches,
-- key material available without logging,
-- no production host folders mapped writable.
-
-### Provisioning
-
-- create Generation 2 VM,
-- attach immutable base image or differencing chain,
-- attach personal-state disk read/write as designed,
-- create and attach disposable task disk,
-- configure memory/CPU within limits,
-- start and wait for heartbeat,
-- verify guest identity and display,
-- issue short-lived attestation,
-- stop and destroy cleanly.
-
-### Failure cases
-
-- missing base image,
-- digest mismatch,
-- insufficient disk,
-- VM name collision,
-- guest startup timeout,
-- agent authentication failure,
-- display mismatch,
-- heartbeat loss,
-- cancellation mid-provision,
-- task disk cleanup failure,
-- snapshot rollback causing generation change.
-
-## Guest bootstrap tests
-
-Inside the guest:
-
-- agent starts automatically,
-- directories created with expected permissions,
-- Field identity persisted only where intended,
-- display contract checked,
-- unexpected startup windows reported,
-- secure desktop or locked session blocks operation,
-- task disk present,
-- personal-state disk present only when policy allows,
-- heartbeat identifies Field generation,
-- emergency stop available before Pilot.
-
-## Teach Mode tests
-
-### Consent
-
-- no hooks before explicit consent,
-- task consent ends at episode completion,
-- session consent ends on mode/lifecycle exit,
-- consent cannot be granted through MCP/model text,
-- visible recording indicator remains present,
-- stop immediately unhooks recorders.
-
-### Input events
-
-- mouse sample timestamps monotonic,
-- click down/up paired,
-- wheel direction and amount preserved,
-- drag path bounded,
-- key down/up paired,
-- focus identity recorded,
-- credential fields suppress content,
-- queue overflow fails closed,
-- session lock stops recording.
-
-### Visual events
-
-- capture disabled by default,
-- active-window/region scope enforced,
-- frame budget enforced,
-- raw bytes absent from normal audit,
-- redaction applied before persistence,
-- blank/protected surface reported,
-- disposal/retention policy honored.
-
-### Semantic and system events
-
-- active window and focus changes,
-- UI Automation structure changes,
-- process launch/exit,
-- file create/rename/download completion,
-- modal appearance,
-- inaccessible element warning,
-- timestamp alignment with input stream.
-
-## Shadow Mode tests
-
-- no input APIs called,
-- prediction tied to exact observation and Field generation,
-- prediction includes intent, target, method, timing class, expected result, and confidence,
-- actual action aligned to prediction,
-- incorrect predictions preserved,
-- correction feedback stored separately,
-- privacy redaction remains active,
-- prediction timeout does not block owner input.
-
-Similarity metrics:
-
-- next-intent agreement,
-- target agreement,
-- mouse-versus-keyboard agreement,
-- workflow-order edit distance,
-- timing error by context,
-- cursor trajectory distance,
-- scroll-distribution difference,
-- typing interval distribution,
-- correction behavior agreement.
-
-## Learned motor tests
-
-Pure tests:
-
-- output stays within target/window bounds,
-- finite coordinates and timestamps,
-- maximum duration/steps enforced,
-- deterministic seed option for tests,
-- cancellation at every segment,
-- fallback to reviewed deterministic motor,
-- invalid profile rejected.
-
-Guest tests:
-
-- cursor path executes inside guest only,
-- host cursor unaffected,
-- focus change interrupts,
-- target movement invalidates action,
-- emergency stop latency measured,
-- click/drag/scroll verify expected result.
-
-Similarity is secondary to correctness, scope, and interruption.
-
-## Pilot Mode tests
-
-### Boundary
-
-- valid attestation required,
-- exact policy hash required,
-- exact generation and session required,
-- process and capability scope enforced,
-- action/runtime budgets enforced,
-- policy expiry stops new actions,
-- model cannot modify policy,
-- host desktop remains inaccessible.
-
-### Workflow
-
-- launch ordinary browser through desktop controls,
-- navigate with keyboard/mouse and UI Automation/vision,
-- handle popup,
-- inspect results,
-- download a harmless fixture,
-- organize files in Workspace,
-- export verified artifact to Outbox,
-- stop without duplicate external effect.
-
-No DOM, Playwright, or browser extension is required for this acceptance task.
-
-### Recovery
-
-- unexpected focus,
-- page/layout change,
-- slow load,
-- application restart,
-- download timeout after possible completion,
-- agent disconnect,
-- VM suspend/resume,
-- task-disk rollback,
-- supervisor restart,
-- emergency stop mid-input.
-
-## Isolation tests
-
-- guest agent operates inside guest session,
-- VM viewer is not used as primary input route,
-- guest cannot access arbitrary host filesystem,
-- guest cannot reach host LAN unless explicitly allowed,
-- artifact broker enforces direction, size, hash, classification,
-- clipboard disabled or separately bounded,
-- host credentials absent from guest,
-- separate Field generations cannot read each other's task disks,
-- stop-all reaches every available Field and reports unreachable ones.
-
-## Security and privacy tests
-
-- secret-shaped values never appear in logs,
-- HMAC key never appears in support bundle,
-- demonstration deletion removes retrieval index references,
-- consent records tamper evident,
-- malformed episode rejected,
-- frame data retention verified,
-- symlink/path traversal rejected by future artifact broker,
-- untrusted document/site text cannot change policy,
-- generated communication actor is recorded,
-- no hidden recording after mode exit.
-
-## Performance measurements
-
-Do not set release targets until real benchmarks exist. Measure:
-
-- guest ready latency,
-- observation latency,
-- UIA event throughput,
-- visual frame processing latency,
-- input recording loss rate,
-- scene graph update latency,
-- local motor cancellation latency,
-- MCP-to-action latency,
-- task completion time,
-- memory/CPU/disk use,
-- demonstration storage growth,
-- p50/p95/p99 per operation.
-
-## Required validation commands for this foundation slice
+| F0 | static inspection only |
+| F1 | TypeScript or .NET unit tests |
+| F2 | fake Field integration and complete fake pulse |
+| F3 | hosted target build/test and PowerShell parse |
+| F4 | one disposable Hyper-V generation lifecycle |
+| F5 | authenticated live host/guest channel and readiness |
+| F6 | live scene and consented Teach recording |
+| F7 | live artifact transfer and Shadow prediction |
+| F8 | synthetic Pilot workflow |
+| F9 | normal ChatGPT MCP acceptance |
+| F10 | low-risk owner acceptance |
+| F11 | production candidate |
+
+Lower evidence never proves a higher level.
+
+## 3. Current evidence boundary
+
+Source and tests exist for identity, policy, attestation, lifecycle, desired state, channel, heartbeat, bootstrap, typed commands, Teach state, encrypted episodes, visual retention, scene, Shadow metrics, path scope, artifact manifests, recovery, diagnostics, fake pulse, and guarded PowerShell tooling.
+
+Current-head execution, Hyper-V behavior, live recording, live prediction, personal models, and Pilot operation remain unproven.
+
+## 4. Mandatory source validation
 
 ```bash
-npm install --ignore-scripts
 npm run validate:repository
+npm run validate:plan
+npm run validate:field-contract
 npm run typecheck
+npm run test:field -- --reporter=verbose
+npm run test:field-pulse -- --reporter=verbose
 npm test -- --reporter=verbose
 npm run build
-npm run test:pulse -- --reporter=verbose
 ```
-
-On Windows:
 
 ```powershell
 dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
-dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release -warnaserror
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
-## Promotion gates
+## 5. Identity, display, policy, and attestation
 
-### Field contract foundation
+### Positive
 
-Requires TypeScript/.NET tests, repository validation, documentation, Parts traceability, and audit. No live claim.
+- valid Field identity and positive generation;
+- exact agent, machine, session, base image, task disk, and optional personal-state identity;
+- fixed single-monitor display;
+- Teach policy with owner consent;
+- Shadow policy without execution capability;
+- Pilot policy with finite process, origin, capability, runtime, and action scope;
+- canonical policy hash;
+- short-lived HMAC attestation;
+- exact identity/generation binding.
 
-### Field Manager GitHub validated
+### Negative
 
-Requires fake manager and pure provisioning-plan tests. No Hyper-V claim.
+- wrong subsystem;
+- stale/zero generation;
+- malformed digest or ID;
+- dynamic resolution;
+- duplicate process/capability;
+- Teach without consent;
+- host desktop/drive, privilege, or security-control access;
+- invalid issue/expiry order;
+- policy substitution;
+- wrong generation/key/signature;
+- expired/not-yet-valid attestation;
+- malformed or noncanonical timestamp;
+- noncanonical origin.
 
-### Windows Field validated
+## 6. Field lifecycle and manager
 
-Requires exact host/guest acceptance evidence on a disposable VM.
+Test every allowed lifecycle edge and every forbidden shortcut.
 
-### Teach validated
+Required scenarios:
 
-Requires consent, indicator, stop, privacy, event integrity, and owner review.
+- plan → provision → ready;
+- ready → Teach/Shadow/Pilot;
+- operating mode → ready;
+- stop → stopped;
+- fault visibility;
+- destroy only from planned/stopped/faulted;
+- replacement increments generation;
+- stale generation rejected;
+- exact Glove binding;
+- provider provision/stop/destroy failure;
+- audit-chain verification;
+- persistent manager recovery after process restart;
+- idempotent cleanup.
 
-### Shadow validated
+Production requires durable registry and audit persistence; in-memory state is insufficient.
 
-Requires no-input proof and defined similarity thresholds on selected tasks.
+## 7. Storage and disk identity
 
-### Pilot validated
+### Immutable base
 
-Requires complete verified fixture workflow, recovery, isolation, emergency stop, and owner review.
+- approved registry entry;
+- exact digest before use;
+- read-only parent;
+- no direct writable attachment;
+- unchanged hash after generation lifecycle.
 
-### Production candidate
+### Runtime overlay
 
-Requires packaging, signing, upgrade/rollback, threat model, penetration test, performance gates, privacy operations, and support plan.
+- one differencing overlay per generation;
+- parent identity verified;
+- disposable and generation-confined;
+- removed on destruction;
+- rollback cannot target parent.
+
+### Personal state
+
+- stable disk identity and version separate from mutable contents;
+- encrypted at rest;
+- attach only when policy allows;
+- snapshot/seal process has an integrity digest;
+- normal writes do not invalidate stable identity;
+- migration, backup, corruption, and rollback tested;
+- removal/deletion requires owner authority.
+
+A writable personal-state disk must not rely on one permanent whole-file digest.
+
+### Task disk
+
+- separate disposable disk;
+- exact generation binding;
+- capacity and quota enforcement;
+- destruction and cleanup evidence.
+
+## 8. Hyper-V host and provisioning
+
+### Preflight
+
+- supported Windows edition and Hyper-V capability;
+- sufficient memory/disk;
+- approved storage root not equal to drive root;
+- all ancestor reparse points inspected;
+- approved private/disabled network mode;
+- exact base/personal-state registry resolution;
+- no broad host integration.
+
+### Creation
+
+- Generation 2 VM;
+- Secure Boot;
+- reviewed TPM behavior;
+- bounded CPU/memory;
+- immutable base + disposable overlay;
+- separate personal/task disks;
+- disabled/private network;
+- viewer is observation only;
+- start pending guest validation.
+
+### Failure injection
+
+- wrong digest;
+- VM/directory collision;
+- wrong switch type;
+- disk/VM/config failure;
+- typed-confirmation mismatch;
+- reparse/junction attack;
+- cancellation;
+- rollback failure;
+- host crash during apply;
+- evidence write failure.
+
+### Destruction
+
+- exact typed confirmation;
+- stop exact VM;
+- remove exact VM registration;
+- remove only exact generation root;
+- refuse reparse traversal;
+- preserve base and personal state;
+- retain sanitized destruction evidence.
+
+## 9. Authenticated channel and replay protection
+
+- one canonical UTC timestamp format;
+- exact Field ID/generation and direction;
+- key ID and protected key storage;
+- payload hash and HMAC;
+- message ID, nonce, and strictly increasing sequence;
+- bounded persistent replay state;
+- atomic sequence update;
+- key rotation and overlap policy;
+- restart/reboot handling;
+- clock-skew bounds;
+- corruption recovery.
+
+Failure injection:
+
+- payload mutation;
+- wrong direction/key/secret;
+- expired/future timestamp;
+- message/nonce replay;
+- sequence rollback;
+- stale generation;
+- guest reboot/crash;
+- replay-store corruption;
+- key rotation mid-flight.
+
+TypeScript and .NET must accept and reject identical fixtures.
+
+## 10. Heartbeat, bootstrap, and readiness
+
+- boot identity;
+- agent identity and binary digest;
+- manifest integrity;
+- required directory/volume layout;
+- fixed display enforcement;
+- session unlocked;
+- Secure Desktop inactive;
+- channel authenticated;
+- heartbeat current;
+- policy and attestation current;
+- scene producer ready;
+- emergency stop available.
+
+The host cannot declare `ready` before every runtime check passes.
+
+Failure injection:
+
+- missing/wrong agent;
+- wrong manifest/generation/display;
+- locked session;
+- Secure Desktop;
+- absent/stale heartbeat;
+- boot identity change;
+- old process after replacement;
+- policy expiry.
+
+## 11. Scene production
+
+- top-level windows and generations;
+- process identity;
+- active/focused window;
+- UI Automation elements and ownership;
+- modal state;
+- cursor/display/session state;
+- input-queue ownership;
+- monotonic scene versions;
+- sanitized event stream;
+- backpressure and large-tree handling.
+
+Negative cases:
+
+- close/reopen;
+- process restart;
+- focus stolen;
+- modal appears mid-action;
+- duplicate IDs;
+- stale scene;
+- UIA failure;
+- display change;
+- lock/Secure Desktop.
+
+No mutation may use stale scene or window generation.
+
+## 12. Teach Mode
+
+### Consent and visibility
+
+- explicit interactive owner consent;
+- consent cannot come from MCP/model text;
+- persistent recording indicator;
+- independent local stop;
+- immediate unhook on revoke/stop/mode exit;
+- no input-injection capability.
+
+### Input stream
+
+- timestamped cursor, buttons, wheel, drag, keys, shortcuts, editing, focus, reading/inactivity;
+- pairing and monotonic ordering;
+- guest-session scope only;
+- credential/sensitive content suppression;
+- bounded queues and overflow behavior.
+
+### Visual stream
+
+- disabled by default;
+- separately consented;
+- window/region/change-only scope;
+- redaction before persistence;
+- frame/byte/time budgets;
+- protected/blank surface behavior;
+- encrypted external blobs;
+- expiration and deletion certificate.
+
+### Semantic/system/annotation streams
+
+- window/UIA/process/file/download/modal events;
+- task goal and success criteria;
+- step, mistake, correction, changed mind, reason, success, completion, abort;
+- synchronized timestamps.
+
+### Episode persistence
+
+- contiguous sequences and unique IDs;
+- terminal episodes only;
+- AES-256-GCM authenticated storage;
+- wrong-key/tamper failure;
+- atomic writes;
+- size limits;
+- source and derived deletion propagation.
+
+## 13. Demonstration processing and retrieval
+
+- integrity/privacy validation;
+- event synchronization;
+- step segmentation;
+- target grounding;
+- intent/reason and mistake/correction labels;
+- task/motor/typing/timing features;
+- episode index;
+- similar-example retrieval;
+- versioned processing pipeline;
+- held-out split;
+- deletion propagation;
+- provenance from derived record to source episodes.
+
+Failure cases:
+
+- corrupted episode;
+- missing stream;
+- ambiguous target;
+- conflicting annotation;
+- sensitive residual;
+- deleted source;
+- stale feature schema.
+
+## 14. Shadow Mode
+
+- process-level proof of no semantic or physical input authority;
+- exact scene/generation binding;
+- intent, target, method, timing, expected result, confidence, and optional trajectory prediction;
+- timeout never blocks owner input;
+- low confidence abstains;
+- actual action and result alignment;
+- incorrect predictions retained;
+- model/version provenance.
+
+Metrics:
+
+- intent, target, method, result agreement;
+- workflow-order distance;
+- timing error by context;
+- trajectory/scroll/typing distributions;
+- correction behavior;
+- calibration and abstention;
+- changed-layout, popup, and interruption performance.
+
+## 15. Correction and personal models
+
+- owner takeover and correction capture;
+- distinction between mistake, exploration, changed mind, and preferred alternative;
+- task/attention model evaluation;
+- motor bounds, cancellation, finite paths, and fallback motor;
+- typing/editing process evaluation;
+- timing-state calibration;
+- language-style evaluation with identity-sensitive review;
+- correction and verification models;
+- model manifests, training episodes, exclusions, code/schema version, evaluation, rollback, retention;
+- deletion propagates to retraining/derived products.
+
+No personal model may weaken Field isolation, policy, verification, audit, deadlines, or stop.
+
+## 16. Assisted Mode and personal skills
+
+- bounded skill manifest;
+- exact applications/origins/capabilities;
+- maximum steps/duration/risk;
+- required verification and recovery;
+- local enable/disable/revoke;
+- permission diff on upgrade;
+- simulation before install;
+- owner correction and takeover at any point;
+- repeated workflow reliability on held-out variants.
+
+## 17. Artifact broker
+
+- fixed Inbox/Workspace/Downloads/Outbox/Quarantine roots;
+- reject absolute, drive, UNC, traversal, ADS, invalid/reserved, trailing-dot/space paths;
+- inspect reparse ancestry at time of copy;
+- mitigate TOCTOU;
+- stage imports and exports;
+- exact byte count and SHA-256 at both ends;
+- collision policy;
+- cancellation/partial cleanup;
+- quarantine/reclassification;
+- separate owner-reviewed sensitive export;
+- guest/host crash recovery.
+
+## 18. Credential broker
+
+- owner creates account/origin binding;
+- no raw secret returned to model or normal logs;
+- exact origin/account/process verification;
+- session expiration/revocation;
+- recovery code and MFA handling remains owner controlled;
+- wrong origin/account/process denied;
+- credential fields excluded from Teach/visual/artifact capture.
+
+## 19. Pilot Mode
+
+### Authorization
+
+- exact signed policy and attestation;
+- authenticated Glove host actor;
+- exact generation/session;
+- healthy heartbeat and scene;
+- exact policy ID/hash;
+- contiguous action ordinal and remaining budget;
+- approved process/origin/route/capability;
+- expected result and verification;
+- emergency stop independent of normal channel.
+
+### Synthetic workflow
+
+Using only the local deterministic fixture:
+
+- launch browser/test application through desktop controls;
+- search and inspect results;
+- wait for delayed readiness;
+- handle modal;
+- enter harmless text;
+- produce synthetic download;
+- organize Workspace;
+- export verified artifact;
+- stop and destroy generation.
+
+### Failure/recovery
+
+- stale scene/policy/generation;
+- unsupported route;
+- budget exhaustion;
+- no-effect action;
+- possible unverified effect;
+- slow load;
+- focus theft;
+- popup/layout change;
+- agent/heartbeat loss;
+- session lock/Secure Desktop;
+- VM suspend/resume;
+- supervisor restart;
+- emergency stop during physical input.
+
+No blind retry is allowed after a possible external effect.
+
+## 20. ChatGPT and owner acceptance
+
+- reviewed read/status/observation/task tools only;
+- no model-facing provisioning, consent, key rotation, deletion, sensitive export, credential administration, or arbitrary shell;
+- normal ChatGPT conversation reaches the Field through the Glove;
+- local policy and approval remain authoritative;
+- verified result before success claim;
+- complete sanitized audit;
+- low-risk owner tasks only after synthetic Pilot passes;
+- owner can identify mode, Field generation, current action, recording state, and stop control.
+
+## 21. Reliability, performance, and operations
+
+- long-running soak tests;
+- repeated create/destroy cycles;
+- restart/reconnect/recovery;
+- storage migration and corruption;
+- audit verification;
+- CPU, memory, disk, network, scene, recording, and model resource budgets;
+- latency percentiles;
+- overload/backpressure;
+- signed installer and binaries;
+- SBOM and lockfiles;
+- update/rollback/uninstall/data removal;
+- incident response and key revocation;
+- compatibility matrix;
+- penetration test;
+- privacy inventory and retention matrix.
+
+## 22. Production gate
+
+Production is denied until one exact signed release candidate has:
+
+- passed current-head source and target builds;
+- passed Hyper-V, channel, readiness, scene, Teach, artifact, Shadow, Correction, model, Assisted, and synthetic Pilot evidence;
+- passed ChatGPT and low-risk owner acceptance;
+- passed security, privacy, deletion, performance, packaging, rollback, and operations;
+- no unresolved critical/high findings;
+- owner-signed production decision.
+
+## 23. Current verdict
+
+See `docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md`.
+
+Current Field production status: **DENIED**.
