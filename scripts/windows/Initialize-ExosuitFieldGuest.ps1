@@ -62,7 +62,9 @@ Add-Check -Name 'identity' -Passed $true -Summary 'Field identity was parsed.' -
     windowsSessionId = $manifest.identity.windowsSessionId
 }
 Add-Check -Name 'base_image' -Passed ($manifest.identity.baseImageDigest -match '^[a-f0-9]{64}$') -Summary 'Base-image digest shape was checked.'
-Add-Check -Name 'personal_state' -Passed ($null -eq $manifest.identity.personalStateDigest -or $manifest.identity.personalStateDigest -match '^[a-f0-9]{64}$') -Summary 'Personal-state identity was checked.'
+$hasPersonalStateId = -not [string]::IsNullOrWhiteSpace([string]$manifest.identity.personalStateDiskId)
+$hasPersonalStateGeneration = $null -ne $manifest.identity.personalStateGeneration -and [int]$manifest.identity.personalStateGeneration -gt 0
+Add-Check -Name 'personal_state' -Passed ($hasPersonalStateId -eq $hasPersonalStateGeneration) -Summary 'Personal-state stable ID and generation were checked.'
 Add-Check -Name 'task_disk' -Passed (-not [string]::IsNullOrWhiteSpace($manifest.identity.taskDiskId)) -Summary 'Task-disk identity was checked.'
 
 $created = @()

@@ -8,7 +8,8 @@
     "machineId": "field-vm-fixture",
     "windowsSessionId": "session-fixture",
     "baseImageDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "personalStateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "personalStateDiskId": "personal-state-fixture",
+    "personalStateGeneration": 2,
     "taskDiskId": "task-disk-fixture",
     "createdAt": "2026-07-21T18:00:00.000Z"
   },

@@ -23,7 +23,7 @@ const DESTRUCTIVE_PATTERN = /delete|remove|erase|destroy|format|factory reset|dr
 const EXTERNAL_EFFECT_PATTERN = /send|submit|publish|post|upload|deploy|purchase|buy|pay|transfer|trade|place order|confirm booking|change password|security settings/i;
 const AUTH_PATTERN = /login|log in|sign in|authenticate|account recovery|two[- ]?factor|2fa|mfa/i;
 const PROMPT_INJECTION_PATTERNS: RegExp[] = [
-  /ignore (all|any|the|your) previous instructions/i,
+  /ignore (?:all |any |the |your )?previous instructions/i,
   /reveal (the )?(system prompt|secret|token|password|credentials)/i,
   /send (the )?(data|files|secrets|credentials) to/i,
   /run (this|the following) command/i,

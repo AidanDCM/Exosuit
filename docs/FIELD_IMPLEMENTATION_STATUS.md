@@ -91,7 +91,7 @@ Every message binds:
 - sent/expiration time,
 - HMAC-SHA256 signature.
 
-Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay state is currently in memory and requires a persistence design before production.
+Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID; live transport wiring and protected-state operational validation remain pending.
 
 ### Guest action boundary
 

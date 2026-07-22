@@ -87,7 +87,7 @@ jobs:
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
       - name: Install dependencies without lifecycle scripts
-        run: npm install --ignore-scripts --fund=false
+        run: npm ci --ignore-scripts --fund=false
       - name: Repository contract
         run: npm run validate:repository 2>&1 | tee repository-contract.log
       - name: Complete master plan contract

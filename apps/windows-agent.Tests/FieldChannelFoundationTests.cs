@@ -49,6 +49,30 @@ public sealed class FieldChannelFoundationTests
     }
 
     [Fact]
+    public void Replay_guard_persists_bounded_state_across_restart_and_binds_channel_identity()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"exosuit-field-replay-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "replay.json");
+        var sentAt = DateTimeOffset.Parse("2026-07-21T18:00:00Z");
+        try
+        {
+            var envelope = FieldChannelAuthentication.Create(Field, FieldChannelDirection.GuestToHost, 0,
+                FieldChannelMessageType.Heartbeat, new Dictionary<string, object?>(), "key", Secret, sentAt, TimeSpan.FromMinutes(1));
+            var first = new FieldChannelReplayGuard(Field, FieldChannelDirection.GuestToHost, "key", 2, path);
+            first.Accept(envelope, Secret, sentAt.AddSeconds(1));
+            var restarted = new FieldChannelReplayGuard(Field, FieldChannelDirection.GuestToHost, "key", 2, path);
+            Assert.Equal(0, restarted.LastSequence);
+            Assert.Throws<InvalidOperationException>(() => restarted.Accept(envelope, Secret, sentAt.AddSeconds(1)));
+            Assert.Throws<InvalidOperationException>(() => new FieldChannelReplayGuard(
+                new FieldReference(Field.FieldId, 2), FieldChannelDirection.GuestToHost, "key", 2, path));
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
     public void Heartbeat_monitor_moves_from_healthy_to_degraded_to_faulted()
     {
         var now = DateTimeOffset.Parse("2026-07-21T18:00:00Z");

@@ -9,7 +9,8 @@ public sealed class FieldFoundationTests
         "vm-a",
         "session-a",
         new string('a', 64),
-        new string('b', 64),
+        "personal-state-a",
+        1,
         "task-disk-a",
         DateTimeOffset.Parse("2026-07-21T18:00:00Z"));
 
@@ -20,7 +21,9 @@ public sealed class FieldFoundationTests
         new FieldDisplayContract(1, 1920, 1080, 100, 100, "en-US", false).Validate();
         Assert.Throws<ArgumentException>(() => (Identity() with { Subsystem = ExosuitSubsystem.Glove }).Validate());
         Assert.Throws<ArgumentException>(() => (Identity() with { BaseImageDigest = "bad" }).Validate());
-        Assert.Throws<ArgumentException>(() => new FieldDisplayContract(2, 1920, 1080, 100, 100, "en-US", false).Validate());
+        Assert.Throws<ArgumentException>(() => (Identity() with { PersonalStateGeneration = null }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Identity() with { PersonalStateGeneration = 0 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new FieldDisplayContract(2, 1920, 1080, 100, 100, "en-US", false).Validate());
         Assert.Throws<ArgumentException>(() => new FieldDisplayContract(1, 1920, 1080, 100, 100, "en-US", true).Validate());
     }
 

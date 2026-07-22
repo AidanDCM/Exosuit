@@ -89,6 +89,11 @@ describe("visual retention policy", () => {
     expect(ledger.deleteExpired(new Date("2026-07-21T18:00:10.999Z"))).toEqual([]);
     expect(ledger.deleteExpired(new Date("2026-07-21T18:00:11.000Z"))).toEqual([value.frameId]);
     expect(ledger.usage().totalBytes).toBe(0);
-    expect(() => ledger.register(frame({ policyId: changePolicy.policyId, region: undefined }), new Date("2026-07-21T18:00:02.000Z"))).toThrow(/change score/);
+    expect(() =>
+      ledger.register(
+        frame({ policyId: changePolicy.policyId, region: undefined, expiresAt: "2026-07-21T18:00:11.000Z" }),
+        new Date("2026-07-21T18:00:02.000Z"),
+      ),
+    ).toThrow(/change score/);
   });
 });

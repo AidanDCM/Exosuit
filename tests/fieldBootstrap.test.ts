@@ -18,7 +18,8 @@ const identity = {
   machineId: "vm-a",
   windowsSessionId: "session-a",
   baseImageDigest: "a".repeat(64),
-  personalStateDigest: "b".repeat(64),
+  personalStateDiskId: "personal-state-a",
+  personalStateGeneration: 1,
   taskDiskId: "task-disk-a",
   createdAt: "2026-07-21T18:00:00.000Z",
 };
@@ -109,7 +110,17 @@ describe("Field guest bootstrap", () => {
     const duplicate = report();
     expect(() => evaluator.evaluate({ ...duplicate, checks: [...duplicate.checks, duplicate.checks[0]!] }, new Date("2026-07-21T18:00:03.000Z"))).toThrow(/unique/);
     const invalidTime = report();
-    expect(() => evaluator.evaluate({ ...invalidTime, checks: invalidTime.checks.map((check, index) => index === 0 ? { ...check, observedAt: "2026-07-21T17:59:59.000Z" } : check }, new Date("2026-07-21T18:00:03.000Z"))).toThrow(/reporting interval/);
+    expect(() =>
+      evaluator.evaluate(
+        {
+          ...invalidTime,
+          checks: invalidTime.checks.map((check, index) =>
+            index === 0 ? { ...check, observedAt: "2026-07-21T17:59:59.000Z" } : check,
+          ),
+        },
+        new Date("2026-07-21T18:00:03.000Z"),
+      ),
+    ).toThrow(/reporting interval/);
     expect(() => evaluator.evaluate(report(), new Date("2026-07-21T18:10:00.000Z"))).toThrow(/expired/);
   });
 

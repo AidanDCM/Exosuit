@@ -75,10 +75,14 @@
 - A pilot/model has no Field administration authority.
 - A policy, consent, channel key, or attestation cannot be created by model text.
 - Every mutable action is tied to one Field generation and one current scene version.
+- Live channel replay state is bounded, atomically persisted, and bound to exact Field generation, direction, and key ID; corrupt or mismatched state fails closed.
+- Signed channel timestamps use one canonical UTC representation with exactly millisecond precision.
+- Field policies authorize canonical origins and reviewed executable name/hash identities, not arbitrary URLs or process-name strings.
 - No Field command accepts arbitrary shell or PowerShell strings.
 - The guest does not control the host cursor as its primary architecture.
 - The base image is immutable; the boot writer is a disposable child overlay.
 - The task disk is disposable and distinct from the OS overlay and personal state.
+- Writable personal state is bound by a stable disk ID and monotonic generation. Whole-file hashes identify only sealed immutable snapshots, never the active writable VHDX.
 - Host clipboard, broad drive mapping, and host input injection remain disabled.
 - Teach and Shadow inject no input.
 - Visual bytes are never embedded in demonstration metadata.

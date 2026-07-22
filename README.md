@@ -12,6 +12,8 @@ That document is the single planning authority for the repository. It covers the
 
 Do not treat a narrower architecture note, GitHub issue, PR description, or implementation-status file as a replacement for the master plan.
 
+For the practical execution sequence, use [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md). It groups the master roadmap's L0–L20 gates into eight build waves without replacing or weakening them.
+
 ## One repository, two separate systems
 
 | System | Meaning | Responsibility |

@@ -40,14 +40,14 @@ if ($baseDigest -ne $plan.storage.baseImage.digest -or $baseDigest -ne $base.dig
 
 $personal = $null
 if ($null -ne $plan.storage.personalState) {
-    $matches = @($config.personalStateDisks | Where-Object { $_.diskId -eq $plan.storage.personalState.diskId })
+    $matches = @($config.personalStateDisks | Where-Object {
+        $_.diskId -eq $plan.storage.personalState.diskId -and
+        [int]$_.diskGeneration -eq [int]$plan.storage.personalState.diskGeneration
+    })
     if ($matches.Count -ne 1) { throw 'Host configuration must resolve exactly one approved personal-state disk.' }
     $personal = $matches[0]
     if (-not (Test-Path -LiteralPath $personal.path -PathType Leaf)) { throw "Personal-state disk is missing: $($personal.path)" }
-    $personalDigest = (Get-FileHash -LiteralPath $personal.path -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($personalDigest -ne $plan.storage.personalState.digest -or $personalDigest -ne $personal.digest) {
-        throw 'Personal-state disk digest does not match the plan and host registry.'
-    }
+    if ($personal.encrypted -ne $true -or $plan.storage.personalState.encrypted -ne $true) { throw 'Personal-state disk must be registered as encrypted.' }
 }
 
 $fieldId = [Guid]::Parse([string]$plan.identity.fieldId).ToString()

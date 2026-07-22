@@ -21,7 +21,8 @@ public sealed class FieldWireContractTests
             identityJson.GetProperty("machineId").GetString()!,
             identityJson.GetProperty("windowsSessionId").GetString()!,
             identityJson.GetProperty("baseImageDigest").GetString()!,
-            identityJson.GetProperty("personalStateDigest").GetString(),
+            identityJson.GetProperty("personalStateDiskId").GetString(),
+            identityJson.GetProperty("personalStateGeneration").GetInt32(),
             identityJson.GetProperty("taskDiskId").GetString()!,
             identityJson.GetProperty("createdAt").GetDateTimeOffset());
         identity.Validate();

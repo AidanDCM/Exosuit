@@ -23,7 +23,8 @@ public sealed record FieldIdentity(
     string MachineId,
     string WindowsSessionId,
     string BaseImageDigest,
-    string? PersonalStateDigest,
+    string? PersonalStateDiskId,
+    int? PersonalStateGeneration,
     string TaskDiskId,
     DateTimeOffset CreatedAt)
 {
@@ -35,7 +36,11 @@ public sealed record FieldIdentity(
         RequireText(MachineId, nameof(MachineId));
         RequireText(WindowsSessionId, nameof(WindowsSessionId));
         RequireDigest(BaseImageDigest, nameof(BaseImageDigest));
-        if (PersonalStateDigest is not null) RequireDigest(PersonalStateDigest, nameof(PersonalStateDigest));
+        if ((PersonalStateDiskId is null) != (PersonalStateGeneration is null))
+            throw new ArgumentException("Personal-state disk ID and generation must be present together.");
+        if (PersonalStateDiskId is not null) RequireText(PersonalStateDiskId, nameof(PersonalStateDiskId));
+        if (PersonalStateGeneration is < 1)
+            throw new ArgumentOutOfRangeException(nameof(PersonalStateGeneration), "Personal-state generation must be positive.");
         RequireText(TaskDiskId, nameof(TaskDiskId));
     }
 

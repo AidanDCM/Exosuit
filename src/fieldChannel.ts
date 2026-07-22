@@ -1,4 +1,6 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { z } from "zod";
 import { canonicalJson, fieldRefSchema, sha256Canonical, type FieldRef } from "./fieldContracts.js";
 
@@ -17,6 +19,11 @@ export const fieldChannelMessageTypeSchema = z.enum([
 ]);
 export type FieldChannelMessageType = z.infer<typeof fieldChannelMessageTypeSchema>;
 
+const canonicalWireTimestampSchema = z
+  .string()
+  .datetime()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, "Field channel timestamps must use canonical UTC millisecond format.");
+
 const unsignedFieldChannelEnvelopeSchema = z.object({
   contractVersion: z.literal(1),
   messageId: z.string().uuid(),
@@ -24,8 +31,8 @@ const unsignedFieldChannelEnvelopeSchema = z.object({
   direction: fieldChannelDirectionSchema,
   sequence: z.number().int().nonnegative(),
   messageType: fieldChannelMessageTypeSchema,
-  sentAt: z.string().datetime(),
-  expiresAt: z.string().datetime(),
+  sentAt: canonicalWireTimestampSchema,
+  expiresAt: canonicalWireTimestampSchema,
   nonce: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   keyId: z.string().min(1).max(200),
   payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -57,7 +64,7 @@ export function createFieldChannelEnvelope(input: {
   nonce?: string;
 }): FieldChannelEnvelope {
   if (input.secret.length < 32) throw new Error("Field channel secret must contain at least 32 characters.");
-  const sentAt = input.sentAt ?? new Date().toISOString();
+  const sentAt = canonicalWireTimestampSchema.parse(input.sentAt ?? new Date().toISOString());
   const ttlSeconds = input.ttlSeconds ?? 30;
   if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 300) {
     throw new Error("Field channel TTL must be an integer from 1 through 300 seconds.");
@@ -120,6 +127,7 @@ export class FieldChannelReplayGuard {
   readonly #direction: FieldChannelDirection;
   readonly #keyId?: string;
   readonly #maxRemembered: number;
+  readonly #stateFilePath?: string;
   readonly #seenMessageIds = new Set<string>();
   readonly #seenNonces = new Set<string>();
   readonly #order: Array<{ messageId: string; nonce: string }> = [];
@@ -130,14 +138,17 @@ export class FieldChannelReplayGuard {
     direction: FieldChannelDirection;
     expectedKeyId?: string;
     maxRemembered?: number;
+    stateFilePath?: string;
   }) {
     this.#field = fieldRefSchema.parse(input.field);
     this.#direction = fieldChannelDirectionSchema.parse(input.direction);
     this.#keyId = input.expectedKeyId;
     this.#maxRemembered = input.maxRemembered ?? 10_000;
+    this.#stateFilePath = input.stateFilePath;
     if (!Number.isInteger(this.#maxRemembered) || this.#maxRemembered < 1 || this.#maxRemembered > 1_000_000) {
       throw new Error("maxRemembered must be an integer from 1 through 1,000,000.");
     }
+    this.#hydrate();
   }
 
   accept(input: { envelope: FieldChannelEnvelope; secret: string; now?: Date }): FieldChannelEnvelope {
@@ -164,10 +175,66 @@ export class FieldChannelReplayGuard {
         this.#seenNonces.delete(removed.nonce);
       }
     }
+    this.#persist();
     return envelope;
   }
 
   lastSequence(): number {
     return this.#lastSequence;
   }
+
+  #hydrate(): void {
+    if (!this.#stateFilePath) return;
+    let raw: string;
+    try {
+      raw = readFileSync(this.#stateFilePath, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw error;
+    }
+    const state = replayStateSchema.parse(JSON.parse(raw));
+    if (
+      state.field.fieldId !== this.#field.fieldId ||
+      state.field.fieldGeneration !== this.#field.fieldGeneration ||
+      state.direction !== this.#direction ||
+      state.expectedKeyId !== (this.#keyId ?? null)
+    ) {
+      throw new Error("Persisted Field replay state identity does not match this channel.");
+    }
+    if (state.entries.length > this.#maxRemembered) throw new Error("Persisted Field replay state exceeds the configured bound.");
+    this.#lastSequence = state.lastSequence;
+    for (const entry of state.entries) {
+      if (this.#seenMessageIds.has(entry.messageId) || this.#seenNonces.has(entry.nonce)) {
+        throw new Error("Persisted Field replay state contains duplicate identities.");
+      }
+      this.#seenMessageIds.add(entry.messageId);
+      this.#seenNonces.add(entry.nonce);
+      this.#order.push(entry);
+    }
+  }
+
+  #persist(): void {
+    if (!this.#stateFilePath) return;
+    const state = replayStateSchema.parse({
+      contractVersion: 1,
+      field: this.#field,
+      direction: this.#direction,
+      expectedKeyId: this.#keyId ?? null,
+      lastSequence: this.#lastSequence,
+      entries: this.#order,
+    });
+    mkdirSync(dirname(this.#stateFilePath), { recursive: true });
+    const temporary = `${this.#stateFilePath}.${process.pid}.${randomUUID()}.tmp`;
+    writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    renameSync(temporary, this.#stateFilePath);
+  }
 }
+
+const replayStateSchema = z.object({
+  contractVersion: z.literal(1),
+  field: fieldRefSchema,
+  direction: fieldChannelDirectionSchema,
+  expectedKeyId: z.string().min(1).max(200).nullable(),
+  lastSequence: z.number().int().min(-1),
+  entries: z.array(z.object({ messageId: z.string().uuid(), nonce: z.string().regex(/^[A-Za-z0-9_-]{22}$/) })).max(1_000_000),
+}).strict();

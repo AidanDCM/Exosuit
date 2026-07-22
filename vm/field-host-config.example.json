@@ -12,7 +12,8 @@
     {
       "diskId": "aidan-personal-state-v1",
       "path": "C:\\ProgramData\\Exosuit\\PersonalState\\aidan-personal-state-v1.vhdx",
-      "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      "diskGeneration": 1,
+      "encrypted": true
     }
   ],
   "networkSwitches": {

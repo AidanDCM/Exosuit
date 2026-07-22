@@ -75,6 +75,8 @@ Contains Windows, guest integration, Exosuit agent, approved applications, stabl
 
 Contains approved persistent state such as application settings, browser profile, personal dictionary, sanitized application maps, demonstration indexes, learned behavior profiles, and approved persistent sessions. This disk must be separable from disposable task data and protected at rest.
 
+The writable disk is identified by a stable local `diskId` plus a positive `diskGeneration`; its mutable whole-file bytes are not a permanent identity. SHA-256 digests apply only to sealed immutable snapshots. Restoring, replacing, or migrating writable personal state must increment the disk generation before attachment to a new Field generation.
+
 ### Disposable task disk
 
 Contains Inbox, Workspace, Downloads, Outbox, Quarantine, temporary browser state where practical, and workflow checkpoints. It is destroyed or reset after output export and evidence collection.
@@ -108,7 +110,7 @@ The host Field Manager creates a local attestation binding:
 - exact Field ID and generation,
 - guest agent and Windows session,
 - base image digest,
-- optional personal-state digest,
+- optional personal-state stable disk ID and monotonic generation,
 - task disk identity,
 - fixed display contract,
 - exact field policy hash,

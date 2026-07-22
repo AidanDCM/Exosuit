@@ -508,7 +508,8 @@ windowsSessionId
 guestBootId
 baseImageDigest
 runtimeOverlayId
-personalStateDigest?
+personalStateDiskId?
+personalStateGeneration?
 taskDiskId
 displayContractHash
 createdAt
@@ -1139,8 +1140,8 @@ skillId
 version
 ownerProfileId
 allowedFieldProfiles
-allowedProcesses
-allowedOrigins
+allowedExecutables (reviewed process name + executable SHA-256)
+allowedOrigins (canonical origins only)
 inputSchema
 outputSchema
 maximumSteps

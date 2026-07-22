@@ -5,7 +5,7 @@ Run from the repository root on the exact branch head.
 ## Cross-platform source validation
 
 ```bash
-npm install --ignore-scripts --fund=false
+npm ci --ignore-scripts --fund=false
 npm run validate:repository
 npm run validate:field-contract
 npm run typecheck

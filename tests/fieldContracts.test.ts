@@ -22,7 +22,8 @@ function identity() {
     machineId: "vm-a",
     windowsSessionId: "session-a",
     baseImageDigest: "a".repeat(64),
-    personalStateDigest: "b".repeat(64),
+    personalStateDiskId: "personal-state-a",
+    personalStateGeneration: 1,
     taskDiskId: "task-disk-a",
     createdAt: "2026-07-21T18:00:00.000Z",
   });
@@ -46,7 +47,10 @@ function policy() {
     policyId,
     field: { fieldId, fieldGeneration: 1 },
     mode: "teach",
-    allowedProcesses: ["chrome", "notepad"],
+    allowedExecutables: [
+      { processName: "chrome.exe", executableSha256: "c".repeat(64) },
+      { processName: "notepad.exe", executableSha256: "d".repeat(64) },
+    ],
     allowedCapabilities: ["observe_desktop", "record_demonstration", "file_workspace"],
     allowedOrigins: ["https://example.com"],
     maximumRuntimeSeconds: 3_600,
@@ -129,7 +133,15 @@ describe("field contracts", () => {
         now: new Date("2026-07-21T18:00:30.000Z"),
       }),
     ).toThrow(/signature/);
-    expect(() => fieldPolicySchema.parse({ ...policy(), allowedProcesses: ["chrome", "CHROME"] })).toThrow(/unique/);
+    expect(() => fieldPolicySchema.parse({ ...policy(), allowedExecutables: [policy().allowedExecutables[0], policy().allowedExecutables[0]] })).toThrow(/unique/);
+    expect(() => fieldPolicySchema.parse({ ...policy(), allowedOrigins: ["https://example.com/path"] })).toThrow(/paths/);
+    expect(fieldPolicySchema.parse({ ...policy(), allowedOrigins: ["https://EXAMPLE.com:443"] }).allowedOrigins).toEqual(["https://example.com"]);
     expect(() => fieldPolicySchema.parse({ ...policy(), recordingConsent: "not_applicable" })).toThrow(/consent/);
+  });
+
+  it("requires personal-state stable ID and generation as one identity", () => {
+    expect(() => fieldIdentitySchema.parse({ ...identity(), personalStateGeneration: undefined })).toThrow(/present together/);
+    expect(() => fieldIdentitySchema.parse({ ...identity(), personalStateDiskId: undefined })).toThrow(/present together/);
+    expect(() => fieldIdentitySchema.parse({ ...identity(), personalStateGeneration: 0 })).toThrow();
   });
 });

@@ -54,7 +54,7 @@ Store runtime values in the local environment or the tunnel-client's approved se
 From the repository root:
 
 ```powershell
-npm install --ignore-scripts
+npm ci --ignore-scripts
 npm run typecheck
 npm test -- --reporter=verbose
 npm run build

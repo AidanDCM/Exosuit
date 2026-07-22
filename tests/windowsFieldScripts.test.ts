@@ -37,6 +37,9 @@ describe("Windows Field administration scripts", () => {
   it("keeps host capability checks read-only and guest bootstrap within fixed roots", async () => {
     const host = await script("Test-ExosuitFieldHost.ps1");
     expect(host).toContain("Get-WindowsOptionalFeature");
+    expect(host).toContain("Win32_OptionalFeature");
+    expect(host).toContain("HyperVisorPresent");
+    expect(host).toContain("root\\virtualization\\v2");
     expect(host).not.toMatch(/Enable-WindowsOptionalFeature|Disable-WindowsOptionalFeature|New-VM|Remove-VM/);
 
     const guest = await script("Initialize-ExosuitFieldGuest.ps1");

@@ -11,7 +11,7 @@ function policy(mode: "teach" | "shadow" | "pilot" = "pilot") {
     policyId: randomUUID(),
     field,
     mode,
-    allowedProcesses: ["notepad"],
+    allowedExecutables: [{ processName: "notepad.exe", executableSha256: "a".repeat(64) }],
     allowedCapabilities: mode === "pilot" ? ["observe_desktop", "semantic_input", "physical_input"] : mode === "shadow" ? ["observe_desktop", "predict_next_action"] : ["observe_desktop", "record_demonstration"],
     allowedOrigins: [],
     maximumRuntimeSeconds: 3_600,

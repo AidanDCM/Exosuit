@@ -21,7 +21,8 @@ function fixture(mode: "teach" | "shadow" | "pilot" = "teach") {
     machineId: "vm-a",
     windowsSessionId: "session-a",
     baseImageDigest: "a".repeat(64),
-    personalStateDigest: "b".repeat(64),
+    personalStateDiskId: "personal-state-a",
+    personalStateGeneration: 1,
     taskDiskId: "task-disk-a",
     createdAt: "2026-07-21T18:00:00.000Z",
   });
@@ -39,7 +40,10 @@ function fixture(mode: "teach" | "shadow" | "pilot" = "teach") {
     policyId: randomUUID(),
     field: { fieldId, fieldGeneration: 1 },
     mode,
-    allowedProcesses: ["chrome", "notepad"],
+    allowedExecutables: [
+      { processName: "chrome.exe", executableSha256: "c".repeat(64) },
+      { processName: "notepad.exe", executableSha256: "d".repeat(64) },
+    ],
     allowedCapabilities:
       mode === "teach"
         ? ["observe_desktop", "record_demonstration", "file_workspace"]

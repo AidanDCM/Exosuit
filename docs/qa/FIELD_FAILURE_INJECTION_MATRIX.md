@@ -16,6 +16,8 @@ Only S/U/P evidence exists in this branch until commands are executed and live t
 
 ## Channel and identity
 
+Durable replay fault cases include restart after acceptance, corrupt or oversized state, wrong Field generation/direction/key identity, duplicate message ID/nonce, and sequence rollback. Every case must deny before command handling.
+
 | Injection | Expected response | Existing evidence | Required live evidence |
 |---|---|---|---|
 | Change payload after signing | reject payload hash | U, shared TS/.NET fixture | send modified packet over selected transport |
@@ -59,7 +61,9 @@ Only S/U/P evidence exists in this branch until commands are executed and live t
 | Injection | Expected response | Existing evidence | Required live evidence |
 |---|---|---|---|
 | Base image digest mismatch | stop before VM mutation | script and U | H |
-| Personal-state digest mismatch | stop before VM mutation | script and U | H |
+| Personal-state ID or generation mismatch | stop before VM mutation | script and U | H |
+| Partial personal-state identity | reject contract before planning | U | H |
+| Sealed personal-state snapshot digest mismatch | reject snapshot restore; never attach as trusted | planned | H |
 | Runtime overlay parent mismatch | reject plan | U | H |
 | Overlay and task disk share identity | reject plan | U | H |
 | Existing generation directory | refuse apply | script | H |

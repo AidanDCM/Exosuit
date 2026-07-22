@@ -64,7 +64,8 @@ agentId
 machineId
 windowsSessionId
 baseImageDigest
-personalStateDigest (optional)
+personalStateDiskId (optional; paired with generation)
+personalStateGeneration (optional; paired with disk ID)
 taskDiskId
 createdAt
 ```

@@ -22,22 +22,53 @@ export type FieldCapability = z.infer<typeof fieldCapabilitySchema>;
 
 export const sha256DigestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
+export const canonicalOriginSchema = z.string().url().transform((value, context) => {
+  const url = new URL(value);
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    context.addIssue({ code: "custom", message: "Allowed origins must not contain credentials, paths, queries, or fragments." });
+    return z.NEVER;
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && (url.hostname === "127.0.0.1" || url.hostname === "localhost"))) {
+    context.addIssue({ code: "custom", message: "Allowed origins require HTTPS except for loopback development." });
+    return z.NEVER;
+  }
+  return url.origin;
+});
+export type CanonicalOrigin = z.infer<typeof canonicalOriginSchema>;
+
+export const reviewedExecutableIdentitySchema = z.object({
+  processName: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,126}\.exe$/),
+  executableSha256: sha256DigestSchema,
+}).strict();
+export type ReviewedExecutableIdentity = z.infer<typeof reviewedExecutableIdentitySchema>;
+
 export const fieldRefSchema = z.object({
   fieldId: z.string().uuid(),
   fieldGeneration: z.number().int().positive(),
 });
 export type FieldRef = z.infer<typeof fieldRefSchema>;
 
-export const fieldIdentitySchema = fieldRefSchema.extend({
-  subsystem: z.literal("field"),
-  agentId: z.string().min(1).max(200),
-  machineId: z.string().min(1).max(200),
-  windowsSessionId: z.string().min(1).max(200),
-  baseImageDigest: sha256DigestSchema,
-  personalStateDigest: sha256DigestSchema.optional(),
-  taskDiskId: z.string().min(1).max(300),
-  createdAt: z.string().datetime(),
-});
+export const fieldIdentitySchema = fieldRefSchema
+  .extend({
+    subsystem: z.literal("field"),
+    agentId: z.string().min(1).max(200),
+    machineId: z.string().min(1).max(200),
+    windowsSessionId: z.string().min(1).max(200),
+    baseImageDigest: sha256DigestSchema,
+    personalStateDiskId: z.string().min(1).max(300).optional(),
+    personalStateGeneration: z.number().int().positive().optional(),
+    taskDiskId: z.string().min(1).max(300),
+    createdAt: z.string().datetime(),
+  })
+  .superRefine((identity, context) => {
+    if ((identity.personalStateDiskId === undefined) !== (identity.personalStateGeneration === undefined)) {
+      context.addIssue({
+        code: "custom",
+        path: ["personalStateDiskId"],
+        message: "Personal-state disk ID and generation must be present together.",
+      });
+    }
+  });
 export type FieldIdentity = z.infer<typeof fieldIdentitySchema>;
 
 export const fieldDisplayContractSchema = z.object({
@@ -57,9 +88,9 @@ export const fieldPolicySchema = z
     policyId: z.string().uuid(),
     field: fieldRefSchema,
     mode: fieldModeSchema,
-    allowedProcesses: z.array(z.string().min(1).max(260)).max(128),
+    allowedExecutables: z.array(reviewedExecutableIdentitySchema).max(128),
     allowedCapabilities: z.array(fieldCapabilitySchema).min(1).max(32),
-    allowedOrigins: z.array(z.string().url()).max(128).default([]),
+    allowedOrigins: z.array(canonicalOriginSchema).max(128).default([]),
     maximumRuntimeSeconds: z.number().int().min(1).max(86_400),
     maximumActions: z.number().int().min(1).max(1_000_000),
     recordingConsent: z.enum(["granted", "not_applicable"]),
@@ -77,8 +108,12 @@ export const fieldPolicySchema = z
     if (policy.mode === "teach" && policy.recordingConsent !== "granted") {
       context.addIssue({ code: "custom", path: ["recordingConsent"], message: "Teach mode requires explicit recording consent." });
     }
-    if (new Set(policy.allowedProcesses.map((value) => value.toLowerCase())).size !== policy.allowedProcesses.length) {
-      context.addIssue({ code: "custom", path: ["allowedProcesses"], message: "Allowed processes must be unique." });
+    const executableKeys = policy.allowedExecutables.map((value) => `${value.processName}:${value.executableSha256}`);
+    if (new Set(executableKeys).size !== executableKeys.length) {
+      context.addIssue({ code: "custom", path: ["allowedExecutables"], message: "Allowed executable identities must be unique." });
+    }
+    if (new Set(policy.allowedOrigins).size !== policy.allowedOrigins.length) {
+      context.addIssue({ code: "custom", path: ["allowedOrigins"], message: "Allowed origins must be unique after canonicalization." });
     }
     if (new Set(policy.allowedCapabilities).size !== policy.allowedCapabilities.length) {
       context.addIssue({ code: "custom", path: ["allowedCapabilities"], message: "Allowed capabilities must be unique." });

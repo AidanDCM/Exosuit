@@ -142,15 +142,27 @@ public sealed class FieldChannelReplayGuard
     private readonly FieldReference _field;
     private readonly FieldChannelDirection _direction;
     private readonly string? _keyId;
+    private readonly int _maxRemembered;
+    private readonly string? _stateFilePath;
     private readonly HashSet<Guid> _messageIds = [];
     private readonly HashSet<string> _nonces = new(StringComparer.Ordinal);
+    private readonly Queue<ReplayEntry> _order = [];
     private long _lastSequence = -1;
 
-    public FieldChannelReplayGuard(FieldReference field, FieldChannelDirection direction, string? expectedKeyId = null)
+    public FieldChannelReplayGuard(
+        FieldReference field,
+        FieldChannelDirection direction,
+        string? expectedKeyId = null,
+        int maxRemembered = 10_000,
+        string? stateFilePath = null)
     {
+        if (maxRemembered is < 1 or > 1_000_000) throw new ArgumentOutOfRangeException(nameof(maxRemembered));
         _field = field;
         _direction = direction;
         _keyId = expectedKeyId;
+        _maxRemembered = maxRemembered;
+        _stateFilePath = stateFilePath;
+        Hydrate();
     }
 
     public FieldChannelEnvelope Accept(FieldChannelEnvelope envelope, string secret, DateTimeOffset now)
@@ -161,11 +173,59 @@ public sealed class FieldChannelReplayGuard
         if (verified.Sequence <= _lastSequence) throw new InvalidOperationException("Field channel sequence must increase strictly.");
         _messageIds.Add(verified.MessageId);
         _nonces.Add(verified.Nonce);
+        _order.Enqueue(new ReplayEntry(verified.MessageId, verified.Nonce));
         _lastSequence = verified.Sequence;
+        while (_order.Count > _maxRemembered)
+        {
+            var removed = _order.Dequeue();
+            _messageIds.Remove(removed.MessageId);
+            _nonces.Remove(removed.Nonce);
+        }
+        Persist();
         return verified;
     }
 
     public long LastSequence => _lastSequence;
+
+    private void Hydrate()
+    {
+        if (_stateFilePath is null || !File.Exists(_stateFilePath)) return;
+        var state = JsonSerializer.Deserialize<ReplayState>(File.ReadAllText(_stateFilePath))
+            ?? throw new InvalidOperationException("Persisted Field replay state is empty.");
+        if (state.ContractVersion != 1 || state.Field != _field || state.Direction != _direction ||
+            !string.Equals(state.ExpectedKeyId, _keyId, StringComparison.Ordinal))
+            throw new InvalidOperationException("Persisted Field replay state identity does not match this channel.");
+        if (state.Entries.Count > _maxRemembered)
+            throw new InvalidOperationException("Persisted Field replay state exceeds the configured bound.");
+        _lastSequence = state.LastSequence;
+        foreach (var entry in state.Entries)
+        {
+            if (!_messageIds.Add(entry.MessageId) || !_nonces.Add(entry.Nonce))
+                throw new InvalidOperationException("Persisted Field replay state contains duplicate identities.");
+            _order.Enqueue(entry);
+        }
+    }
+
+    private void Persist()
+    {
+        if (_stateFilePath is null) return;
+        var directory = Path.GetDirectoryName(Path.GetFullPath(_stateFilePath))
+            ?? throw new InvalidOperationException("Field replay state path has no parent directory.");
+        Directory.CreateDirectory(directory);
+        var state = new ReplayState(1, _field, _direction, _keyId, _lastSequence, [.. _order]);
+        var temporary = $"{_stateFilePath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(state));
+        File.Move(temporary, _stateFilePath, true);
+    }
+
+    private sealed record ReplayEntry(Guid MessageId, string Nonce);
+    private sealed record ReplayState(
+        int ContractVersion,
+        FieldReference Field,
+        FieldChannelDirection Direction,
+        string? ExpectedKeyId,
+        long LastSequence,
+        IReadOnlyList<ReplayEntry> Entries);
 }
 
 public enum FieldGuestLifecycle { Provisioning, Ready, Teaching, Shadowing, Piloting, Stopping, Faulted }

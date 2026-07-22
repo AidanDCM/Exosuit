@@ -139,6 +139,9 @@ Production requires durable registry and audit persistence; in-memory state is i
 
 ### Personal state
 
+- stable disk ID and positive generation are present together;
+- host registry and provisioning plan match the exact ID/generation tuple;
+- missing, partial, stale, or mismatched tuples fail before VM mutation;
 - stable disk identity and version separate from mutable contents;
 - encrypted at rest;
 - attach only when policy allows;
@@ -148,6 +151,7 @@ Production requires durable registry and audit persistence; in-memory state is i
 - removal/deletion requires owner authority.
 
 A writable personal-state disk must not rely on one permanent whole-file digest.
+Hashes are reserved for sealed immutable snapshots and must not be compared to an actively writable VHDX as its permanent identity.
 
 ### Task disk
 
@@ -204,6 +208,8 @@ A writable personal-state disk must not rely on one permanent whole-file digest.
 - retain sanitized destruction evidence.
 
 ## 9. Authenticated channel and replay protection
+
+Replay state must persist atomically across restart, remain bounded, and bind the exact Field generation, direction, and key ID. Signed timestamps use canonical UTC millisecond format only. Corrupt, oversized, or identity-mismatched replay state fails closed.
 
 - one canonical UTC timestamp format;
 - exact Field ID/generation and direction;

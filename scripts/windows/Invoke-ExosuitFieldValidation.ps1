@@ -65,7 +65,12 @@ try {
         repositoryRoot = $RepositoryRoot
         computerNameHash = if ($env:COMPUTERNAME) {
             $bytes = [Text.Encoding]::UTF8.GetBytes($env:COMPUTERNAME)
-            [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+            $sha256 = [Security.Cryptography.SHA256]::Create()
+            try {
+                (($sha256.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }) -join '')
+            } finally {
+                $sha256.Dispose()
+            }
         } else { $null }
         powershellVersion = $PSVersionTable.PSVersion.ToString()
         nodeVersion = (& node --version 2>$null)
@@ -79,11 +84,10 @@ try {
     [IO.File]::WriteAllText((Join-Path $runRoot 'environment.json'), ($environment | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 
     if (-not $SkipDependencyInstall) {
-        if (Test-Path -LiteralPath (Join-Path $RepositoryRoot 'package-lock.json') -PathType Leaf) {
-            Invoke-ValidationStep -Name 'npm-ci' -Action { npm ci --ignore-scripts --fund=false }
-        } else {
-            Invoke-ValidationStep -Name 'npm-install' -Action { npm install --ignore-scripts --fund=false }
+        if (-not (Test-Path -LiteralPath (Join-Path $RepositoryRoot 'package-lock.json') -PathType Leaf)) {
+            throw 'package-lock.json is required for reproducible L0 validation.'
         }
+        Invoke-ValidationStep -Name 'npm-ci' -Action { npm ci --ignore-scripts --fund=false }
     }
     Invoke-ValidationStep -Name 'repository-contract' -Action { npm run validate:repository }
     Invoke-ValidationStep -Name 'master-plan-contract' -Action { npm run validate:plan }

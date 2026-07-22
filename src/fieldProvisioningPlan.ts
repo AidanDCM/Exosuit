@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   fieldDisplayContractSchema,
   fieldIdentitySchema,
+  canonicalOriginSchema,
   sha256Canonical,
   sha256DigestSchema,
   type FieldDisplayContract,
@@ -82,7 +83,7 @@ export const fieldProvisioningPlanSchema = z
         personalState: z
           .object({
             diskId: z.string().min(1).max(300),
-            digest: sha256DigestSchema,
+            diskGeneration: z.number().int().positive(),
             encrypted: z.literal(true),
           })
           .strict()
@@ -101,7 +102,7 @@ export const fieldProvisioningPlanSchema = z
         mode: fieldNetworkModeSchema,
         hostLanAccess: z.literal(false),
         inboundConnections: z.literal(false),
-        allowedOrigins: z.array(z.string().url()).max(128),
+        allowedOrigins: z.array(canonicalOriginSchema).max(128),
       })
       .strict(),
     hostIntegrations: z
@@ -139,8 +140,12 @@ export const fieldProvisioningPlanSchema = z
     if (plan.storage.taskDisk.diskId !== plan.identity.taskDiskId) {
       context.addIssue({ code: "custom", path: ["storage", "taskDisk", "diskId"], message: "Task disk must match Field identity." });
     }
-    if (plan.identity.personalStateDigest) {
-      if (!plan.storage.personalState || plan.storage.personalState.digest !== plan.identity.personalStateDigest) {
+    if (plan.identity.personalStateDiskId !== undefined && plan.identity.personalStateGeneration !== undefined) {
+      if (
+        !plan.storage.personalState ||
+        plan.storage.personalState.diskId !== plan.identity.personalStateDiskId ||
+        plan.storage.personalState.diskGeneration !== plan.identity.personalStateGeneration
+      ) {
         context.addIssue({ code: "custom", path: ["storage", "personalState"], message: "Personal-state disk must match Field identity." });
       }
     } else if (plan.storage.personalState) {
@@ -214,11 +219,11 @@ export function createFieldProvisioningPlan(input: {
         differencing: true as const,
         maximumBytes: input.runtimeOverlayMaximumBytes ?? 128 * 1024 * 1024 * 1024,
       },
-      ...(identity.personalStateDigest
+      ...(identity.personalStateDiskId !== undefined && identity.personalStateGeneration !== undefined
         ? {
             personalState: {
-              diskId: input.personalStateDiskId ?? `${identity.fieldId}-personal-state`,
-              digest: identity.personalStateDigest,
+              diskId: input.personalStateDiskId ?? identity.personalStateDiskId,
+              diskGeneration: identity.personalStateGeneration,
               encrypted: true as const,
             },
           }
@@ -242,7 +247,7 @@ export function createFieldProvisioningPlan(input: {
       viewerEnabled: input.viewerEnabled ?? true,
       artifactBrokerOnly: true as const,
     },
-    steps: requiredSteps(Boolean(identity.personalStateDigest)),
+    steps: requiredSteps(identity.personalStateDiskId !== undefined),
   };
   return fieldProvisioningPlanSchema.parse({ ...unsigned, planHash: sha256Canonical(unsigned) });
 }

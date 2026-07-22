@@ -16,7 +16,7 @@ function identity(withPersonalState = true) {
     machineId: "vm-a",
     windowsSessionId: "session-a",
     baseImageDigest: "a".repeat(64),
-    ...(withPersonalState ? { personalStateDigest: "b".repeat(64) } : {}),
+    ...(withPersonalState ? { personalStateDiskId: "aidan-personal-state-v1", personalStateGeneration: 3 } : {}),
     taskDiskId: "task-disk-a",
     createdAt: "2026-07-21T18:00:00.000Z",
   });
@@ -64,6 +64,7 @@ describe("Field provisioning plan", () => {
     expect(plan.steps).toContain("attach_runtime_overlay");
     expect((plan.steps as string[])).not.toContain("attach_base_image");
     expect(plan.steps).toContain("attach_personal_state");
+    expect(plan.storage.personalState).toMatchObject({ diskId: "aidan-personal-state-v1", diskGeneration: 3, encrypted: true });
     expect(new Set(plan.steps).size).toBe(plan.steps.length);
   });
 
@@ -121,6 +122,15 @@ describe("Field provisioning plan", () => {
         compute: { ...plan.compute, minimumMemoryMiB: 16_384, startupMemoryMiB: 8_192, maximumMemoryMiB: 12_288 },
       }),
     ).toThrow(/Minimum memory/);
+    expect(() =>
+      fieldProvisioningPlanSchema.parse({
+        ...plan,
+        storage: {
+          ...plan.storage,
+          personalState: { ...plan.storage.personalState!, diskGeneration: plan.storage.personalState!.diskGeneration + 1 },
+        },
+      }),
+    ).toThrow(/Personal-state disk/);
     expect(() =>
       createFieldProvisioningPlan({
         identity: identity(),
