@@ -85,6 +85,18 @@ for (let level = 0; level <= 20; level += 1) {
 const phasesRequiringExplicitObjective = new Set([
   "L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "L17",
 ]);
+const deliveryHeadings = [
+  "### Deliverables",
+  "### Required workflow",
+  "### Requirements",
+  "### Model-facing MCP principles",
+];
+const gateHeadings = [
+  "### Promotion gate",
+  "### Release gate",
+  "### Acceptance",
+  "### Rules",
+];
 
 for (const phase of ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "L15", "L16", "L17", "L18", "L19", "L20"]) {
   const start = plan.indexOf(`## Phase ${phase}`);
@@ -93,15 +105,10 @@ for (const phase of ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9",
   if (phasesRequiringExplicitObjective.has(phase) && !section.includes("### Objective")) {
     failures.push(`${phase} is missing an explicit objective`);
   }
-  if (!section.includes("### Deliverables") && !section.includes("### Required workflow")) {
-    failures.push(`${phase} is missing deliverables or a required workflow`);
+  if (!deliveryHeadings.some((heading) => section.includes(heading))) {
+    failures.push(`${phase} is missing an implementation, workflow, requirements, or tool-surface section`);
   }
-  if (
-    !section.includes("### Promotion gate") &&
-    !section.includes("### Release gate") &&
-    !section.includes("### Acceptance") &&
-    !section.includes("### Rules")
-  ) {
+  if (!gateHeadings.some((heading) => section.includes(heading))) {
     failures.push(`${phase} is missing a promotion, release, acceptance, or controlling-rules section`);
   }
 }
