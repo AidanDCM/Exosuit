@@ -99,7 +99,10 @@ describe("Windows Field administration scripts", () => {
     expect(start).toContain("$bootstrapSucceeded = $?");
     expect(start).toContain("guest-runtime-error.log");
     expect(start).not.toContain("Guest bootstrap failed with exit code");
-    expect(install).toContain("/SC ONSTART /RU SYSTEM");
+    expect(install).toContain("New-ScheduledTaskTrigger -AtStartup");
+    expect(install).toContain("New-ScheduledTaskTrigger -AtLogOn");
+    expect(install).toContain("New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest");
+    expect(install).toContain("-MultipleInstances IgnoreNew");
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
     expect(readKvp).toContain("Resolve-KvpEnvelope");

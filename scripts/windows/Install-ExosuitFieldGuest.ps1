@@ -11,10 +11,24 @@ if (-not (Test-Path -LiteralPath $LaunchScriptPath -PathType Leaf)) {
     throw "Guest launch script is missing: $LaunchScriptPath"
 }
 $taskName = 'ExosuitFieldGuest'
-$taskCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$LaunchScriptPath`""
-if ($PSCmdlet.ShouldProcess($taskName, 'Register SYSTEM startup task for the Field guest runtime')) {
-    & schtasks.exe /Create /TN $taskName /SC ONSTART /RU SYSTEM /RL HIGHEST /TR $taskCommand /F | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Unable to register $taskName." }
-    & schtasks.exe /Run /TN $taskName | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Unable to start $taskName." }
+$arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$LaunchScriptPath`""
+if ($PSCmdlet.ShouldProcess($taskName, 'Register SYSTEM startup and logon recovery task for the Field guest runtime')) {
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
+    $triggers = @(
+        New-ScheduledTaskTrigger -AtStartup
+        New-ScheduledTaskTrigger -AtLogOn
+    )
+    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet `
+        -StartWhenAvailable `
+        -MultipleInstances IgnoreNew `
+        -ExecutionTimeLimit ([TimeSpan]::Zero)
+    Register-ScheduledTask `
+        -TaskName $taskName `
+        -Action $action `
+        -Trigger $triggers `
+        -Principal $principal `
+        -Settings $settings `
+        -Force | Out-Null
+    Start-ScheduledTask -TaskName $taskName
 }
