@@ -102,18 +102,40 @@ Add-Check -Name 'directory_layout' -Passed $directoriesReady -Summary 'Approved 
 
 $currentWidth = $null
 $currentHeight = $null
+$displaySource = $null
 try {
     Add-Type -AssemblyName System.Windows.Forms
     $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     $currentWidth = $bounds.Width
     $currentHeight = $bounds.Height
+    $displaySource = 'windows_forms_primary_screen'
 } catch {}
+
+# A SYSTEM startup task runs in session 0, where Windows Forms can expose the
+# service-session surface instead of the active VM console. Query the display
+# adapter as a bounded fallback and accept only the exact manifest dimensions.
+if ($currentWidth -ne [int]$manifest.display.width -or $currentHeight -ne [int]$manifest.display.height) {
+    try {
+        $matchingController = Get-CimInstance -ClassName Win32_VideoController |
+            Where-Object {
+                [int]$_.CurrentHorizontalResolution -eq [int]$manifest.display.width -and
+                [int]$_.CurrentVerticalResolution -eq [int]$manifest.display.height
+            } |
+            Select-Object -First 1
+        if ($null -ne $matchingController) {
+            $currentWidth = [int]$matchingController.CurrentHorizontalResolution
+            $currentHeight = [int]$matchingController.CurrentVerticalResolution
+            $displaySource = 'win32_video_controller'
+        }
+    } catch {}
+}
 $displayPassed = $currentWidth -eq [int]$manifest.display.width -and $currentHeight -eq [int]$manifest.display.height
 Add-Check -Name 'display_contract' -Passed $displayPassed -Summary 'Interactive display dimensions were checked.' -Evidence @{
     expectedWidth = [int]$manifest.display.width
     expectedHeight = [int]$manifest.display.height
     actualWidth = $currentWidth
     actualHeight = $currentHeight
+    source = $displaySource
 }
 
 $agentPath = 'C:\Exosuit\Agent\Exosuit.Agent.exe'

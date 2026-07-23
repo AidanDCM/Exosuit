@@ -73,6 +73,8 @@ describe("Windows Field administration scripts", () => {
     }
     expect(guest).toContain("[string]$ManifestDigest");
     expect(guest).toContain("actualWindowsSessionId");
+    expect(guest).toContain("Win32_VideoController");
+    expect(guest).toContain("win32_video_controller");
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
@@ -82,11 +84,13 @@ describe("Windows Field administration scripts", () => {
     const start = await script("Start-ExosuitFieldGuest.ps1");
     const install = await script("Install-ExosuitFieldGuest.ps1");
     const readKvp = await script("Read-ExosuitFieldGuestKvp.ps1");
+    const setupComplete = await script("SetupComplete-ExosuitFieldGuest.cmd");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(install).toContain("/SC ONSTART /RU SYSTEM");
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
+    expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
