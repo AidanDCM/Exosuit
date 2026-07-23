@@ -21,6 +21,10 @@ describe("Windows Field administration scripts", () => {
     expect(content).toContain("New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing");
     expect(content).toContain("Filtered NAT apply is held");
     expect(content).toContain("artifactBrokerOnly");
+    expect(content).toContain("Guest seed directory must contain exactly the approved four files.");
+    expect(content).toContain("Guest seed manifest identity does not match the provisioning plan.");
+    expect(content).toContain("seed_guest_overlay");
+    expect(content).toContain("*S-1-5-18:(OI)(CI)F");
     expect(content).not.toContain("Invoke-Expression");
     expect(content).not.toContain("iex ");
   });

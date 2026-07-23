@@ -15,6 +15,10 @@ param(
     [string]$TypedConfirmation,
 
     [Parameter()]
+    [ValidateScript({ Test-Path $_ -PathType Container })]
+    [string]$GuestSeedDirectory,
+
+    [Parameter()]
     [string]$EvidenceDirectory = "$env:ProgramData\Exosuit\Evidence"
 )
 
@@ -74,6 +78,69 @@ if ($generation -lt 1) { throw 'Field generation is invalid.' }
 $expectedConfirmation = "CREATE FIELD $fieldId GENERATION $generation"
 if ($Apply -and $TypedConfirmation -cne $expectedConfirmation) {
     throw "Apply requires exact typed confirmation: $expectedConfirmation"
+}
+
+function Add-GuestSeedToOverlay {
+    param(
+        [Parameter(Mandatory)][string]$OverlayPath,
+        [Parameter(Mandatory)][string]$SeedDirectory,
+        [Parameter(Mandatory)]$Plan
+    )
+    $seedItem = Get-Item -LiteralPath $SeedDirectory -Force
+    if (($seedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Guest seed directory cannot be a reparse point.' }
+    $requiredSeedFiles = @('bootstrap-manifest.json', 'guest-runtime.json', 'guest-launch.json', 'channel-secret.txt')
+    $actualSeedFiles = @(Get-ChildItem -LiteralPath $SeedDirectory -File -Force)
+    if ($actualSeedFiles.Count -ne $requiredSeedFiles.Count -or
+        (Compare-Object ($requiredSeedFiles | Sort-Object) ($actualSeedFiles.Name | Sort-Object))) {
+        throw 'Guest seed directory must contain exactly the approved four files.'
+    }
+    $manifest = ConvertFrom-JsonDocument -Path (Join-Path $SeedDirectory 'bootstrap-manifest.json') -Depth 50
+    $runtime = ConvertFrom-JsonDocument -Path (Join-Path $SeedDirectory 'guest-runtime.json') -Depth 30
+    $launch = ConvertFrom-JsonDocument -Path (Join-Path $SeedDirectory 'guest-launch.json') -Depth 20
+    if ($manifest.identity.fieldId -ne $Plan.identity.fieldId -or
+        [int]$manifest.identity.fieldGeneration -ne [int]$Plan.identity.fieldGeneration -or
+        $manifest.identity.baseImageDigest -ne $Plan.identity.baseImageDigest) {
+        throw 'Guest seed manifest identity does not match the provisioning plan.'
+    }
+    if ($runtime.field.fieldId -ne $Plan.identity.fieldId -or
+        [int]$runtime.field.fieldGeneration -ne [int]$Plan.identity.fieldGeneration -or
+        $runtime.agentId -ne $Plan.identity.agentId -or
+        $runtime.keyId -ne $manifest.channelKeyId) {
+        throw 'Guest runtime identity or key ID does not match the provisioning plan and manifest.'
+    }
+    if ($runtime.secretPath -cne 'C:\Exosuit\Config\channel-secret.txt' -or
+        $runtime.bootstrapReportPath -cne 'C:\Exosuit\Diagnostics\bootstrap-report.json' -or
+        $launch.manifestPath -cne 'C:\Exosuit\Config\bootstrap-manifest.json' -or
+        $launch.runtimeConfigPath -cne 'C:\Exosuit\Config\guest-runtime.json') {
+        throw 'Guest seed uses a path outside the fixed guest contract.'
+    }
+    $secret = (Get-Content -LiteralPath (Join-Path $SeedDirectory 'channel-secret.txt') -Raw).Trim()
+    if ($secret.Length -lt 32) { throw 'Guest channel secret must contain at least 32 characters.' }
+
+    $mounted = $false
+    try {
+        $vhd = Mount-VHD -Path $OverlayPath -PassThru
+        $mounted = $true
+        $disk = $vhd | Get-Disk
+        $partition = Get-Partition -DiskNumber $disk.Number |
+            Where-Object { $_.Type -eq 'Basic' } |
+            Sort-Object Size -Descending |
+            Select-Object -First 1
+        if (-not $partition) { throw 'Guest overlay does not contain a Windows data partition.' }
+        if (-not $partition.DriveLetter) {
+            $partition | Add-PartitionAccessPath -AssignDriveLetter
+            $partition = Get-Partition -DiskNumber $disk.Number -PartitionNumber $partition.PartitionNumber
+        }
+        $configDirectory = "$($partition.DriveLetter):\Exosuit\Config"
+        New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
+        foreach ($name in $requiredSeedFiles) {
+            Copy-Item -LiteralPath (Join-Path $SeedDirectory $name) -Destination (Join-Path $configDirectory $name)
+        }
+        & icacls.exe $configDirectory /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to restrict guest seed ACLs to SYSTEM and Administrators.' }
+    } finally {
+        if ($mounted) { Dismount-VHD -Path $OverlayPath -ErrorAction SilentlyContinue }
+    }
 }
 
 $hostCheckJson = & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" -StoragePath $config.storageRoot
@@ -162,6 +229,12 @@ try {
     if ($PSCmdlet.ShouldProcess($runtimeOverlayPath, 'Create disposable differencing OS overlay')) {
         New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing | Out-Null
         $summary.completedSteps.Add('create_runtime_overlay')
+    }
+    if ($GuestSeedDirectory) {
+        if ($PSCmdlet.ShouldProcess($runtimeOverlayPath, 'Inject exact per-generation guest seed')) {
+            Add-GuestSeedToOverlay -OverlayPath $runtimeOverlayPath -SeedDirectory $GuestSeedDirectory -Plan $plan
+            $summary.completedSteps.Add('seed_guest_overlay')
+        }
     }
     if ($PSCmdlet.ShouldProcess($taskDiskPath, 'Create disposable task disk')) {
         New-VHD -Path $taskDiskPath -Dynamic -SizeBytes ([UInt64]$plan.storage.taskDisk.maximumBytes) | Out-Null
