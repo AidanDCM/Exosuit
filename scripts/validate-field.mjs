@@ -10,6 +10,7 @@ const pairs = [
   ["src/fieldBootstrap.ts", "tests/fieldBootstrap.test.ts"],
   ["src/fieldChannel.ts", "tests/fieldChannel.test.ts"],
   ["src/fieldHeartbeat.ts", "tests/fieldHeartbeat.test.ts"],
+  ["src/fieldLiveReadiness.ts", "tests/fieldLiveReadiness.test.ts"],
   ["src/fieldCommand.ts", "tests/fieldCommand.test.ts"],
   ["src/teachRecorder.ts", "tests/teachRecorder.test.ts"],
   ["src/demonstration.ts", "tests/demonstration.test.ts"],
@@ -30,6 +31,10 @@ const windowsScripts = [
   "scripts/windows/Invoke-ExosuitFieldProvisioning.ps1",
   "scripts/windows/Remove-ExosuitFieldGeneration.ps1",
   "scripts/windows/Initialize-ExosuitFieldGuest.ps1",
+  "scripts/windows/Install-ExosuitFieldGuest.ps1",
+  "scripts/windows/Start-ExosuitFieldGuest.ps1",
+  "scripts/windows/Read-ExosuitFieldGuestKvp.ps1",
+  "scripts/windows/SetupComplete-ExosuitFieldGuest.cmd",
 ];
 
 const required = [
@@ -44,8 +49,10 @@ const required = [
   "vm/field-host-config.example.json",
   "apps/windows-agent/FieldFoundation.cs",
   "apps/windows-agent/FieldChannelFoundation.cs",
+  "apps/windows-agent/FieldKvpRuntime.cs",
   "apps/windows-agent.Tests/FieldFoundationTests.cs",
   "apps/windows-agent.Tests/FieldChannelFoundationTests.cs",
+  "apps/windows-agent.Tests/FieldKvpRuntimeTests.cs",
   "apps/windows-agent.Tests/FieldWireContractTests.cs",
   "apps/windows-agent.Tests/FieldChannelWireContractTests.cs",
   "docs/GLOVE_FIELD_BOUNDARY.md",
@@ -96,6 +103,7 @@ const invariants = new Map([
   ["src/fieldProvisioningPlan.ts", ["runtimeOverlay", "differencing: z.literal(true)", "Runtime overlay must be a child"]],
   ["src/fieldChannel.ts", ["timingSafeEqual", "message ID was replayed", "nonce was replayed", "sequence must increase strictly"]],
   ["src/fieldHeartbeat.ts", ["Guest heartbeat expired", "boot identity changed", "cannot report the desktop ready"]],
+  ["src/fieldLiveReadiness.ts", ["attested_identity_mismatch", "policy_binding_mismatch", "heartbeat_or_desktop_not_ready"]],
   ["src/fieldCommand.ts", ["pilot_mode_required", "shutdown_admin_only", "Guest execution accepts only approved desktop routes"]],
   ["src/teachRecorder.ts", ["inputInjectionAllowed: false", "cannot start before consent", "recordingIndicatorVisible"]],
   ["src/visualRetention.ts", ["storeInlineBytes: z.literal(false)", "explicit consent", "Visual session byte budget exceeded"]],

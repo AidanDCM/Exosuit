@@ -40,10 +40,13 @@ $requiredDirectories = @(
 )
 
 $manifest = ConvertFrom-JsonDocument -Path $ManifestPath -Depth 50
+$actualManifestDigest = (Get-FileHash -LiteralPath $ManifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualManifestDigest -cne $ManifestDigest) { throw 'Bootstrap manifest digest is invalid.' }
 if ($manifest.contractVersion -ne 1) { throw 'Unsupported Field bootstrap manifest contract version.' }
 if ($manifest.identity.subsystem -ne 'field') { throw 'Bootstrap manifest is not a Field identity.' }
 if ([string]::IsNullOrWhiteSpace($manifest.identity.fieldId)) { throw 'Bootstrap manifest Field ID is missing.' }
 if ([int]$manifest.identity.fieldGeneration -lt 1) { throw 'Bootstrap manifest Field generation is invalid.' }
+if ([DateTimeOffset]::UtcNow -ge [DateTimeOffset]::Parse([string]$manifest.expiresAt)) { throw 'Bootstrap manifest has expired.' }
 if ($manifest.display.monitorCount -ne 1 -or $manifest.display.dynamicResolutionAllowed -ne $false) {
     throw 'Bootstrap manifest display contract is outside the supported fixed single-monitor configuration.'
 }
@@ -71,8 +74,14 @@ Add-Check -Name 'identity' -Passed $true -Summary 'Field identity was parsed.' -
     windowsSessionId = $manifest.identity.windowsSessionId
 }
 Add-Check -Name 'base_image' -Passed ($manifest.identity.baseImageDigest -match '^[a-f0-9]{64}$') -Summary 'Base-image digest shape was checked.'
-$hasPersonalStateId = -not [string]::IsNullOrWhiteSpace([string]$manifest.identity.personalStateDiskId)
-$hasPersonalStateGeneration = $null -ne $manifest.identity.personalStateGeneration -and [int]$manifest.identity.personalStateGeneration -gt 0
+$hasPersonalStateId = $false
+$hasPersonalStateGeneration = $false
+if ($manifest.identity.PSObject.Properties.Name -contains 'personalStateDiskId') {
+    $hasPersonalStateId = -not [string]::IsNullOrWhiteSpace([string]$manifest.identity.personalStateDiskId)
+}
+if ($manifest.identity.PSObject.Properties.Name -contains 'personalStateGeneration') {
+    $hasPersonalStateGeneration = $null -ne $manifest.identity.personalStateGeneration -and [int]$manifest.identity.personalStateGeneration -gt 0
+}
 Add-Check -Name 'personal_state' -Passed ($hasPersonalStateId -eq $hasPersonalStateGeneration) -Summary 'Personal-state stable ID and generation were checked.'
 Add-Check -Name 'task_disk' -Passed (-not [string]::IsNullOrWhiteSpace($manifest.identity.taskDiskId)) -Summary 'Task-disk identity was checked.'
 
@@ -106,7 +115,13 @@ Add-Check -Name 'display_contract' -Passed $displayPassed -Summary 'Interactive 
 
 $agentPath = 'C:\Exosuit\Agent\Exosuit.Agent.exe'
 $agentPresent = Test-Path -LiteralPath $agentPath -PathType Leaf
-Add-Check -Name 'agent_binary' -Passed $agentPresent -Summary 'Guest agent binary presence was checked.' -Evidence @{ path = $agentPath }
+$agentDigest = if ($agentPresent) { (Get-FileHash -LiteralPath $agentPath -Algorithm SHA256).Hash.ToLowerInvariant() } else { $null }
+$agentDigestMatches = $agentPresent -and $agentDigest -ceq [string]$manifest.agentBinaryDigest
+Add-Check -Name 'agent_binary' -Passed $agentDigestMatches -Summary 'Guest agent binary digest was checked.' -Evidence @{
+    path = $agentPath
+    expectedDigest = [string]$manifest.agentBinaryDigest
+    actualDigest = $agentDigest
+}
 Add-Check -Name 'channel_key' -Passed (-not [string]::IsNullOrWhiteSpace($manifest.channelKeyId)) -Summary 'Channel key identity was checked without reading key material.'
 Add-Check -Name 'policy_binding' -Passed ($manifest.policyHash -match '^[a-f0-9]{64}$') -Summary 'Policy hash shape was checked.'
 
@@ -138,4 +153,4 @@ if ($PSCmdlet.ShouldProcess($ReportPath, 'Write Field bootstrap report')) {
 }
 
 $report | ConvertTo-Json -Depth 50
-if (-not $directoriesReady -or -not $displayPassed -or -not $agentPresent) { exit 2 }
+if (-not $directoriesReady -or -not $displayPassed -or -not $agentDigestMatches) { exit 2 }

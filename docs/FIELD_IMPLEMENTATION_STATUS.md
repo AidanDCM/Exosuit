@@ -35,9 +35,9 @@ This branch contains substantial Field contracts, pure/fake runtimes, Windows-si
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
-| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs` | TS/.NET tests and shared signed fixture | no live transport |
-| guest heartbeat | `fieldHeartbeat.ts`, `.NET foundation` | identity/liveness tests | no guest emitter |
-| guest bootstrap | `fieldBootstrap.ts`, guest bootstrap script | pure evaluator and static script tests | no service integration |
+| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests and shared signed fixture | Hyper-V KVP emitter/verifier written; live guest proof pending |
+| guest heartbeat | `fieldHeartbeat.ts`, `.NET FieldKvpRuntime.cs` | identity/liveness and signed-emitter tests | live guest observation pending |
+| guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | evaluator, digest, strict-mode, and static script tests | sealed-base and live guest proof pending |
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
 | Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
@@ -91,7 +91,7 @@ Every message binds:
 - sent/expiration time,
 - HMAC-SHA256 signature.
 
-Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID; live transport wiring and protected-state operational validation remain pending.
+Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. A narrow Hyper-V KVP guest emitter and host verifier now provide a no-network transport implementation; live guest wiring, protected-state operational validation, and key rotation remain pending.
 
 ### Guest action boundary
 
@@ -147,6 +147,8 @@ Shell routes are denied. Teach and Shadow cannot execute. Shutdown is local-admi
 - `Show-ExosuitFieldProvisioningPlan.ps1` — non-mutating plan resolver;
 - `Invoke-ExosuitFieldProvisioning.ps1` — dry-run by default, exact confirmation for apply, bounded rollback;
 - `Initialize-ExosuitFieldGuest.ps1` — fixed-root bootstrap precheck;
+- `Install-ExosuitFieldGuest.ps1` / `Start-ExosuitFieldGuest.ps1` — SYSTEM startup registration and signed KVP guest runtime;
+- `Read-ExosuitFieldGuestKvp.ps1` — host-side KVP retrieval and authenticated replay-guard verification;
 - `Remove-ExosuitFieldGeneration.ps1` — exact-generation destruction;
 - `Invoke-ExosuitFieldValidation.ps1` — one-command evidence capture.
 
@@ -165,8 +167,8 @@ Executable validation remains mandatory on the exact branch head.
 - supported, reviewed Hyper-V provider integrated behind `FieldProvisioner`;
 - actual VM creation evidence;
 - base-image immutability evidence after guest use;
-- actual host/guest transport, key persistence, and rotation;
-- running guest bootstrap/heartbeat service;
+- live Hyper-V KVP transport, protected key persistence, and rotation evidence;
+- running guest bootstrap/heartbeat evidence;
 - live Windows scene producer;
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;

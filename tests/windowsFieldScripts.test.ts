@@ -71,4 +71,19 @@ describe("Windows Field administration scripts", () => {
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
   });
+
+  it("keeps live guest readiness on authenticated Hyper-V KVP without a network listener", async () => {
+    const start = await script("Start-ExosuitFieldGuest.ps1");
+    const install = await script("Install-ExosuitFieldGuest.ps1");
+    const readKvp = await script("Read-ExosuitFieldGuestKvp.ps1");
+    expect(start).toContain("--field-guest-kvp");
+    expect(start).toContain("C:\\Exosuit");
+    expect(install).toContain("/SC ONSTART /RU SYSTEM");
+    expect(readKvp).toContain("Msvm_KvpExchangeComponent");
+    expect(readKvp).toContain("--field-verify-envelope");
+    for (const content of [start, install, readKvp]) {
+      expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
+      expect(content).not.toContain("Invoke-Expression");
+    }
+  });
 });
