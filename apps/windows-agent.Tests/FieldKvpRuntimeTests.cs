@@ -66,4 +66,30 @@ public sealed class FieldKvpRuntimeTests
             FieldChannelMessageType.Handshake,
             new Dictionary<string, object?>()));
     }
+
+    [Fact]
+    public void GuestSequencePersistsAcrossRuntimeRestartAndRejectsMismatchedState()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"exosuit-kvp-sequence-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var field = new FieldReference(Guid.NewGuid(), 2);
+            var configuration = new FieldKvpRuntimeConfiguration(
+                1, field, "field-agent-test", "field-key-test", Path.Combine(root, "secret.txt"),
+                Path.Combine(root, "bootstrap.json"), 1_000);
+            var first = FieldKvpRuntime.ReserveNextGuestSequence(
+                configuration, DateTimeOffset.Parse("2026-07-23T22:00:00.000Z"));
+            var second = FieldKvpRuntime.ReserveNextGuestSequence(
+                configuration, DateTimeOffset.Parse("2026-07-23T21:00:00.000Z"));
+            Assert.Equal(first + 1, second);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                FieldKvpRuntime.ReserveNextGuestSequence(configuration with { KeyId = "different-key" }));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

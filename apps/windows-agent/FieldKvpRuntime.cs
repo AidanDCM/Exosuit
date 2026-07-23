@@ -26,6 +26,7 @@ public static class FieldKvpRuntime
     // Hyper-V KVP values are bounded to 2,048 bytes. Keep UTF-16 values at or
     // below 1,000 characters so a heartbeat fits atomically with safety margin.
     private const int KvpChunkCharacters = 1000;
+    private const long MaximumSafeWireSequence = 9_007_199_254_740_991;
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
 
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
@@ -34,14 +35,13 @@ public static class FieldKvpRuntime
         var configuration = ReadConfiguration(configurationPath);
         var secret = ReadSecret(configuration.SecretPath);
         var bootId = Guid.NewGuid();
-        long sequence = 0;
         long heartbeatSequence = 0;
 
         using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
             ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
 
         WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-            configuration, secret, bootId, sequence++, FieldChannelMessageType.Handshake,
+            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
             new Dictionary<string, object?>
             {
                 ["agentId"] = configuration.AgentId,
@@ -51,7 +51,7 @@ public static class FieldKvpRuntime
 
         var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
         WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-            configuration, secret, bootId, sequence++, FieldChannelMessageType.BootstrapStatus, bootstrap));
+            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
         var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
 
         while (!cancellationToken.IsCancellationRequested)
@@ -59,7 +59,7 @@ public static class FieldKvpRuntime
             if (DateTimeOffset.UtcNow >= nextControlRefresh)
             {
                 WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-                    configuration, secret, bootId, sequence++, FieldChannelMessageType.Handshake,
+                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
                     new Dictionary<string, object?>
                     {
                         ["agentId"] = configuration.AgentId,
@@ -68,7 +68,7 @@ public static class FieldKvpRuntime
                     }));
                 bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
                 WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-                    configuration, secret, bootId, sequence++, FieldChannelMessageType.BootstrapStatus, bootstrap));
+                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
                 nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
             }
             var activeSessionId = GetActiveInteractiveSessionId();
@@ -98,7 +98,7 @@ public static class FieldKvpRuntime
                 ["workingSetBytes"] = process.WorkingSet64,
             };
             WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
-                configuration, secret, bootId, sequence++, FieldChannelMessageType.Heartbeat, heartbeat));
+                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
             await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
         }
     }
@@ -124,6 +124,62 @@ public static class FieldKvpRuntime
             secret,
             sentAt ?? DateTimeOffset.UtcNow,
             messageType == FieldChannelMessageType.Heartbeat ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(5));
+    }
+
+    internal static long ReserveNextGuestSequence(
+        FieldKvpRuntimeConfiguration configuration,
+        DateTimeOffset? now = null)
+    {
+        ValidateConfiguration(configuration);
+        var directory = Path.GetDirectoryName(Path.GetFullPath(configuration.SecretPath))
+            ?? throw new InvalidOperationException("Field guest secret path has no parent directory.");
+        var path = Path.Combine(directory, "guest-sequence.json");
+        var next = checked((now ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds() * 1_000);
+        if (File.Exists(path))
+        {
+            var state = JsonSerializer.Deserialize<GuestSequenceState>(File.ReadAllText(path), WireJson)
+                ?? throw new InvalidOperationException("Field guest sequence state is empty.");
+            if (state.ContractVersion != 1 ||
+                state.Field != configuration.Field ||
+                !string.Equals(state.KeyId, configuration.KeyId, StringComparison.Ordinal) ||
+                state.NextSequence < 0 ||
+                state.NextSequence > MaximumSafeWireSequence)
+            {
+                throw new InvalidOperationException("Field guest sequence state is invalid or belongs to another channel.");
+            }
+            next = state.NextSequence;
+        }
+        if (next >= MaximumSafeWireSequence)
+        {
+            throw new InvalidOperationException("Field guest sequence space is exhausted.");
+        }
+        Directory.CreateDirectory(directory);
+        var updated = new GuestSequenceState(1, configuration.Field, configuration.KeyId, next + 1);
+        var temporary = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            WriteDurableState(temporary, JsonSerializer.Serialize(updated, WireJson));
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+        return next;
+    }
+
+    private static void WriteDurableState(string path, string content)
+    {
+        var bytes = new UTF8Encoding(false).GetBytes(content);
+        using var stream = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4_096,
+            FileOptions.WriteThrough);
+        stream.Write(bytes);
+        stream.Flush(flushToDisk: true);
     }
 
     public static FieldChannelEnvelope VerifyEnvelope(
@@ -334,4 +390,10 @@ public static class FieldKvpRuntime
         public IntPtr WinStationName;
         public int State;
     }
+
+    private sealed record GuestSequenceState(
+        int ContractVersion,
+        FieldReference Field,
+        string KeyId,
+        long NextSequence);
 }
