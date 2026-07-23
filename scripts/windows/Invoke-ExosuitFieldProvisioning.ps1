@@ -90,15 +90,19 @@ $baseDigest = Get-FileDigest -Path $base.path
 if ($baseDigest -ne $plan.storage.baseImage.digest -or $baseDigest -ne $base.digest) { throw 'Base image digest mismatch.' }
 
 $personal = $null
-if ($null -ne $plan.storage.personalState) {
+$plannedPersonalState = $null
+if ($plan.storage.PSObject.Properties.Name -contains 'personalState') {
+    $plannedPersonalState = $plan.storage.personalState
+}
+if ($null -ne $plannedPersonalState) {
     $personalMatches = @($config.personalStateDisks | Where-Object {
-        $_.diskId -eq $plan.storage.personalState.diskId -and
-        [int]$_.diskGeneration -eq [int]$plan.storage.personalState.diskGeneration
+        $_.diskId -eq $plannedPersonalState.diskId -and
+        [int]$_.diskGeneration -eq [int]$plannedPersonalState.diskGeneration
     })
     if ($personalMatches.Count -ne 1) { throw 'Host configuration must resolve exactly one approved personal-state disk.' }
     $personal = $personalMatches[0]
     if (-not (Test-Path -LiteralPath $personal.path -PathType Leaf)) { throw "Personal-state disk is missing: $($personal.path)" }
-    if ($personal.encrypted -ne $true -or $plan.storage.personalState.encrypted -ne $true) { throw 'Personal-state disk must be registered as encrypted.' }
+    if ($personal.encrypted -ne $true -or $plannedPersonalState.encrypted -ne $true) { throw 'Personal-state disk must be registered as encrypted.' }
 }
 
 $storageRoot = [System.IO.Path]::GetFullPath([string]$config.storageRoot)

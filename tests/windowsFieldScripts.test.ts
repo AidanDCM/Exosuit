@@ -25,6 +25,16 @@ describe("Windows Field administration scripts", () => {
     expect(content).not.toContain("iex ");
   });
 
+  it("supports disposable Fields whose plan omits optional personal state", async () => {
+    for (const content of [
+      await script("Show-ExosuitFieldProvisioningPlan.ps1"),
+      await script("Invoke-ExosuitFieldProvisioning.ps1"),
+    ]) {
+      expect(content).toContain("PSObject.Properties.Name -contains 'personalState'");
+      expect(content).not.toContain("if ($null -ne $plan.storage.personalState)");
+    }
+  });
+
   it("rolls back only the disposable generation root and VM registration", async () => {
     const content = await script("Remove-ExosuitFieldGeneration.ps1");
     expect(content).toContain("DESTROY FIELD $fieldIdText GENERATION $FieldGeneration");
