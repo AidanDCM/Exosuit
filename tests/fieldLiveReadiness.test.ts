@@ -84,6 +84,14 @@ describe("Field live readiness", () => {
       manifest, manifestDigest, bootstrapReport, heartbeat, policy, attestation, attestationSecret: secret,
       now: new Date("2026-07-23T15:00:02.100Z"),
     })).toMatchObject({ status: "ready", fieldId, bootId: heartbeat.bootId });
+    expect(evaluateFieldLiveReadiness({
+      manifest, manifestDigest, bootstrapReport, heartbeat, policy, attestation, attestationSecret: secret,
+      now: new Date("2026-07-23T15:00:14.999Z"),
+    })).toMatchObject({ status: "ready", fieldId });
+    expect(evaluateFieldLiveReadiness({
+      manifest, manifestDigest, bootstrapReport, heartbeat, policy, attestation, attestationSecret: secret,
+      now: new Date("2026-07-23T15:00:17.000Z"),
+    })).toMatchObject({ status: "not_ready", reason: "heartbeat_or_desktop_not_ready" });
   });
 
   it("fails closed for locked desktop stale generation and policy substitution", () => {

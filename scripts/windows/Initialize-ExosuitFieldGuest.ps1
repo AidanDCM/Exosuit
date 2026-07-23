@@ -24,6 +24,12 @@ function ConvertFrom-JsonDocument {
     return $json | ConvertFrom-Json
 }
 
+function Get-FieldWireTimestamp {
+    [DateTimeOffset]::UtcNow.ToUniversalTime().ToString(
+        "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
+        [Globalization.CultureInfo]::InvariantCulture)
+}
+
 $requiredDirectories = @(
     'C:\Exosuit\Agent',
     'C:\Exosuit\Config',
@@ -61,7 +67,7 @@ function Add-Check {
     $checks.Add([ordered]@{
         name = $Name
         passed = $Passed
-        observedAt = [DateTimeOffset]::UtcNow.ToString('O')
+        observedAt = Get-FieldWireTimestamp
         summary = $Summary
         evidence = $Evidence
     })
@@ -151,11 +157,87 @@ Add-Check -Name 'channel_key' -Passed (-not [string]::IsNullOrWhiteSpace($manife
 Add-Check -Name 'policy_binding' -Passed ($manifest.policyHash -match '^[a-f0-9]{64}$') -Summary 'Policy hash shape was checked.'
 
 $sessionLocked = $false
+$activeConsoleSessionId = $null
 try {
-    $process = Get-Process -Name LogonUI -ErrorAction SilentlyContinue
-    $sessionLocked = $null -ne $process
-} catch {}
-Add-Check -Name 'session_unlocked' -Passed (-not $sessionLocked) -Summary 'Interactive session lock state was checked.'
+    Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public static class ExosuitActiveConsoleSession {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WTS_SESSION_INFO {
+        public uint SessionId;
+        public System.IntPtr WinStationName;
+        public int State;
+    }
+
+    [DllImport("kernel32.dll")]
+    public static extern uint WTSGetActiveConsoleSessionId();
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WTSQuerySessionInformation(
+        System.IntPtr serverHandle,
+        uint sessionId,
+        int informationClass,
+        out System.IntPtr buffer,
+        out int bytesReturned);
+
+    [DllImport("wtsapi32.dll")]
+    private static extern void WTSFreeMemory(System.IntPtr memory);
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WTSEnumerateSessions(
+        System.IntPtr serverHandle,
+        int reserved,
+        int version,
+        out System.IntPtr sessionInfo,
+        out int count);
+
+    public static uint GetActiveInteractiveSessionId() {
+        System.IntPtr sessions;
+        int count;
+        if (WTSEnumerateSessions(System.IntPtr.Zero, 0, 1, out sessions, out count) &&
+            sessions != System.IntPtr.Zero) {
+            try {
+                int size = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
+                for (int index = 0; index < count; index++) {
+                    var session = (WTS_SESSION_INFO)Marshal.PtrToStructure(
+                        System.IntPtr.Add(sessions, index * size),
+                        typeof(WTS_SESSION_INFO));
+                    if (session.SessionId > 0 && session.State == 0) return session.SessionId;
+                }
+            } finally {
+                WTSFreeMemory(sessions);
+            }
+        }
+        return WTSGetActiveConsoleSessionId();
+    }
+
+    public static bool IsLocked(uint sessionId) {
+        if (sessionId == uint.MaxValue) return true;
+        System.IntPtr buffer;
+        int byteCount;
+        if (!WTSQuerySessionInformation(System.IntPtr.Zero, sessionId, 25, out buffer, out byteCount) ||
+            buffer == System.IntPtr.Zero ||
+            byteCount < 20) return true;
+        try {
+            int level = Marshal.ReadInt32(buffer, 0);
+            int sessionFlags = Marshal.ReadInt32(buffer, 16);
+            return level != 1 || sessionFlags != 1;
+        } finally {
+            WTSFreeMemory(buffer);
+        }
+    }
+}
+'@
+    $activeConsoleSessionId = [ExosuitActiveConsoleSession]::GetActiveInteractiveSessionId()
+    $sessionLocked = [ExosuitActiveConsoleSession]::IsLocked($activeConsoleSessionId)
+} catch {
+    $sessionLocked = $true
+}
+Add-Check -Name 'session_unlocked' -Passed (-not $sessionLocked) -Summary 'Active console session lock state was checked.' -Evidence @{
+    activeConsoleSessionId = if ($null -ne $activeConsoleSessionId) { [string]$activeConsoleSessionId } else { $null }
+}
 # `secure_desktop_inactive` and `heartbeat_started` are deliberately omitted here.
 # They are runtime checks supplied by the authenticated guest agent, so the host
 # evaluator will correctly classify this precheck as not_ready instead of failed.
@@ -164,7 +246,7 @@ $report = [ordered]@{
     contractVersion = 1
     identity = $manifest.identity
     manifestDigest = $ManifestDigest
-    reportedAt = [DateTimeOffset]::UtcNow.ToString('O')
+    reportedAt = Get-FieldWireTimestamp
     checks = $checks
 }
 

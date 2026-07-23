@@ -75,6 +75,14 @@ describe("Windows Field administration scripts", () => {
     expect(guest).toContain("actualWindowsSessionId");
     expect(guest).toContain("Win32_VideoController");
     expect(guest).toContain("win32_video_controller");
+    expect(guest).toContain("WTSGetActiveConsoleSessionId");
+    expect(guest).toContain("WTSQuerySessionInformation");
+    expect(guest).toContain("WTSEnumerateSessions");
+    expect(guest).toContain("GetActiveInteractiveSessionId");
+    expect(guest).toContain("Get-FieldWireTimestamp");
+    expect(guest).toContain("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
+    expect(guest).toContain("sessionFlags");
+    expect(guest).toContain("activeConsoleSessionId");
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
@@ -83,14 +91,25 @@ describe("Windows Field administration scripts", () => {
   it("keeps live guest readiness on authenticated Hyper-V KVP without a network listener", async () => {
     const start = await script("Start-ExosuitFieldGuest.ps1");
     const install = await script("Install-ExosuitFieldGuest.ps1");
+    const initializeGuest = await script("Initialize-ExosuitFieldGuest.ps1");
     const readKvp = await script("Read-ExosuitFieldGuestKvp.ps1");
     const setupComplete = await script("SetupComplete-ExosuitFieldGuest.cmd");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
+    expect(start).toContain("$bootstrapSucceeded = $?");
+    expect(start).toContain("guest-runtime-error.log");
+    expect(start).not.toContain("Guest bootstrap failed with exit code");
     expect(install).toContain("/SC ONSTART /RU SYSTEM");
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
+    expect(readKvp).toContain("Resolve-KvpEnvelope");
+    expect(readKvp).toContain("Chunked KVP envelope digest is invalid");
+    expect(readKvp).toContain("for ($attempt = 1; $attempt -le 20; $attempt++)");
+    expect(readKvp).toContain("$snapshot = Get-FieldKvpItems");
+    expect(initializeGuest).toContain("Marshal.ReadInt32(buffer, 16)");
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
+    expect(setupComplete).toContain("-Command");
+    expect(setupComplete).toContain("-Confirm:$false");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");

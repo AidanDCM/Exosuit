@@ -37,6 +37,10 @@ foreach ($path in @($manifestPath, $runtimeConfigPath, $bootstrapScript, $agentP
 }
 $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
 & $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -Confirm:$false
-if ($LASTEXITCODE -ne 0) { throw "Guest bootstrap failed with exit code $LASTEXITCODE." }
-& $agentPath --field-guest-kvp $runtimeConfigPath
-exit $LASTEXITCODE
+$bootstrapSucceeded = $?
+if (-not $bootstrapSucceeded) { throw 'Guest bootstrap precheck did not complete successfully.' }
+$runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
+& $agentPath --field-guest-kvp $runtimeConfigPath 2>> $runtimeErrorLog
+$agentExitCode = $LASTEXITCODE
+if ($agentExitCode -ne 0) { throw "Guest runtime failed with exit code $agentExitCode. See the bounded guest runtime error log." }
+exit 0

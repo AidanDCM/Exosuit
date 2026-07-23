@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Win32;
@@ -21,6 +23,9 @@ public static class FieldKvpRuntime
     public const string BootstrapValueName = "Exosuit.Field.Bootstrap";
     public const string HeartbeatValueName = "Exosuit.Field.Heartbeat";
     private const string GuestKvpRegistryPath = @"SOFTWARE\Microsoft\Virtual Machine\Guest";
+    // Hyper-V KVP values are bounded to 2,048 bytes. Keep UTF-16 values at or
+    // below 1,000 characters so a heartbeat fits atomically with safety margin.
+    private const int KvpChunkCharacters = 1000;
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
 
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
@@ -47,7 +52,7 @@ public static class FieldKvpRuntime
         var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
         WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
             configuration, secret, bootId, sequence++, FieldChannelMessageType.BootstrapStatus, bootstrap));
-        var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(1);
+        var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -64,12 +69,13 @@ public static class FieldKvpRuntime
                 bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
                 WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
                     configuration, secret, bootId, sequence++, FieldChannelMessageType.BootstrapStatus, bootstrap));
-                nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(1);
+                nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
             }
-            var activeSessionId = WTSGetActiveConsoleSessionId();
-            var locked = Process.GetProcessesByName("LogonUI").Any(process => process.SessionId == activeSessionId);
+            var activeSessionId = GetActiveInteractiveSessionId();
+            var locked = IsSessionLocked(activeSessionId);
             var secureDesktop = Process.GetProcessesByName("consent").Any(process => process.SessionId == activeSessionId);
-            var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && GetShellWindow() != IntPtr.Zero;
+            var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
+            var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
             var process = Process.GetCurrentProcess();
             var heartbeat = new Dictionary<string, object?>
             {
@@ -214,7 +220,33 @@ public static class FieldKvpRuntime
     {
         var value = SerializeEnvelope(envelope);
         if (value.Length > 16_000) throw new InvalidOperationException("Field KVP envelope exceeds the configured transport bound.");
-        guestKey.SetValue(name, value, RegistryValueKind.String);
+        foreach (var staleName in guestKey.GetValueNames().Where(valueName =>
+                     valueName.StartsWith($"{name}.", StringComparison.Ordinal)))
+        {
+            guestKey.DeleteValue(staleName, throwOnMissingValue: false);
+        }
+        if (value.Length <= KvpChunkCharacters)
+        {
+            guestKey.SetValue(name, value, RegistryValueKind.String);
+            return;
+        }
+        var chunks = Enumerable.Range(0, (value.Length + KvpChunkCharacters - 1) / KvpChunkCharacters)
+            .Select(index => value.Substring(
+                index * KvpChunkCharacters,
+                Math.Min(KvpChunkCharacters, value.Length - index * KvpChunkCharacters)))
+            .ToArray();
+        for (var index = 0; index < chunks.Length; index++)
+        {
+            guestKey.SetValue($"{name}.{index:D3}", chunks[index], RegistryValueKind.String);
+        }
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+        guestKey.SetValue(name, JsonSerializer.Serialize(new
+        {
+            contractVersion = 1,
+            transport = "chunked",
+            chunkCount = chunks.Length,
+            sha256 = digest,
+        }, WireJson), RegistryValueKind.String);
     }
 
     private static JsonSerializerOptions CreateWireJson()
@@ -227,9 +259,79 @@ public static class FieldKvpRuntime
     private static string WireDate(DateTimeOffset value) =>
         value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetShellWindow();
+    private static bool IsSessionLocked(uint sessionId)
+    {
+        if (sessionId == uint.MaxValue) return true;
+        if (!WTSQuerySessionInformation(IntPtr.Zero, sessionId, 25, out var buffer, out var byteCount) ||
+            buffer == IntPtr.Zero ||
+            byteCount < 20)
+        {
+            return true;
+        }
+        try
+        {
+            var level = Marshal.ReadInt32(buffer, 0);
+            // WTSINFOEX starts with Level (4 bytes), followed by the LEVEL1
+            // SessionId, SessionState, and SessionFlags fields.
+            var sessionFlags = Marshal.ReadInt32(buffer, 16);
+            return level != 1 || sessionFlags != 1;
+        }
+        finally
+        {
+            WTSFreeMemory(buffer);
+        }
+    }
+
+    private static uint GetActiveInteractiveSessionId()
+    {
+        if (WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var sessions, out var count) && sessions != IntPtr.Zero)
+        {
+            try
+            {
+                var size = Marshal.SizeOf<WtsSessionInfo>();
+                for (var index = 0; index < count; index++)
+                {
+                    var session = Marshal.PtrToStructure<WtsSessionInfo>(IntPtr.Add(sessions, index * size));
+                    if (session.SessionId > 0 && session.State == 0) return session.SessionId;
+                }
+            }
+            finally
+            {
+                WTSFreeMemory(sessions);
+            }
+        }
+        return WTSGetActiveConsoleSessionId();
+    }
 
     [DllImport("kernel32.dll")]
     private static extern uint WTSGetActiveConsoleSessionId();
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WTSQuerySessionInformation(
+        IntPtr serverHandle,
+        uint sessionId,
+        int informationClass,
+        out IntPtr buffer,
+        out int bytesReturned);
+
+    [DllImport("wtsapi32.dll")]
+    private static extern void WTSFreeMemory(IntPtr memory);
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool WTSEnumerateSessions(
+        IntPtr serverHandle,
+        int reserved,
+        int version,
+        out IntPtr sessionInfo,
+        out int count);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WtsSessionInfo
+    {
+        public uint SessionId;
+        public IntPtr WinStationName;
+        public int State;
+    }
 }

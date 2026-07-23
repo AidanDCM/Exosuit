@@ -58,6 +58,11 @@ export function evaluateFieldLiveReadiness(input: {
   const monitor = new FieldHeartbeatMonitor({
     field: { fieldId: identity.fieldId, fieldGeneration: identity.fieldGeneration },
     agentId: identity.agentId,
+    // Hyper-V KVP reads are synchronous and live evidence shows roughly
+    // ten seconds of collection latency. Keep this allowance local to the
+    // readiness join; ordinary heartbeat monitors retain their 5s/15s defaults.
+    degradedAfterMs: 15_000,
+    faultAfterMs: 30_000,
   });
   monitor.accept(heartbeat, now);
   const health = monitor.assess(now);
