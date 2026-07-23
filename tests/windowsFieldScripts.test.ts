@@ -25,6 +25,7 @@ describe("Windows Field administration scripts", () => {
     expect(content).toContain("Guest seed manifest identity does not match the provisioning plan.");
     expect(content).toContain("seed_guest_overlay");
     expect(content).toContain("*S-1-5-18:(OI)(CI)F");
+    expect(content).toContain("Set-VMVideo");
     expect(content).not.toContain("Invoke-Expression");
     expect(content).not.toContain("iex ");
   });
@@ -71,6 +72,7 @@ describe("Windows Field administration scripts", () => {
       expect(guest).toContain(root);
     }
     expect(guest).toContain("[string]$ManifestDigest");
+    expect(guest).toContain("actualWindowsSessionId");
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");

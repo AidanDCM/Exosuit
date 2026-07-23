@@ -262,6 +262,7 @@ try {
         Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false -StartupBytes ([UInt64]$plan.compute.startupMemoryMiB * 1MB)
     }
     Set-VMFirmware -VMName $vmName -EnableSecureBoot On -SecureBootTemplate 'MicrosoftWindows'
+    Set-VMVideo -VMName $vmName -HorizontalResolution ([int]$plan.display.width) -VerticalResolution ([int]$plan.display.height) -ResolutionType Single
     Set-VM -VMName $vmName -CheckpointType $(if ($plan.security.checkpoints -eq 'production') { 'Production' } else { 'Disabled' }) -AutomaticCheckpointsEnabled $false
     $summary.completedSteps.Add('configure_vm')
 

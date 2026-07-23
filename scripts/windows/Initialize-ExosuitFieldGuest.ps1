@@ -67,11 +67,14 @@ function Add-Check {
     })
 }
 
-Add-Check -Name 'identity' -Passed $true -Summary 'Field identity was parsed.' -Evidence @{
+$currentSessionId = [string](Get-Process -Id $PID).SessionId
+$sessionIdentityMatches = $currentSessionId -ceq [string]$manifest.identity.windowsSessionId
+Add-Check -Name 'identity' -Passed $sessionIdentityMatches -Summary 'Field identity and guest process session were checked.' -Evidence @{
     fieldId = $manifest.identity.fieldId
     fieldGeneration = [int]$manifest.identity.fieldGeneration
     agentId = $manifest.identity.agentId
-    windowsSessionId = $manifest.identity.windowsSessionId
+    expectedWindowsSessionId = $manifest.identity.windowsSessionId
+    actualWindowsSessionId = $currentSessionId
 }
 Add-Check -Name 'base_image' -Passed ($manifest.identity.baseImageDigest -match '^[a-f0-9]{64}$') -Summary 'Base-image digest shape was checked.'
 $hasPersonalStateId = $false
@@ -153,4 +156,4 @@ if ($PSCmdlet.ShouldProcess($ReportPath, 'Write Field bootstrap report')) {
 }
 
 $report | ConvertTo-Json -Depth 50
-if (-not $directoriesReady -or -not $displayPassed -or -not $agentDigestMatches) { exit 2 }
+if (-not $sessionIdentityMatches -or -not $directoriesReady -or -not $displayPassed -or -not $agentDigestMatches) { exit 2 }
