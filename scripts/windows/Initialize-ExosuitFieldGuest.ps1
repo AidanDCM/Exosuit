@@ -15,6 +15,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function ConvertFrom-JsonDocument {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][int]$Depth)
+    $json = Get-Content -LiteralPath $Path -Raw
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('Depth')) {
+        return $json | ConvertFrom-Json -Depth $Depth
+    }
+    return $json | ConvertFrom-Json
+}
+
 $requiredDirectories = @(
     'C:\Exosuit\Agent',
     'C:\Exosuit\Config',
@@ -30,7 +39,7 @@ $requiredDirectories = @(
     'C:\Field\Quarantine'
 )
 
-$manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json -Depth 50
+$manifest = ConvertFrom-JsonDocument -Path $ManifestPath -Depth 50
 if ($manifest.contractVersion -ne 1) { throw 'Unsupported Field bootstrap manifest contract version.' }
 if ($manifest.identity.subsystem -ne 'field') { throw 'Bootstrap manifest is not a Field identity.' }
 if ([string]::IsNullOrWhiteSpace($manifest.identity.fieldId)) { throw 'Bootstrap manifest Field ID is missing.' }

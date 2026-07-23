@@ -21,7 +21,16 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$config = Get-Content -LiteralPath $HostConfigPath -Raw | ConvertFrom-Json -Depth 50
+function ConvertFrom-JsonDocument {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][int]$Depth)
+    $json = Get-Content -LiteralPath $Path -Raw
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('Depth')) {
+        return $json | ConvertFrom-Json -Depth $Depth
+    }
+    return $json | ConvertFrom-Json
+}
+
+$config = ConvertFrom-JsonDocument -Path $HostConfigPath -Depth 50
 if ($config.contractVersion -ne 1) { throw 'Unsupported Field host configuration contract version.' }
 $fieldIdText = $FieldId.ToString()
 $expectedConfirmation = "DESTROY FIELD $fieldIdText GENERATION $FieldGeneration"
@@ -86,7 +95,7 @@ try {
     $summary.completedAt = [DateTimeOffset]::UtcNow.ToString('O')
     New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
     $evidencePath = Join-Path $EvidenceDirectory "field-destroy-$fieldIdText-g$FieldGeneration-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()).json"
-    $summary | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $evidencePath -Encoding utf8NoBOM
+    [IO.File]::WriteAllText($evidencePath, ($summary | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
 }
 
 $summary | ConvertTo-Json -Depth 20

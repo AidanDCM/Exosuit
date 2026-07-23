@@ -36,13 +36,23 @@ describe("Windows Field administration scripts", () => {
 
   it("keeps host capability checks read-only and guest bootstrap within fixed roots", async () => {
     const host = await script("Test-ExosuitFieldHost.ps1");
+    const showPlan = await script("Show-ExosuitFieldProvisioningPlan.ps1");
+    const apply = await script("Invoke-ExosuitFieldProvisioning.ps1");
+    const destroy = await script("Remove-ExosuitFieldGeneration.ps1");
+    const guest = await script("Initialize-ExosuitFieldGuest.ps1");
     expect(host).toContain("Get-WindowsOptionalFeature");
     expect(host).toContain("Win32_OptionalFeature");
     expect(host).toContain("HyperVisorPresent");
     expect(host).toContain("root\\virtualization\\v2");
     expect(host).not.toMatch(/Enable-WindowsOptionalFeature|Disable-WindowsOptionalFeature|New-VM|Remove-VM/);
+    for (const content of [showPlan, apply, destroy, guest]) {
+      expect(content).toContain("Parameters.ContainsKey('Depth')");
+    }
+    for (const content of [apply, destroy]) {
+      expect(content).not.toContain("Encoding utf8NoBOM");
+      expect(content).toContain("[IO.File]::WriteAllText");
+    }
 
-    const guest = await script("Initialize-ExosuitFieldGuest.ps1");
     for (const root of ["C:\\Exosuit\\Agent", "C:\\Field\\Inbox", "C:\\Field\\Outbox", "C:\\Field\\Quarantine"]) {
       expect(guest).toContain(root);
     }

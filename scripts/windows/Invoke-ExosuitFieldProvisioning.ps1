@@ -26,6 +26,23 @@ function Get-FileDigest {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function ConvertFrom-JsonDocument {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][int]$Depth)
+    $json = Get-Content -LiteralPath $Path -Raw
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('Depth')) {
+        return $json | ConvertFrom-Json -Depth $Depth
+    }
+    return $json | ConvertFrom-Json
+}
+
+function ConvertFrom-JsonText {
+    param([Parameter(Mandatory)][string]$Json, [Parameter(Mandatory)][int]$Depth)
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('Depth')) {
+        return $Json | ConvertFrom-Json -Depth $Depth
+    }
+    return $Json | ConvertFrom-Json
+}
+
 function Assert-ChildPath {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$Target)
     $rootPath = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
@@ -35,8 +52,8 @@ function Assert-ChildPath {
     }
 }
 
-$plan = Get-Content -LiteralPath $PlanPath -Raw | ConvertFrom-Json -Depth 100
-$config = Get-Content -LiteralPath $HostConfigPath -Raw | ConvertFrom-Json -Depth 50
+$plan = ConvertFrom-JsonDocument -Path $PlanPath -Depth 100
+$config = ConvertFrom-JsonDocument -Path $HostConfigPath -Depth 50
 if ($plan.contractVersion -ne 1 -or $config.contractVersion -ne 1) { throw 'Unsupported Field provisioning or host configuration contract version.' }
 if ($plan.hypervisor -ne 'hyper-v' -or $plan.vmGeneration -ne 2) { throw 'Only Hyper-V Generation 2 Field plans are supported.' }
 if ($plan.identity.subsystem -ne 'field') { throw 'Provisioning plan does not contain a Field identity.' }
@@ -60,8 +77,9 @@ if ($Apply -and $TypedConfirmation -cne $expectedConfirmation) {
 }
 
 $hostCheckJson = & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" -StoragePath $config.storageRoot
-$hostCheckExit = $LASTEXITCODE
-$hostCheck = $hostCheckJson | ConvertFrom-Json -Depth 20
+$lastExitCodeVariable = Get-Variable -Name LASTEXITCODE -ErrorAction SilentlyContinue
+$hostCheckExit = if ($lastExitCodeVariable) { [int]$lastExitCodeVariable.Value } else { 0 }
+$hostCheck = ConvertFrom-JsonText -Json ($hostCheckJson -join [Environment]::NewLine) -Depth 20
 if ($hostCheckExit -ne 0 -or -not $hostCheck.ready) { throw 'Host capability check did not pass.' }
 
 $baseMatches = @($config.baseImages | Where-Object { $_.imageId -eq $plan.storage.baseImage.imageId })
@@ -212,7 +230,7 @@ try {
 } finally {
     New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
     $evidencePath = Join-Path $EvidenceDirectory "field-provision-$fieldId-g$generation-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds()).json"
-    $summary | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $evidencePath -Encoding utf8NoBOM
+    [IO.File]::WriteAllText($evidencePath, ($summary | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
 }
 
 $summary | ConvertTo-Json -Depth 20

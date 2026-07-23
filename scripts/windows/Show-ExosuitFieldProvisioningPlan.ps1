@@ -12,8 +12,17 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$plan = Get-Content -LiteralPath $PlanPath -Raw | ConvertFrom-Json -Depth 100
-$config = Get-Content -LiteralPath $HostConfigPath -Raw | ConvertFrom-Json -Depth 50
+function ConvertFrom-JsonDocument {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][int]$Depth)
+    $json = Get-Content -LiteralPath $Path -Raw
+    if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey('Depth')) {
+        return $json | ConvertFrom-Json -Depth $Depth
+    }
+    return $json | ConvertFrom-Json
+}
+
+$plan = ConvertFrom-JsonDocument -Path $PlanPath -Depth 100
+$config = ConvertFrom-JsonDocument -Path $HostConfigPath -Depth 50
 
 if ($plan.contractVersion -ne 1 -or $config.contractVersion -ne 1) { throw 'Unsupported Field provisioning or host configuration contract version.' }
 if ($plan.hypervisor -ne 'hyper-v' -or $plan.vmGeneration -ne 2) { throw 'Only Hyper-V Generation 2 Field plans are supported.' }
