@@ -17,6 +17,35 @@ export const fieldChannelMessageTypeSchema = z.enum([
 ]);
 export type FieldChannelMessageType = z.infer<typeof fieldChannelMessageTypeSchema>;
 
+const CANONICAL_FIELD_CHANNEL_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+export function canonicalizeFieldChannelTimestamp(value: string | Date): string {
+  if (value instanceof Date) {
+    if (!Number.isFinite(value.getTime())) throw new Error("Field channel timestamp is invalid.");
+    return value.toISOString();
+  }
+
+  if (!CANONICAL_FIELD_CHANNEL_TIMESTAMP.test(value)) {
+    throw new Error("Field channel timestamp must use canonical UTC form YYYY-MM-DDTHH:mm:ss.SSSZ.");
+  }
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== value) {
+    throw new Error("Field channel timestamp is invalid or noncanonical.");
+  }
+  return value;
+}
+
+export const canonicalFieldChannelTimestampSchema = z.string().superRefine((value, context) => {
+  try {
+    canonicalizeFieldChannelTimestamp(value);
+  } catch (error) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: error instanceof Error ? error.message : "Field channel timestamp is invalid.",
+    });
+  }
+});
+
 const unsignedFieldChannelEnvelopeSchema = z.object({
   contractVersion: z.literal(1),
   messageId: z.string().uuid(),
@@ -24,8 +53,8 @@ const unsignedFieldChannelEnvelopeSchema = z.object({
   direction: fieldChannelDirectionSchema,
   sequence: z.number().int().nonnegative(),
   messageType: fieldChannelMessageTypeSchema,
-  sentAt: z.string().datetime(),
-  expiresAt: z.string().datetime(),
+  sentAt: canonicalFieldChannelTimestampSchema,
+  expiresAt: canonicalFieldChannelTimestampSchema,
   nonce: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   keyId: z.string().min(1).max(200),
   payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -57,7 +86,7 @@ export function createFieldChannelEnvelope(input: {
   nonce?: string;
 }): FieldChannelEnvelope {
   if (input.secret.length < 32) throw new Error("Field channel secret must contain at least 32 characters.");
-  const sentAt = input.sentAt ?? new Date().toISOString();
+  const sentAt = input.sentAt === undefined ? new Date().toISOString() : canonicalizeFieldChannelTimestamp(input.sentAt);
   const ttlSeconds = input.ttlSeconds ?? 30;
   if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 300) {
     throw new Error("Field channel TTL must be an integer from 1 through 300 seconds.");
