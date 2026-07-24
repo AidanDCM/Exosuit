@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   FieldChannelReplayGuard,
+  canonicalFieldChannelTimestampSchema,
+  canonicalizeFieldChannelTimestamp,
   createFieldChannelEnvelope,
+  fieldChannelEnvelopeSchema,
   verifyFieldChannelEnvelope,
 } from "../src/fieldChannel.js";
 
@@ -35,6 +38,50 @@ describe("authenticated Field channel", () => {
         now: new Date("2026-07-21T18:00:30.000Z"),
       }),
     ).toMatchObject({ sequence: 0, messageType: "heartbeat", payload: { healthy: true } });
+  });
+
+  it("requires canonical UTC timestamps with exactly millisecond precision", () => {
+    expect(canonicalizeFieldChannelTimestamp(new Date("2026-07-21T18:00:00Z"))).toBe("2026-07-21T18:00:00.000Z");
+    expect(canonicalFieldChannelTimestampSchema.parse("2026-07-21T18:00:00.000Z")).toBe(
+      "2026-07-21T18:00:00.000Z",
+    );
+    for (const noncanonical of [
+      "2026-07-21T18:00:00Z",
+      "2026-07-21T18:00:00.000+00:00",
+      "2026-07-21T18:00:00.000000Z",
+      "2026-07-21T14:00:00.000-04:00",
+      "2026-02-30T18:00:00.000Z",
+    ]) {
+      expect(() => canonicalFieldChannelTimestampSchema.parse(noncanonical)).toThrow(/timestamp/i);
+      expect(() =>
+        createFieldChannelEnvelope({
+          field,
+          direction: "guest_to_host",
+          sequence: 0,
+          messageType: "heartbeat",
+          payload: {},
+          keyId: "field-channel-key-1",
+          secret,
+          sentAt: noncanonical,
+        }),
+      ).toThrow(/timestamp/i);
+    }
+  });
+
+  it("rejects noncanonical timestamps before signature verification", () => {
+    const original = envelope();
+    expect(() =>
+      fieldChannelEnvelopeSchema.parse({
+        ...original,
+        sentAt: "2026-07-21T18:00:00Z",
+      }),
+    ).toThrow(/timestamp/i);
+    expect(() =>
+      fieldChannelEnvelopeSchema.parse({
+        ...original,
+        expiresAt: "2026-07-21T18:01:00.000+00:00",
+      }),
+    ).toThrow(/timestamp/i);
   });
 
   it("rejects payload mutation signature mutation expiry wrong direction and cross-generation traffic", () => {
