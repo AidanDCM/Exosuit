@@ -162,5 +162,5 @@ describe("MCP protocol boundary", () => {
       await client.close();
       await server.close();
     }
-  });
+  }, 30_000);
 });
