@@ -1,5 +1,11 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import {
+  canonicalFieldOriginSchema,
+  canonicalUtcTimestamp,
+  canonicalUtcTimestampSchema,
+  personalStateIdentitySchema,
+} from "./fieldSecurityContracts.js";
 
 export const exosuitSubsystemSchema = z.enum(["glove", "field"]);
 export type ExosuitSubsystem = z.infer<typeof exosuitSubsystemSchema>;
@@ -28,16 +34,27 @@ export const fieldRefSchema = z.object({
 });
 export type FieldRef = z.infer<typeof fieldRefSchema>;
 
-export const fieldIdentitySchema = fieldRefSchema.extend({
-  subsystem: z.literal("field"),
-  agentId: z.string().min(1).max(200),
-  machineId: z.string().min(1).max(200),
-  windowsSessionId: z.string().min(1).max(200),
-  baseImageDigest: sha256DigestSchema,
-  personalStateDigest: sha256DigestSchema.optional(),
-  taskDiskId: z.string().min(1).max(300),
-  createdAt: z.string().datetime(),
-});
+export const fieldIdentitySchema = fieldRefSchema
+  .extend({
+    subsystem: z.literal("field"),
+    agentId: z.string().min(1).max(200),
+    machineId: z.string().min(1).max(200),
+    windowsSessionId: z.string().min(1).max(200),
+    baseImageDigest: sha256DigestSchema,
+    personalState: personalStateIdentitySchema.optional(),
+    personalStateDigest: sha256DigestSchema.optional(),
+    taskDiskId: z.string().min(1).max(300),
+    createdAt: canonicalUtcTimestampSchema,
+  })
+  .superRefine((identity, context) => {
+    if (identity.personalState && identity.personalStateDigest) {
+      context.addIssue({
+        code: "custom",
+        path: ["personalStateDigest"],
+        message: "Use either versioned personalState identity or a legacy sealed snapshot digest, not both.",
+      });
+    }
+  });
 export type FieldIdentity = z.infer<typeof fieldIdentitySchema>;
 
 export const fieldDisplayContractSchema = z.object({
@@ -59,7 +76,7 @@ export const fieldPolicySchema = z
     mode: fieldModeSchema,
     allowedProcesses: z.array(z.string().min(1).max(260)).max(128),
     allowedCapabilities: z.array(fieldCapabilitySchema).min(1).max(32),
-    allowedOrigins: z.array(z.string().url()).max(128).default([]),
+    allowedOrigins: z.array(canonicalFieldOriginSchema).max(128).default([]),
     maximumRuntimeSeconds: z.number().int().min(1).max(86_400),
     maximumActions: z.number().int().min(1).max(1_000_000),
     recordingConsent: z.enum(["granted", "not_applicable"]),
@@ -67,8 +84,8 @@ export const fieldPolicySchema = z
     allowHostDriveWrite: z.literal(false),
     allowPrivilegeEscalation: z.literal(false),
     allowSecurityControlChanges: z.literal(false),
-    issuedAt: z.string().datetime(),
-    expiresAt: z.string().datetime(),
+    issuedAt: canonicalUtcTimestampSchema,
+    expiresAt: canonicalUtcTimestampSchema,
   })
   .superRefine((policy, context) => {
     if (new Date(policy.expiresAt).getTime() <= new Date(policy.issuedAt).getTime()) {
@@ -83,6 +100,9 @@ export const fieldPolicySchema = z
     if (new Set(policy.allowedCapabilities).size !== policy.allowedCapabilities.length) {
       context.addIssue({ code: "custom", path: ["allowedCapabilities"], message: "Allowed capabilities must be unique." });
     }
+    if (new Set(policy.allowedOrigins).size !== policy.allowedOrigins.length) {
+      context.addIssue({ code: "custom", path: ["allowedOrigins"], message: "Allowed origins must be unique." });
+    }
   });
 export type FieldPolicy = z.infer<typeof fieldPolicySchema>;
 
@@ -92,8 +112,8 @@ export const fieldAttestationSchema = z.object({
   display: fieldDisplayContractSchema,
   policyHash: sha256DigestSchema,
   issuerKeyId: z.string().min(1).max(200),
-  issuedAt: z.string().datetime(),
-  expiresAt: z.string().datetime(),
+  issuedAt: canonicalUtcTimestampSchema,
+  expiresAt: canonicalUtcTimestampSchema,
   signature: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
 });
 export type FieldAttestation = z.infer<typeof fieldAttestationSchema>;
@@ -139,7 +159,7 @@ export function createFieldAttestation(input: {
     throw new Error("Field policy identity does not match the attested field generation.");
   }
   if (input.secret.length < 32) throw new Error("Field attestation secret must contain at least 32 characters.");
-  const issuedAt = input.issuedAt ?? new Date().toISOString();
+  const issuedAt = canonicalUtcTimestamp(input.issuedAt ?? new Date());
   const ttlSeconds = input.ttlSeconds ?? 300;
   if (!Number.isInteger(ttlSeconds) || ttlSeconds < 1 || ttlSeconds > 3_600) {
     throw new Error("Field attestation TTL must be an integer from 1 through 3600 seconds.");
@@ -151,7 +171,7 @@ export function createFieldAttestation(input: {
     policyHash: sha256Canonical(policy),
     issuerKeyId: input.issuerKeyId,
     issuedAt,
-    expiresAt: new Date(new Date(issuedAt).getTime() + ttlSeconds * 1_000).toISOString(),
+    expiresAt: canonicalUtcTimestamp(new Date(new Date(issuedAt).getTime() + ttlSeconds * 1_000)),
   };
   return fieldAttestationSchema.parse({
     ...unsigned,
