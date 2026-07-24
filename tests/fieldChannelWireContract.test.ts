@@ -26,4 +26,16 @@ describe("Field channel cross-language fixture", () => {
       }),
     ).toMatchObject({ sequence: 7, messageType: "heartbeat", payloadHash: "1b5130072c4824e9ff4bbed304a0cec7825e64cdd49bddc0b25db0dadc5d2471" });
   });
+
+  it("rejects equivalent but noncanonical wire timestamp spellings", async () => {
+    const fixture = JSON.parse(await readFile(resolve("tests/fixtures/field-channel-v1.json"), "utf8")) as Fixture;
+    const original = fixture.envelope as Record<string, unknown>;
+    for (const sentAt of [
+      "2026-07-21T18:00:00Z",
+      "2026-07-21T18:00:00.000+00:00",
+      "2026-07-21T18:00:00.000000Z",
+    ]) {
+      expect(() => fieldChannelEnvelopeSchema.parse({ ...original, sentAt })).toThrow(/timestamp/i);
+    }
+  });
 });
