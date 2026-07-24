@@ -114,6 +114,14 @@ export const fieldProvisioningPlanSchema = z
         artifactBrokerOnly: z.literal(true),
       })
       .strict(),
+    developmentAccess: z
+      .object({
+        mode: z.literal("auto_logon"),
+        userName: z.string().regex(/^[A-Za-z][A-Za-z0-9]{2,19}$/),
+        nonProduction: z.literal(true),
+      })
+      .strict()
+      .optional(),
     steps: z.array(fieldProvisioningStepSchema).min(1).max(64),
     planHash: sha256DigestSchema,
   })
@@ -162,6 +170,14 @@ export const fieldProvisioningPlanSchema = z
     if (plan.network.mode !== "nat_filtered" && plan.network.allowedOrigins.length > 0) {
       context.addIssue({ code: "custom", path: ["network", "allowedOrigins"], message: "Origin rules require filtered NAT mode." });
     }
+    if (plan.developmentAccess) {
+      if (plan.network.mode !== "isolated") {
+        context.addIssue({ code: "custom", path: ["developmentAccess"], message: "Development auto-login requires isolated networking." });
+      }
+      if (plan.storage.personalState) {
+        context.addIssue({ code: "custom", path: ["developmentAccess"], message: "Development auto-login cannot attach personal state." });
+      }
+    }
   });
 export type FieldProvisioningPlan = z.infer<typeof fieldProvisioningPlanSchema>;
 
@@ -182,6 +198,7 @@ export function createFieldProvisioningPlan(input: {
   allowedOrigins?: string[];
   tpmRequired?: boolean;
   viewerEnabled?: boolean;
+  developmentAccess?: { mode: "auto_logon"; userName: string; nonProduction: true };
   createdAt?: string;
   planId?: string;
 }): FieldProvisioningPlan {
@@ -247,6 +264,7 @@ export function createFieldProvisioningPlan(input: {
       viewerEnabled: input.viewerEnabled ?? true,
       artifactBrokerOnly: true as const,
     },
+    ...(input.developmentAccess ? { developmentAccess: input.developmentAccess } : {}),
     steps: requiredSteps(identity.personalStateDiskId !== undefined),
   };
   return fieldProvisioningPlanSchema.parse({ ...unsigned, planHash: sha256Canonical(unsigned) });

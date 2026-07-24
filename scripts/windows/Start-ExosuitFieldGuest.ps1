@@ -38,9 +38,18 @@ $runtime = ConvertFrom-JsonDocument -Path $runtimeConfigPath -Depth 20
 if ($runtime.contractVersion -ne 1) { throw 'Unsupported guest runtime contract version.' }
 $bootstrapReportPath = Assert-ExosuitPath -Path ([string]$runtime.bootstrapReportPath)
 $bootstrapScript = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Initialize-ExosuitFieldGuest.ps1'
+$developmentConfigPath = Assert-ExosuitPath -Path 'C:\Exosuit\Config\development-access.json'
+$developmentScript = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Initialize-ExosuitDevelopmentAccess.ps1'
 $agentPath = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Exosuit.Agent.exe'
 foreach ($path in @($manifestPath, $runtimeConfigPath, $bootstrapScript, $agentPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Required guest file is missing: $path" }
+}
+if (Test-Path -LiteralPath $developmentConfigPath -PathType Leaf) {
+    if (-not (Test-Path -LiteralPath $developmentScript -PathType Leaf)) {
+        throw 'Development access was requested but its reviewed initializer is missing.'
+    }
+    & $developmentScript -ConfigPath $developmentConfigPath
+    if (-not $?) { throw 'Development access initialization failed.' }
 }
 $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)

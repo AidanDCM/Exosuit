@@ -24,6 +24,8 @@ describe("Windows Field administration scripts", () => {
     expect(content).toContain("Guest seed directory must contain exactly the approved four files.");
     expect(content).toContain("Guest seed manifest identity does not match the provisioning plan.");
     expect(content).toContain("seed_guest_overlay");
+    expect(content).toContain("Development access requires both the signed provisioning plan field and the explicit host apply switch.");
+    expect(content).toContain("Enable-VMIntegrationService -VMName $vmName -Name 'Time Synchronization'");
     expect(content).toContain("*S-1-5-18:(OI)(CI)F");
     expect(content).toContain("Set-VMVideo");
     expect(content).not.toContain("Invoke-Expression");
@@ -94,6 +96,7 @@ describe("Windows Field administration scripts", () => {
     const initializeGuest = await script("Initialize-ExosuitFieldGuest.ps1");
     const readKvp = await script("Read-ExosuitFieldGuestKvp.ps1");
     const setupComplete = await script("SetupComplete-ExosuitFieldGuest.cmd");
+    const developmentAccess = await script("Initialize-ExosuitDevelopmentAccess.ps1");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -106,6 +109,11 @@ describe("Windows Field administration scripts", () => {
     expect(start).toContain("DesktopReadyTimeoutSeconds");
     expect(start).toContain("session_unlocked");
     expect(start).toContain("Interactive desktop did not become ready");
+    expect(start).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
+    expect(developmentAccess).toContain("[Exosuit.LsaPrivateData]::Store('DefaultPassword', $password)");
+    expect(developmentAccess).toContain("Development access refuses to modify an existing local account.");
+    expect(developmentAccess).toContain("administrator = $false");
+    expect(developmentAccess).not.toMatch(/Add-LocalGroupMember[^\r\n]*Administrators/i);
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
     expect(readKvp).toContain("Resolve-KvpEnvelope");

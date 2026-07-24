@@ -95,6 +95,7 @@ if (manifest) {
   }
   if (manifest.ownerApproved !== true) errors.push("owner approval is absent");
   if (manifest.productionDecision !== "approved") errors.push(`production decision is ${manifest.productionDecision ?? "missing"}`);
+  if (manifest.developmentAccessEnabled !== false) errors.push("development access must be explicitly disabled");
   if (!Array.isArray(manifest.unresolvedBlockers)) errors.push("unresolvedBlockers must be an array");
   if (Array.isArray(manifest.unresolvedBlockers) && manifest.unresolvedBlockers.length > 0) {
     errors.push(`unresolved production blockers remain (${manifest.unresolvedBlockers.length})`);

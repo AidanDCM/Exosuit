@@ -82,6 +82,34 @@ describe("Field provisioning plan", () => {
     expect(plan.storage.runtimeOverlay.parentImageId).toBe("base-v1");
   });
 
+  it("allows explicit development auto-login only for isolated disposable fields", () => {
+    const plan = createFieldProvisioningPlan({
+      identity: identity(false),
+      display,
+      baseImageId: "base-v1",
+      networkMode: "isolated",
+      developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+    });
+    expect(plan.developmentAccess).toEqual({ mode: "auto_logon", userName: "ExosuitDev", nonProduction: true });
+    expect(() =>
+      createFieldProvisioningPlan({
+        identity: identity(false),
+        display,
+        baseImageId: "base-v1",
+        networkMode: "nat_filtered",
+        developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+      }),
+    ).toThrow(/isolated networking/);
+    expect(() =>
+      createFieldProvisioningPlan({
+        identity: identity(),
+        display,
+        baseImageId: "base-v1",
+        developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+      }),
+    ).toThrow(/cannot attach personal state/);
+  });
+
   it("detects plan tampering and rejects arbitrary commands or unsafe host integrations", () => {
     const plan = createFieldProvisioningPlan({ identity: identity(), display, baseImageId: "base-v1" });
     expect(() => verifyFieldProvisioningPlan({ ...plan, compute: { ...plan.compute, virtualProcessors: 8 } })).toThrow(

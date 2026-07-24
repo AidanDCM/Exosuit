@@ -19,6 +19,9 @@ param(
     [string]$GuestSeedDirectory,
 
     [Parameter()]
+    [switch]$DevelopmentAccess,
+
+    [Parameter()]
     [string]$EvidenceDirectory = "$env:ProgramData\Exosuit\Evidence"
 )
 
@@ -88,7 +91,13 @@ function Add-GuestSeedToOverlay {
     )
     $seedItem = Get-Item -LiteralPath $SeedDirectory -Force
     if (($seedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Guest seed directory cannot be a reparse point.' }
-    $requiredSeedFiles = @('bootstrap-manifest.json', 'guest-runtime.json', 'guest-launch.json', 'channel-secret.txt')
+    $baseSeedFiles = @('bootstrap-manifest.json', 'guest-runtime.json', 'guest-launch.json', 'channel-secret.txt')
+    $developmentSeedFiles = @('development-access.json', 'development-password.txt')
+    $planUsesDevelopmentAccess = $Plan.PSObject.Properties.Name -contains 'developmentAccess'
+    if ($planUsesDevelopmentAccess -ne [bool]$DevelopmentAccess) {
+        throw 'Development access requires both the signed provisioning plan field and the explicit host apply switch.'
+    }
+    $requiredSeedFiles = @($baseSeedFiles + $(if ($planUsesDevelopmentAccess) { $developmentSeedFiles } else { @() }))
     $actualSeedFiles = @(Get-ChildItem -LiteralPath $SeedDirectory -File -Force)
     if ($actualSeedFiles.Count -ne $requiredSeedFiles.Count -or
         (Compare-Object ($requiredSeedFiles | Sort-Object) ($actualSeedFiles.Name | Sort-Object))) {
@@ -116,6 +125,20 @@ function Add-GuestSeedToOverlay {
     }
     $secret = (Get-Content -LiteralPath (Join-Path $SeedDirectory 'channel-secret.txt') -Raw).Trim()
     if ($secret.Length -lt 32) { throw 'Guest channel secret must contain at least 32 characters.' }
+    if ($planUsesDevelopmentAccess) {
+        if ($Plan.network.mode -ne 'isolated' -or $Plan.storage.PSObject.Properties.Name -contains 'personalState') {
+            throw 'Development access is restricted to isolated disposable Fields without personal state.'
+        }
+        $development = ConvertFrom-JsonDocument -Path (Join-Path $SeedDirectory 'development-access.json') -Depth 10
+        if ($development.contractVersion -ne 1 -or
+            $development.mode -cne 'auto_logon' -or
+            $development.nonProduction -ne $true -or
+            $development.userName -cne [string]$Plan.developmentAccess.userName) {
+            throw 'Development access seed does not match the provisioning plan.'
+        }
+        $developmentPassword = (Get-Content -LiteralPath (Join-Path $SeedDirectory 'development-password.txt') -Raw).Trim()
+        if ($developmentPassword.Length -lt 24) { throw 'Development password must contain at least 24 characters.' }
+    }
 
     $mounted = $false
     try {
@@ -204,6 +227,7 @@ $summary = [ordered]@{
     taskDiskPath = $taskDiskPath
     networkMode = [string]$plan.network.mode
     switchName = $switchName
+    developmentAccessEnabled = [bool]($plan.PSObject.Properties.Name -contains 'developmentAccess')
     completedSteps = [System.Collections.Generic.List[string]]::new()
     rollbackSteps = [System.Collections.Generic.List[string]]::new()
     status = if ($Apply) { 'applying' } else { 'dry_run' }
@@ -264,6 +288,7 @@ try {
     Set-VMFirmware -VMName $vmName -EnableSecureBoot On -SecureBootTemplate 'MicrosoftWindows'
     Set-VMVideo -VMName $vmName -HorizontalResolution ([int]$plan.display.width) -VerticalResolution ([int]$plan.display.height) -ResolutionType Single
     Set-VM -VMName $vmName -CheckpointType $(if ($plan.security.checkpoints -eq 'production') { 'Production' } else { 'Disabled' }) -AutomaticCheckpointsEnabled $false
+    Enable-VMIntegrationService -VMName $vmName -Name 'Time Synchronization'
     $summary.completedSteps.Add('configure_vm')
 
     if ($plan.security.tpmRequired) {

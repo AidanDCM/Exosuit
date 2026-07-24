@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -53,6 +53,7 @@ async function fixture(input: {
         generatedAt: "2026-07-22T19:15:00Z",
         ownerApproved: input.passing,
         productionDecision: input.passing ? "approved" : "denied",
+        developmentAccessEnabled: false,
         unresolvedBlockers: input.passing ? [] : ["fixture blocker"],
         gates: requiredGates.map((gate) => ({
           gate,
@@ -105,5 +106,17 @@ describe("production readiness validator", () => {
     const result = run(root, [], { EXOSUIT_RELEASE_COMMIT: "d".repeat(40) });
     expect(result.status).not.toBe(0);
     expect(`${result.stdout}${result.stderr}`).toContain("candidateCommit does not match execution commit");
+  });
+
+  it("rejects an otherwise complete candidate with development access enabled", async () => {
+    const commit = "e".repeat(40);
+    const root = await fixture({ passing: true, includeLockfile: true, candidateCommit: commit });
+    const manifestPath = resolve(root, "docs/qa/production-readiness.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    manifest.developmentAccessEnabled = true;
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+    const result = run(root, [], { EXOSUIT_RELEASE_COMMIT: commit });
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("development access must be explicitly disabled");
   });
 });

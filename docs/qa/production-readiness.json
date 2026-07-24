@@ -5,6 +5,7 @@
   "generatedAt": "2026-07-22T19:15:00Z",
   "ownerApproved": false,
   "productionDecision": "denied",
+  "developmentAccessEnabled": false,
   "unresolvedBlockers": [
     "No executable current-head validation",
     "No reproducible Node lockfile",

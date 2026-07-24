@@ -7,6 +7,12 @@
 
 This runbook is the exact safe order for validating and later creating a local Exosuit Field. A Field is a controlled Windows VM. The Glove is the agent and supervisor that operates inside it. Do not merge the two identities.
 
+## Development auto-login
+
+Disposable synthetic Fields may request the explicit `developmentAccess` plan mode to remove repeated console credential prompts. This mode requires isolated networking, forbids personal-state disks, creates only a standard local user, and requires the separate `-DevelopmentAccess` apply switch. Its generated credential stays under the host-local secret root and is never committed or logged.
+
+Development auto-login is not production-equivalent authentication. Destroy its disposable generation after testing. A production candidate must set `developmentAccessEnabled` to `false`.
+
 ## Hard holds
 
 Do not provision a live Field unless all of the following are true:
