@@ -2,7 +2,7 @@
 
 **Depth:** Level 4 security and privacy boundary review  
 **Status:** source-design threat model; live Hyper-V and Windows evidence pending  
-**Updated:** 2026-07-21
+**Updated:** 2026-07-25
 
 ## Protected assets
 
@@ -34,6 +34,7 @@
 - malicious or prompt-injected content displayed inside the Field;
 - a compromised or mistaken pilot model;
 - replayed or modified host/guest traffic;
+- alternate timestamp spellings that produce cross-language signature ambiguity;
 - stale commands from an earlier Field generation;
 - a corrupted guest agent or boot identity;
 - a malicious file attempting path traversal, ADS, device-name, or reparse escape;
@@ -49,8 +50,9 @@
 | Threat | Existing source control | Evidence written | Live proof still required |
 |---|---|---|---|
 | Pilot grants itself VM or consent authority | `FieldAdminAuthority` blocks `pilot_model`; review cannot be satisfied by model | unit tests and static validator | local admin UI/transport acceptance |
-| Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration | TS/.NET tests and shared fixture | actual transport fault injection |
-| Replay or reordering | message ID, nonce, and strictly increasing sequence | replay tests in both languages | process restart and persistence behavior |
+| Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration, and canonical UTC millisecond timestamp contract | TS/.NET tests and shared fixture | actual transport fault injection and exact-head execution |
+| Timestamp representation ambiguity | TypeScript rejects noncanonical ISO spellings; .NET exposes exact parser/formatter and verifies UTC millisecond values | TS/.NET negative tests and shared canonical fixture | live serializer/parser integration on both endpoints |
+| Replay or reordering | message ID, nonce, and strictly increasing sequence | replay tests in both languages | process restart, persistence, corruption, and bounded-memory behavior |
 | Cross-generation action | every channel, heartbeat, command, scene, artifact, episode, and visual reference binds Field generation | unit tests | stale live process and rollback tests |
 | Stale desktop state | exact expected scene version required for action | command and scene tests | live focus/window race injection |
 | Arbitrary shell execution | no shell field in provisioning plan; guest routes exclude shell; scripts reject arbitrary evaluation | schemas, validator, script tests | command-line and process-monitor observation |
@@ -85,11 +87,13 @@
 - Sensitive and untrusted files cannot use the ordinary export path.
 - Unknown or uncertain effects stop or reconcile; they do not retry blind.
 - Emergency stop remains independent of pilot success.
+- Channel timestamps have one signed wire representation: UTC with exactly three fractional digits and a terminal `Z`.
 
 ## Residual risks
 
 - HMAC attestation is local software binding, not hardware-rooted remote attestation.
 - Replay state is currently in-memory; process-restart sequence persistence is not implemented.
+- Canonical channel timestamp source hardening is written but exact-head TypeScript/.NET execution remains blocked by runner availability.
 - Actual Hyper-V socket or private transport is not implemented.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
@@ -102,20 +106,22 @@
 
 1. stale-generation signed command;
 2. replay after guest and host restart;
-3. channel key rotation with old-key rejection;
-4. guest process crash and heartbeat expiry;
-5. Secure Desktop and locked-session input denial;
-6. wrong display scaling and dynamic-resolution denial;
-7. base VHD remains unchanged after Field use;
-8. destruction cannot remove parent or personal-state disks;
-9. NTFS junction/reparse escape attempt;
-10. artifact changed between verification and copy;
-11. credential field and token-bearing UI demonstration;
-12. visual deletion and retention expiration;
-13. emergency stop during pointer, typing, and file transfer;
-14. possible external effect followed by retry request;
-15. model request for provisioning, consent, key rotation, deletion, or sensitive export.
+3. bounded replay history and corrupted replay-state recovery;
+4. channel key rotation with old-key rejection;
+5. noncanonical timestamp spellings and cross-language signed fixture verification;
+6. guest process crash and heartbeat expiry;
+7. Secure Desktop and locked-session input denial;
+8. wrong display scaling and dynamic-resolution denial;
+9. base VHD remains unchanged after Field use;
+10. destruction cannot remove parent or personal-state disks;
+11. NTFS junction/reparse escape attempt;
+12. artifact changed between verification and copy;
+13. credential field and token-bearing UI demonstration;
+14. visual deletion and retention expiration;
+15. emergency stop during pointer, typing, and file transfer;
+16. possible external effect followed by retry request;
+17. model request for provisioning, consent, key rotation, deletion, or sensitive export.
 
 ## Verdict
 
-The source architecture has strong deny-by-default boundaries and extensive pure/fake tests written. It is not ready for live or production use until executable repository validation and the release-blocking Windows/Hyper-V matrix produce evidence on the exact branch head.
+The source architecture has strong deny-by-default boundaries and extensive pure/fake tests written. Canonical cross-language channel time is now source-hardened, but the channel remains blocked on durable replay state, actual transport, exact-head executable validation, and the release-blocking Windows/Hyper-V matrix.

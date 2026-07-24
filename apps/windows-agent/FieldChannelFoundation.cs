@@ -25,6 +25,8 @@ public sealed record FieldChannelEnvelope(
 
 public static class FieldChannelAuthentication
 {
+    public const string WireTimestampFormat = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'";
+
     public static FieldChannelEnvelope Create(
         FieldReference field,
         FieldChannelDirection direction,
@@ -42,6 +44,8 @@ public static class FieldChannelAuthentication
         if (sequence < 0) throw new ArgumentOutOfRangeException(nameof(sequence));
         if (ttl <= TimeSpan.Zero || ttl > TimeSpan.FromMinutes(5)) throw new ArgumentOutOfRangeException(nameof(ttl));
         if (string.IsNullOrWhiteSpace(keyId)) throw new ArgumentException("Field channel key ID is required.", nameof(keyId));
+        var canonicalSentAt = NormalizeWireTimestamp(sentAt);
+        var canonicalExpiresAt = NormalizeWireTimestamp(canonicalSentAt.Add(ttl));
         var envelope = new FieldChannelEnvelope(
             1,
             messageId ?? Guid.NewGuid(),
@@ -49,8 +53,8 @@ public static class FieldChannelAuthentication
             direction,
             sequence,
             messageType,
-            sentAt,
-            sentAt.Add(ttl),
+            canonicalSentAt,
+            canonicalExpiresAt,
             nonce ?? Base64Url(RandomNumberGenerator.GetBytes(16)),
             keyId,
             Sha256(CanonicalJson.Serialize(payload)),
@@ -73,6 +77,10 @@ public static class FieldChannelAuthentication
         if (envelope.Direction != expectedDirection) throw new InvalidOperationException("Field channel message direction is invalid.");
         if (expectedKeyId is not null && !string.Equals(envelope.KeyId, expectedKeyId, StringComparison.Ordinal))
             throw new InvalidOperationException("Field channel key identity is invalid.");
+        if (!IsCanonicalWireTimestamp(envelope.SentAt) || !IsCanonicalWireTimestamp(envelope.ExpiresAt))
+            throw new InvalidOperationException("Field channel timestamps must use canonical UTC millisecond precision.");
+        if (envelope.ExpiresAt <= envelope.SentAt)
+            throw new InvalidOperationException("Field channel expiration must be after the sent timestamp.");
         if (now < envelope.SentAt) throw new InvalidOperationException("Field channel message is not valid yet.");
         if (now >= envelope.ExpiresAt) throw new InvalidOperationException("Field channel message has expired.");
         if (envelope.Sequence < 0) throw new InvalidOperationException("Field channel sequence cannot be negative.");
@@ -87,6 +95,24 @@ public static class FieldChannelAuthentication
         return envelope;
     }
 
+    public static string FormatWireTimestamp(DateTimeOffset value) =>
+        NormalizeWireTimestamp(value).ToString(WireTimestampFormat, CultureInfo.InvariantCulture);
+
+    public static DateTimeOffset ParseWireTimestamp(string value)
+    {
+        if (!DateTimeOffset.TryParseExact(
+                value,
+                WireTimestampFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var parsed) ||
+            !string.Equals(FormatWireTimestamp(parsed), value, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Field channel timestamp must use canonical UTC form YYYY-MM-DDTHH:mm:ss.SSSZ.");
+        }
+        return parsed;
+    }
+
     private static string Sign(FieldChannelEnvelope envelope, string secret) =>
         Base64Url(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(CanonicalUnsigned(envelope))));
 
@@ -98,8 +124,8 @@ public static class FieldChannelAuthentication
         ["direction"] = envelope.Direction == FieldChannelDirection.HostToGuest ? "host_to_guest" : "guest_to_host",
         ["sequence"] = envelope.Sequence,
         ["messageType"] = ToWire(envelope.MessageType),
-        ["sentAt"] = WireDate(envelope.SentAt),
-        ["expiresAt"] = WireDate(envelope.ExpiresAt),
+        ["sentAt"] = FormatWireTimestamp(envelope.SentAt),
+        ["expiresAt"] = FormatWireTimestamp(envelope.ExpiresAt),
         ["nonce"] = envelope.Nonce,
         ["keyId"] = envelope.KeyId,
         ["payloadHash"] = envelope.PayloadHash,
@@ -119,8 +145,15 @@ public static class FieldChannelAuthentication
         _ => throw new ArgumentOutOfRangeException(nameof(value)),
     };
 
-    private static string WireDate(DateTimeOffset value) =>
-        value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+    private static DateTimeOffset NormalizeWireTimestamp(DateTimeOffset value)
+    {
+        var utc = value.ToUniversalTime();
+        var ticks = utc.Ticks - utc.Ticks % TimeSpan.TicksPerMillisecond;
+        return new DateTimeOffset(ticks, TimeSpan.Zero);
+    }
+
+    private static bool IsCanonicalWireTimestamp(DateTimeOffset value) =>
+        value.Offset == TimeSpan.Zero && value.Ticks % TimeSpan.TicksPerMillisecond == 0;
 
     private static void ValidateSecret(string secret)
     {

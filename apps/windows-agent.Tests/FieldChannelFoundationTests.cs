@@ -36,6 +36,52 @@ public sealed class FieldChannelFoundationTests
     }
 
     [Fact]
+    public void Channel_requires_canonical_utc_millisecond_timestamps()
+    {
+        Assert.Equal(
+            "2026-07-21T18:00:00.000Z",
+            FieldChannelAuthentication.FormatWireTimestamp(DateTimeOffset.Parse("2026-07-21T14:00:00-04:00")));
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-07-21T18:00:00.000Z"),
+            FieldChannelAuthentication.ParseWireTimestamp("2026-07-21T18:00:00.000Z"));
+
+        foreach (var noncanonical in new[]
+        {
+            "2026-07-21T18:00:00Z",
+            "2026-07-21T18:00:00.000+00:00",
+            "2026-07-21T18:00:00.000000Z",
+            "2026-07-21T14:00:00.000-04:00",
+            "2026-02-30T18:00:00.000Z",
+        })
+        {
+            Assert.Throws<InvalidOperationException>(() => FieldChannelAuthentication.ParseWireTimestamp(noncanonical));
+        }
+
+        var source = new DateTimeOffset(2026, 7, 21, 14, 0, 0, TimeSpan.FromHours(-4)).AddTicks(9_999);
+        var created = FieldChannelAuthentication.Create(
+            Field,
+            FieldChannelDirection.GuestToHost,
+            0,
+            FieldChannelMessageType.Heartbeat,
+            new Dictionary<string, object?>(),
+            "field-channel-key-1",
+            Secret,
+            source,
+            TimeSpan.FromSeconds(30));
+        Assert.Equal(TimeSpan.Zero, created.SentAt.Offset);
+        Assert.Equal(0, created.SentAt.Ticks % TimeSpan.TicksPerMillisecond);
+        Assert.Equal("2026-07-21T18:00:00.000Z", FieldChannelAuthentication.FormatWireTimestamp(created.SentAt));
+
+        var invalidEnvelope = created with { SentAt = created.SentAt.AddTicks(1) };
+        Assert.Throws<InvalidOperationException>(() => FieldChannelAuthentication.Verify(
+            invalidEnvelope,
+            Secret,
+            Field,
+            FieldChannelDirection.GuestToHost,
+            created.SentAt.AddSeconds(1)));
+    }
+
+    [Fact]
     public void Channel_requires_strictly_increasing_sequence_and_one_boot_generation()
     {
         var sentAt = DateTimeOffset.Parse("2026-07-21T18:00:00Z");

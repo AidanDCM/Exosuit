@@ -1,8 +1,8 @@
 # Exosuit Field Implementation Status
 
 **Status authority for current Field code:** this file  
-**Branch:** `agent/field-foundation`  
-**Updated:** 2026-07-21  
+**Branch:** `agent/github-completion-contract-hardening`  
+**Updated:** 2026-07-25  
 **Planning authority:** `docs/MASTER_SYSTEM_ROADMAP.md` and `docs/FIELD_ARCHITECTURE.md`
 
 ## Evidence warning
@@ -35,7 +35,7 @@ This branch contains substantial Field contracts, pure/fake runtimes, Windows-si
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
-| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs` | TS/.NET tests and shared signed fixture | no live transport |
+| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs` | TS/.NET tests, shared signed fixture, canonical timestamp negative tests | no live transport; exact-head execution pending |
 | guest heartbeat | `fieldHeartbeat.ts`, `.NET foundation` | identity/liveness tests | no guest emitter |
 | guest bootstrap | `fieldBootstrap.ts`, guest bootstrap script | pure evaluator and static script tests | no service integration |
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
@@ -88,10 +88,10 @@ Every message binds:
 - nonce,
 - key ID,
 - payload hash,
-- sent/expiration time,
+- canonical UTC sent/expiration time using `YYYY-MM-DDTHH:mm:ss.SSSZ`,
 - HMAC-SHA256 signature.
 
-Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay state is currently in memory and requires a persistence design before production.
+TypeScript now rejects alternate timestamp spellings before signing or verification. .NET now exposes exact wire timestamp parsing/formatting, normalizes locally created timestamps to UTC millisecond precision, and rejects noncanonical in-memory timestamp values. Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay state is still in memory and requires bounded durable persistence before production.
 
 ### Guest action boundary
 
@@ -139,7 +139,8 @@ Shell routes are denied. Teach and Shadow cannot execute. Shutdown is local-admi
 - Field identity/lifecycle/redaction tests;
 - authenticated channel/replay/heartbeat tests;
 - shared Field contract fixture;
-- shared signed channel fixture.
+- shared signed channel fixture;
+- canonical timestamp parser/formatter and negative representation tests.
 
 ### Windows
 
@@ -156,16 +157,17 @@ See `docs/FIELD_WINDOWS_RUNBOOK.md`.
 
 The latest inspected Exosuit CI and Security Audit jobs again reported no steps and no logs. This is classified as an external runner/account allocation block, not a passing or failing repository test result.
 
-Executable validation remains mandatory on the exact branch head.
+Executable validation remains mandatory on the exact branch head. An isolated TypeScript compiler check passed for the changed channel source shape with dependency stubs; this is not repository validation.
 
 ## Not implemented or not proven
 
 - executed TypeScript/.NET suite on the current head;
 - executed PowerShell parser/static/runtime checks;
+- bounded durable replay persistence, corruption recovery, and restart evidence;
 - supported, reviewed Hyper-V provider integrated behind `FieldProvisioner`;
 - actual VM creation evidence;
 - base-image immutability evidence after guest use;
-- actual host/guest transport, key persistence, and rotation;
+- actual host/guest transport, protected key persistence, and rotation;
 - running guest bootstrap/heartbeat service;
 - live Windows scene producer;
 - live Teach input and UI Automation hooks;
