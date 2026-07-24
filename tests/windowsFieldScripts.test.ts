@@ -100,6 +100,8 @@ describe("Windows Field administration scripts", () => {
     const readKvp = await script("Read-ExosuitFieldGuestKvp.ps1");
     const setupComplete = await script("SetupComplete-ExosuitFieldGuest.cmd");
     const developmentAccess = await script("Initialize-ExosuitDevelopmentAccess.ps1");
+    const sealBase = await script("Seal-ExosuitFieldBase.ps1");
+    const sealBaseLauncher = await script("Seal-ExosuitFieldBase.cmd");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -130,6 +132,15 @@ describe("Windows Field administration scripts", () => {
     expect(setupComplete).toContain("-Command");
     expect(setupComplete).toContain("-Confirm:$false");
     expect(setupComplete).toContain('del /f /q "C:\\Windows\\Panther\\Unattend.xml"');
+    expect(sealBase).toContain("SEAL EXOSUIT FIELD BASE");
+    expect(sealBase).toContain("Base sealing must run as the built-in Windows Audit Mode administrator.");
+    expect(sealBase).toContain("Base sealing refuses an image containing per-generation configuration or secrets.");
+    expect(sealBase).toContain("Get-ScheduledTask -TaskName $taskName");
+    expect(sealBase).toContain("MSFT_TaskBootTrigger");
+    expect(sealBase).toContain("MSFT_TaskLogonTrigger");
+    expect(sealBase).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
+    expect(sealBaseLauncher).toContain('-Apply -TypedConfirmation "SEAL EXOSUIT FIELD BASE"');
+    expect(sealBaseLauncher).not.toMatch(/password|secret|token/i);
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
