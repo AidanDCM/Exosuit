@@ -20,8 +20,8 @@ public sealed class FieldChannelWireContractTests
             source.GetProperty("direction").GetString() == "guest_to_host" ? FieldChannelDirection.GuestToHost : FieldChannelDirection.HostToGuest,
             source.GetProperty("sequence").GetInt64(),
             FieldChannelMessageType.Heartbeat,
-            source.GetProperty("sentAt").GetDateTimeOffset(),
-            source.GetProperty("expiresAt").GetDateTimeOffset(),
+            FieldChannelAuthentication.ParseWireTimestamp(source.GetProperty("sentAt").GetString()!),
+            FieldChannelAuthentication.ParseWireTimestamp(source.GetProperty("expiresAt").GetString()!),
             source.GetProperty("nonce").GetString()!,
             source.GetProperty("keyId").GetString()!,
             source.GetProperty("payloadHash").GetString()!,
@@ -33,7 +33,7 @@ public sealed class FieldChannelWireContractTests
             root.GetProperty("secret").GetString()!,
             envelope.Field,
             FieldChannelDirection.GuestToHost,
-            root.GetProperty("verifyAt").GetDateTimeOffset(),
+            FieldChannelAuthentication.ParseWireTimestamp(root.GetProperty("verifyAt").GetString()!),
             root.GetProperty("expectedKeyId").GetString());
 
         Assert.Equal(7, verified.Sequence);
