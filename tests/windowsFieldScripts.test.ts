@@ -96,13 +96,16 @@ describe("Windows Field administration scripts", () => {
     const setupComplete = await script("SetupComplete-ExosuitFieldGuest.cmd");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
-    expect(start).toContain("$bootstrapSucceeded = $?");
+    expect(start).toContain("if (-not $?)");
     expect(start).toContain("guest-runtime-error.log");
     expect(start).not.toContain("Guest bootstrap failed with exit code");
     expect(install).toContain("New-ScheduledTaskTrigger -AtStartup");
     expect(install).toContain("New-ScheduledTaskTrigger -AtLogOn");
     expect(install).toContain("New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest");
     expect(install).toContain("-MultipleInstances IgnoreNew");
+    expect(start).toContain("DesktopReadyTimeoutSeconds");
+    expect(start).toContain("session_unlocked");
+    expect(start).toContain("Interactive desktop did not become ready");
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
     expect(readKvp).toContain("Resolve-KvpEnvelope");

@@ -1,7 +1,11 @@
 [CmdletBinding()]
 param(
     [Parameter()]
-    [string]$LaunchConfigPath = 'C:\Exosuit\Config\guest-launch.json'
+    [string]$LaunchConfigPath = 'C:\Exosuit\Config\guest-launch.json',
+
+    [Parameter()]
+    [ValidateRange(1, 3600)]
+    [int]$DesktopReadyTimeoutSeconds = 900
 )
 
 Set-StrictMode -Version Latest
@@ -30,15 +34,28 @@ $launch = ConvertFrom-JsonDocument -Path $LaunchConfigPath -Depth 20
 if ($launch.contractVersion -ne 1) { throw 'Unsupported guest launch contract version.' }
 $manifestPath = Assert-ExosuitPath -Path ([string]$launch.manifestPath)
 $runtimeConfigPath = Assert-ExosuitPath -Path ([string]$launch.runtimeConfigPath)
+$runtime = ConvertFrom-JsonDocument -Path $runtimeConfigPath -Depth 20
+if ($runtime.contractVersion -ne 1) { throw 'Unsupported guest runtime contract version.' }
+$bootstrapReportPath = Assert-ExosuitPath -Path ([string]$runtime.bootstrapReportPath)
 $bootstrapScript = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Initialize-ExosuitFieldGuest.ps1'
 $agentPath = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Exosuit.Agent.exe'
 foreach ($path in @($manifestPath, $runtimeConfigPath, $bootstrapScript, $agentPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Required guest file is missing: $path" }
 }
 $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
-& $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -Confirm:$false
-$bootstrapSucceeded = $?
-if (-not $bootstrapSucceeded) { throw 'Guest bootstrap precheck did not complete successfully.' }
+$desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)
+do {
+    & $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -ReportPath $bootstrapReportPath -Confirm:$false
+    if (-not $?) { throw 'Guest bootstrap precheck did not complete successfully.' }
+    $bootstrapReport = ConvertFrom-JsonDocument -Path $bootstrapReportPath -Depth 50
+    $sessionCheck = @($bootstrapReport.checks | Where-Object name -EQ 'session_unlocked')
+    if ($sessionCheck.Count -ne 1) { throw 'Guest bootstrap report did not contain exactly one session_unlocked check.' }
+    if ([bool]$sessionCheck[0].passed) { break }
+    if ([DateTimeOffset]::UtcNow -ge $desktopDeadline) {
+        throw "Interactive desktop did not become ready within $DesktopReadyTimeoutSeconds seconds."
+    }
+    Start-Sleep -Seconds 2
+} while ($true)
 $runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
 & $agentPath --field-guest-kvp $runtimeConfigPath 2>> $runtimeErrorLog
 $agentExitCode = $LASTEXITCODE
