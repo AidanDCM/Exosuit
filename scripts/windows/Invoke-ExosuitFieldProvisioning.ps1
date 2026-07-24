@@ -133,7 +133,13 @@ function Add-GuestSeedToOverlay {
         if ($development.contractVersion -ne 1 -or
             $development.mode -cne 'auto_logon' -or
             $development.nonProduction -ne $true -or
-            $development.userName -cne [string]$Plan.developmentAccess.userName) {
+            $development.userName -cne [string]$Plan.developmentAccess.userName -or
+            $development.windowsSetup.mode -cne 'unattended_disposable' -or
+            $development.windowsSetup.locale -cne 'en-US' -or
+            $development.windowsSetup.timeZone -cne 'Eastern Standard Time' -or
+            $development.windowsSetup.mode -cne [string]$Plan.developmentAccess.windowsSetup.mode -or
+            $development.windowsSetup.locale -cne [string]$Plan.developmentAccess.windowsSetup.locale -or
+            $development.windowsSetup.timeZone -cne [string]$Plan.developmentAccess.windowsSetup.timeZone) {
             throw 'Development access seed does not match the provisioning plan.'
         }
         $developmentPassword = (Get-Content -LiteralPath (Join-Path $SeedDirectory 'development-password.txt') -Raw).Trim()
@@ -158,6 +164,52 @@ function Add-GuestSeedToOverlay {
         New-Item -ItemType Directory -Path $configDirectory -Force | Out-Null
         foreach ($name in $requiredSeedFiles) {
             Copy-Item -LiteralPath (Join-Path $SeedDirectory $name) -Destination (Join-Path $configDirectory $name)
+        }
+        if ($planUsesDevelopmentAccess) {
+            $pantherDirectory = "$($partition.DriveLetter):\Windows\Panther"
+            New-Item -ItemType Directory -Path $pantherDirectory -Force | Out-Null
+            $unattendPath = Join-Path $pantherDirectory 'Unattend.xml'
+            $unattend = @'
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+          <Order>1</Order>
+          <Description>Initialize isolated Exosuit development access</Description>
+          <Path>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Initialize-ExosuitDevelopmentAccess.ps1" -NoRestart</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+    </component>
+  </settings>
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>en-US</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <TimeZone>Eastern Standard Time</TimeZone>
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>3</ProtectYourPC>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <SkipUserOOBE>true</SkipUserOOBE>
+      </OOBE>
+    </component>
+  </settings>
+</unattend>
+'@
+            if ($unattend -match '(?i)<Password>|development-password|channel-secret') {
+                throw 'Development unattended setup must not contain a credential or channel secret.'
+            }
+            [IO.File]::WriteAllText($unattendPath, $unattend, [Text.UTF8Encoding]::new($false))
         }
         & icacls.exe $configDirectory /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'Unable to restrict guest seed ACLs to SYSTEM and Administrators.' }
@@ -228,6 +280,7 @@ $summary = [ordered]@{
     networkMode = [string]$plan.network.mode
     switchName = $switchName
     developmentAccessEnabled = [bool]($plan.PSObject.Properties.Name -contains 'developmentAccess')
+    developmentUnattendedSetupEnabled = [bool]($plan.PSObject.Properties.Name -contains 'developmentAccess')
     completedSteps = [System.Collections.Generic.List[string]]::new()
     rollbackSteps = [System.Collections.Generic.List[string]]::new()
     status = if ($Apply) { 'applying' } else { 'dry_run' }

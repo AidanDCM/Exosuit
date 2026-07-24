@@ -13,6 +13,8 @@ Disposable synthetic Fields may request the explicit `developmentAccess` plan mo
 
 Development auto-login is not production-equivalent authentication. Destroy its disposable generation after testing. A production candidate must set `developmentAccessEnabled` to `false`.
 
+The same development plan must explicitly request `windowsSetup.mode: unattended_disposable` with the reviewed `en-US` locale and `Eastern Standard Time` time zone. Provisioning injects a credential-free Windows answer file into the disposable overlay. During the specialize pass it invokes the reviewed development initializer, then suppresses the remaining OOBE pages. The setup-complete hook removes the answer file. This path is forbidden for personal-state or non-isolated Fields, and a production candidate must also set `developmentUnattendedSetupEnabled` to `false`.
+
 ## Hard holds
 
 Do not provision a live Field unless all of the following are true:

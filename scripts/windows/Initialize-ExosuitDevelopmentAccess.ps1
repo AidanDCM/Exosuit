@@ -7,7 +7,10 @@ param(
     [string]$PasswordPath = 'C:\Exosuit\Config\development-password.txt',
 
     [Parameter()]
-    [string]$MarkerPath = 'C:\Exosuit\Config\development-access-configured.json'
+    [string]$MarkerPath = 'C:\Exosuit\Config\development-access-configured.json',
+
+    [Parameter()]
+    [switch]$NoRestart
 )
 
 Set-StrictMode -Version Latest
@@ -33,6 +36,9 @@ $configuration = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
 if ($configuration.contractVersion -ne 1 -or
     $configuration.mode -cne 'auto_logon' -or
     $configuration.nonProduction -ne $true -or
+    $configuration.windowsSetup.mode -cne 'unattended_disposable' -or
+    $configuration.windowsSetup.locale -cne 'en-US' -or
+    $configuration.windowsSetup.timeZone -cne 'Eastern Standard Time' -or
     [string]$configuration.userName -cnotmatch '^[A-Za-z][A-Za-z0-9]{2,19}$') {
     throw 'Development access configuration is invalid.'
 }
@@ -150,5 +156,7 @@ $bytes = New-Object byte[] ([Math]::Max(64, (Get-Item -LiteralPath $PasswordPath
 [IO.File]::WriteAllBytes($PasswordPath, $bytes)
 Remove-Item -LiteralPath $PasswordPath -Force
 
-Restart-Computer -Force
+if (-not $NoRestart) {
+    Restart-Computer -Force
+}
 return

@@ -54,6 +54,7 @@ async function fixture(input: {
         ownerApproved: input.passing,
         productionDecision: input.passing ? "approved" : "denied",
         developmentAccessEnabled: false,
+        developmentUnattendedSetupEnabled: false,
         unresolvedBlockers: input.passing ? [] : ["fixture blocker"],
         gates: requiredGates.map((gate) => ({
           gate,
@@ -118,5 +119,17 @@ describe("production readiness validator", () => {
     const result = run(root, [], { EXOSUIT_RELEASE_COMMIT: commit });
     expect(result.status).not.toBe(0);
     expect(`${result.stdout}${result.stderr}`).toContain("development access must be explicitly disabled");
+  });
+
+  it("rejects an otherwise complete candidate with development unattended setup enabled", async () => {
+    const commit = "f".repeat(40);
+    const root = await fixture({ passing: true, includeLockfile: true, candidateCommit: commit });
+    const manifestPath = resolve(root, "docs/qa/production-readiness.json");
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    manifest.developmentUnattendedSetupEnabled = true;
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+    const result = run(root, [], { EXOSUIT_RELEASE_COMMIT: commit });
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain("development unattended setup must be explicitly disabled");
   });
 });

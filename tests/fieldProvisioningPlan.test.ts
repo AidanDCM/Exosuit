@@ -88,16 +88,31 @@ describe("Field provisioning plan", () => {
       display,
       baseImageId: "base-v1",
       networkMode: "isolated",
-      developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+      developmentAccess: {
+        mode: "auto_logon",
+        userName: "ExosuitDev",
+        nonProduction: true,
+        windowsSetup: { mode: "unattended_disposable", locale: "en-US", timeZone: "Eastern Standard Time" },
+      },
     });
-    expect(plan.developmentAccess).toEqual({ mode: "auto_logon", userName: "ExosuitDev", nonProduction: true });
+    expect(plan.developmentAccess).toEqual({
+      mode: "auto_logon",
+      userName: "ExosuitDev",
+      nonProduction: true,
+      windowsSetup: { mode: "unattended_disposable", locale: "en-US", timeZone: "Eastern Standard Time" },
+    });
     expect(() =>
       createFieldProvisioningPlan({
         identity: identity(false),
         display,
         baseImageId: "base-v1",
         networkMode: "nat_filtered",
-        developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+        developmentAccess: {
+          mode: "auto_logon",
+          userName: "ExosuitDev",
+          nonProduction: true,
+          windowsSetup: { mode: "unattended_disposable", locale: "en-US", timeZone: "Eastern Standard Time" },
+        },
       }),
     ).toThrow(/isolated networking/);
     expect(() =>
@@ -105,9 +120,27 @@ describe("Field provisioning plan", () => {
         identity: identity(),
         display,
         baseImageId: "base-v1",
-        developmentAccess: { mode: "auto_logon", userName: "ExosuitDev", nonProduction: true },
+        developmentAccess: {
+          mode: "auto_logon",
+          userName: "ExosuitDev",
+          nonProduction: true,
+          windowsSetup: { mode: "unattended_disposable", locale: "en-US", timeZone: "Eastern Standard Time" },
+        },
       }),
     ).toThrow(/cannot attach personal state/);
+    expect(() =>
+      createFieldProvisioningPlan({
+        identity: identity(false),
+        display,
+        baseImageId: "base-v1",
+        developmentAccess: {
+          mode: "auto_logon",
+          userName: "ExosuitDev",
+          nonProduction: true,
+          windowsSetup: { mode: "unattended_disposable", locale: "en-US", timeZone: "UTC" as "Eastern Standard Time" },
+        },
+      }),
+    ).toThrow();
   });
 
   it("detects plan tampering and rejects arbitrary commands or unsafe host integrations", () => {

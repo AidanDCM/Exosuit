@@ -119,6 +119,13 @@ export const fieldProvisioningPlanSchema = z
         mode: z.literal("auto_logon"),
         userName: z.string().regex(/^[A-Za-z][A-Za-z0-9]{2,19}$/),
         nonProduction: z.literal(true),
+        windowsSetup: z
+          .object({
+            mode: z.literal("unattended_disposable"),
+            locale: z.literal("en-US"),
+            timeZone: z.literal("Eastern Standard Time"),
+          })
+          .strict(),
       })
       .strict()
       .optional(),
@@ -198,7 +205,12 @@ export function createFieldProvisioningPlan(input: {
   allowedOrigins?: string[];
   tpmRequired?: boolean;
   viewerEnabled?: boolean;
-  developmentAccess?: { mode: "auto_logon"; userName: string; nonProduction: true };
+  developmentAccess?: {
+    mode: "auto_logon";
+    userName: string;
+    nonProduction: true;
+    windowsSetup: { mode: "unattended_disposable"; locale: "en-US"; timeZone: "Eastern Standard Time" };
+  };
   createdAt?: string;
   planId?: string;
 }): FieldProvisioningPlan {

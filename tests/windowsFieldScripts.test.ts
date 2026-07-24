@@ -25,6 +25,9 @@ describe("Windows Field administration scripts", () => {
     expect(content).toContain("Guest seed manifest identity does not match the provisioning plan.");
     expect(content).toContain("seed_guest_overlay");
     expect(content).toContain("Development access requires both the signed provisioning plan field and the explicit host apply switch.");
+    expect(content).toContain("Development unattended setup must not contain a credential or channel secret.");
+    expect(content).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
+    expect(content).toContain("SkipMachineOOBE");
     expect(content).toContain("Enable-VMIntegrationService -VMName $vmName -Name 'Time Synchronization'");
     expect(content).toContain("*S-1-5-18:(OI)(CI)F");
     expect(content).toContain("Set-VMVideo");
@@ -113,6 +116,8 @@ describe("Windows Field administration scripts", () => {
     expect(developmentAccess).toContain("[Exosuit.LsaPrivateData]::Store('DefaultPassword', $password)");
     expect(developmentAccess).toContain("Development access refuses to modify an existing local account.");
     expect(developmentAccess).toContain("administrator = $false");
+    expect(developmentAccess).toContain("[switch]$NoRestart");
+    expect(developmentAccess).toContain("if (-not $NoRestart)");
     expect(developmentAccess).not.toMatch(/Add-LocalGroupMember[^\r\n]*Administrators/i);
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
     expect(readKvp).toContain("--field-verify-envelope");
@@ -124,6 +129,7 @@ describe("Windows Field administration scripts", () => {
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");
     expect(setupComplete).toContain("-Confirm:$false");
+    expect(setupComplete).toContain('del /f /q "C:\\Windows\\Panther\\Unattend.xml"');
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");

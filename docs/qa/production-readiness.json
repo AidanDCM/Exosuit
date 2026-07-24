@@ -6,6 +6,7 @@
   "ownerApproved": false,
   "productionDecision": "denied",
   "developmentAccessEnabled": false,
+  "developmentUnattendedSetupEnabled": false,
   "unresolvedBlockers": [
     "No executable current-head validation",
     "No reproducible Node lockfile",
