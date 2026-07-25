@@ -30,6 +30,17 @@ function Assert-ExosuitPath {
     $resolved
 }
 
+$maintenanceAuthorizationPath = Assert-ExosuitPath -Path 'C:\Exosuit\Base\maintenance-authorization.json'
+if (Test-Path -LiteralPath $maintenanceAuthorizationPath -PathType Leaf) {
+    $maintenanceScript = Assert-ExosuitPath -Path 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
+    if (-not (Test-Path -LiteralPath $maintenanceScript -PathType Leaf)) {
+        throw 'Field base maintenance was authorized but the reviewed maintenance script is missing.'
+    }
+    & $maintenanceScript -AuthorizationPath $maintenanceAuthorizationPath
+    if (-not $?) { throw 'Field base maintenance failed.' }
+    return
+}
+
 $launch = ConvertFrom-JsonDocument -Path $LaunchConfigPath -Depth 20
 if ($launch.contractVersion -ne 1) { throw 'Unsupported guest launch contract version.' }
 $manifestPath = Assert-ExosuitPath -Path ([string]$launch.manifestPath)

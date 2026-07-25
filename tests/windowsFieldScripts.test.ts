@@ -103,6 +103,7 @@ describe("Windows Field administration scripts", () => {
     const sealBase = await script("Seal-ExosuitFieldBase.ps1");
     const sealBaseLauncher = await script("Seal-ExosuitFieldBase.cmd");
     const removeBaseAccount = await script("Remove-ExosuitFieldBaseAccount.ps1");
+    const systemBaseMaintenance = await script("Invoke-ExosuitFieldBaseMaintenance.ps1");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -116,6 +117,8 @@ describe("Windows Field administration scripts", () => {
     expect(start).toContain("session_unlocked");
     expect(start).toContain("Interactive desktop did not become ready");
     expect(start).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
+    expect(start).toContain("maintenance-authorization.json");
+    expect(start).toContain("Invoke-ExosuitFieldBaseMaintenance.ps1");
     expect(developmentAccess).toContain("[Exosuit.LsaPrivateData]::Store('DefaultPassword', $password)");
     expect(developmentAccess).toContain("Development access refuses to modify an existing local account.");
     expect(developmentAccess).toContain("administrator = $false");
@@ -151,6 +154,14 @@ describe("Windows Field administration scripts", () => {
     expect(removeBaseAccount).toContain("Field base account cleanup refuses built-in or current accounts.");
     expect(removeBaseAccount).toContain("Field base account cleanup refuses a loaded or special profile.");
     expect(removeBaseAccount).toContain("Remove-LocalUser -Name $AccountName");
+    expect(systemBaseMaintenance).toContain("clean_and_seal_field_base");
+    expect(systemBaseMaintenance).toContain("Field base maintenance must run as local SYSTEM.");
+    expect(systemBaseMaintenance).toContain("Field base maintenance requires a network-detached staging VM.");
+    expect(systemBaseMaintenance).toContain("maintenanceScriptSha256");
+    expect(systemBaseMaintenance).toContain("Field base maintenance script digest does not match its authorization.");
+    expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
+    expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
+    expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
