@@ -102,6 +102,7 @@ describe("Windows Field administration scripts", () => {
     const developmentAccess = await script("Initialize-ExosuitDevelopmentAccess.ps1");
     const sealBase = await script("Seal-ExosuitFieldBase.ps1");
     const sealBaseLauncher = await script("Seal-ExosuitFieldBase.cmd");
+    const removeBaseAccount = await script("Remove-ExosuitFieldBaseAccount.ps1");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -131,16 +132,25 @@ describe("Windows Field administration scripts", () => {
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");
     expect(setupComplete).toContain("-Confirm:$false");
+    expect(setupComplete).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
+    expect(setupComplete).toContain("-NoRestart");
+    expect(setupComplete).toContain("if errorlevel 1 exit /b 1");
     expect(setupComplete).toContain('del /f /q "C:\\Windows\\Panther\\Unattend.xml"');
     expect(sealBase).toContain("SEAL EXOSUIT FIELD BASE");
     expect(sealBase).toContain("Base sealing must run as the built-in Windows Audit Mode administrator.");
     expect(sealBase).toContain("Base sealing refuses an image containing per-generation configuration or secrets.");
+    expect(sealBase).toContain("Base sealing refuses an image containing a non-built-in local account.");
     expect(sealBase).toContain("Get-ScheduledTask -TaskName $taskName");
     expect(sealBase).toContain("MSFT_TaskBootTrigger");
     expect(sealBase).toContain("MSFT_TaskLogonTrigger");
     expect(sealBase).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(sealBaseLauncher).toContain('-Apply -TypedConfirmation "SEAL EXOSUIT FIELD BASE"');
     expect(sealBaseLauncher).not.toMatch(/password|secret|token/i);
+    expect(removeBaseAccount).toContain("REMOVE FIELD BASE ACCOUNT $AccountName");
+    expect(removeBaseAccount).toContain("Field base account cleanup requires the elevated built-in Windows Audit Mode administrator.");
+    expect(removeBaseAccount).toContain("Field base account cleanup refuses built-in or current accounts.");
+    expect(removeBaseAccount).toContain("Field base account cleanup refuses a loaded or special profile.");
+    expect(removeBaseAccount).toContain("Remove-LocalUser -Name $AccountName");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");

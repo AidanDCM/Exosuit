@@ -33,6 +33,11 @@ if ($identity.User.Value -notmatch '-500$') {
     throw 'Base sealing must run as the built-in Windows Audit Mode administrator.'
 }
 
+$nonBuiltInUsers = @(Get-LocalUser | Where-Object { $_.SID.Value -notmatch '-(500|501|503|504)$' })
+if ($nonBuiltInUsers.Count -ne 0) {
+    throw 'Base sealing refuses an image containing a non-built-in local account.'
+}
+
 $allowedRoot = [IO.Path]::GetFullPath('C:\Exosuit').TrimEnd('\') + '\'
 foreach ($path in @($AgentRoot, $ConfigRoot, $ReceiptPath)) {
     $resolved = [IO.Path]::GetFullPath($path)
@@ -105,6 +110,7 @@ $receipt = [ordered]@{
     computerName = $env:COMPUTERNAME
     auditModeAdministrator = $true
     perGenerationConfigurationAbsent = $true
+    nonBuiltInLocalAccountsAbsent = $true
     task = [ordered]@{
         name = $taskName
         principal = 'SYSTEM'
