@@ -196,6 +196,13 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("auditSystem_already_complete");
     expect(baseMaintenanceBootstrap).toContain("auditSystem_in_progress");
     expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message");
+    // The host is the only time authority. The bootstrap may resynchronise the
+    // guest clock through the Hyper-V integration service, but must never read
+    // the authorization it is about to dispatch a check against - deriving the
+    // clock from expiresAt would silently void expiry as replay protection.
+    expect(baseMaintenanceBootstrap).toContain("vmictimesync");
+    expect(baseMaintenanceBootstrap).not.toContain("expiresAt");
+    expect(baseMaintenanceBootstrap).not.toContain("Set-Date");
     expect(baseMaintenanceBootstrap).toContain("servicePathName=$($service.PathName)");
     expect(baseMaintenanceBootstrap).toContain("serviceStartExitCode");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");

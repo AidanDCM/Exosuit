@@ -14,6 +14,9 @@ $dispatchName = 'ExosuitFieldBaseMaintenance'
 # has been attempted, including on the early stand-down paths.
 $script:startExitCode = $null
 $script:startText = ''
+$script:utcBeforeTimeSync = ''
+$script:utcAfterTimeSync = ''
+$script:timeSyncState = ''
 
 # Windows leaves scheduled tasks Queued for the whole Audit Mode session, so a
 # task is not a usable SYSTEM dispatch route here. The reviewed primary route is
@@ -39,6 +42,9 @@ function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     } else {
         $lines.Add('serviceState=absent')
     }
+    if ($script:timeSyncState) { $lines.Add("timeSyncState=$($script:timeSyncState)") }
+    if ($script:utcBeforeTimeSync) { $lines.Add("utcBeforeTimeSync=$($script:utcBeforeTimeSync)") }
+    if ($script:utcAfterTimeSync) { $lines.Add("utcAfterTimeSync=$($script:utcAfterTimeSync)") }
     if ($script:startExitCode -ne $null) { $lines.Add("serviceStartExitCode=$($script:startExitCode)") }
     if ($script:startText) { $lines.Add("serviceStartOutput=$($script:startText -replace '[\r\n]+', ' ')") }
     if ($ErrorText) { $lines.Add("error=$($ErrorText -replace '[\r\n]+', ' ')") }
@@ -67,6 +73,31 @@ if (Test-Path -LiteralPath $stagePath -PathType Leaf) {
 foreach ($path in @($authorizationPath, $maintenancePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
+
+# Evidence across attempts showed this guest computing a UTC three hours ahead
+# of the host, which pre-expires every authorization. Enabling Time
+# Synchronization on the VM was not enough, so make the guest-side integration
+# service run and resynchronise before dispatch. The host stays the sole time
+# authority: nothing here derives the clock from the authorization it is about
+# to check, so expiry keeps its replay-protection meaning. Best effort by
+# design - the maintenance script must remain the thing that refuses stale work.
+$script:utcBeforeTimeSync = [DateTimeOffset]::UtcNow.ToString('O')
+try {
+    $timeSyncService = Get-Service -Name 'vmictimesync' -ErrorAction Stop
+    if ($timeSyncService.StartType -eq 'Disabled') {
+        Set-Service -Name 'vmictimesync' -StartupType Automatic
+    }
+    if ($timeSyncService.Status -ne 'Running') {
+        Start-Service -Name 'vmictimesync'
+    } else {
+        Restart-Service -Name 'vmictimesync' -Force
+    }
+    Start-Sleep -Seconds 10
+    $script:timeSyncState = (Get-Service -Name 'vmictimesync').Status.ToString()
+} catch {
+    $script:timeSyncState = "unavailable: $($_.Exception.Message -replace '[\r\n]+', ' ')"
+}
+$script:utcAfterTimeSync = [DateTimeOffset]::UtcNow.ToString('O')
 
 # PowerShell never calls StartServiceCtrlDispatcher, so the SCM always fails the
 # start with 1053 after its timeout and then terminates the process it created.
