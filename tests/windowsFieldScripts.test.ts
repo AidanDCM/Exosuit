@@ -173,10 +173,15 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
     expect(baseMaintenanceBootstrap).toContain("Get-ScheduledTaskInfo -TaskName $taskName");
     expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
-    expect(baseMaintenanceBootstrap).toContain("New-ScheduledTaskPrincipal -UserId 'SYSTEM'");
-    expect(baseMaintenanceBootstrap).toContain("Register-ScheduledTask -TaskName $taskName");
+    expect(baseMaintenanceBootstrap).toContain("<UserId>S-1-5-18</UserId>");
+    expect(baseMaintenanceBootstrap).toContain("<LogonType>ServiceAccount</LogonType>");
+    expect(baseMaintenanceBootstrap).toContain("Register-ScheduledTask -TaskName $taskName -Xml $taskXml");
+    expect(baseMaintenanceBootstrap).toContain("$registered.Principal.LogonType -ne 'ServiceAccount'");
+    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -ErrorText $_.Exception.Message");
     expect(baseMaintenanceBootstrap).toContain("Field base maintenance SYSTEM task failed with result");
     expect(baseMaintenanceBootstrap).toContain("did not produce a receipt within $TimeoutSeconds seconds");
+    expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
+    expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");

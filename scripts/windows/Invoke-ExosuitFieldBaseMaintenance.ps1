@@ -10,6 +10,16 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$stagePath = 'C:\Exosuit\Logs\maintenance-stage.txt'
+function Set-MaintenanceStage([string]$Stage) {
+    [IO.File]::WriteAllText(
+        $stagePath,
+        "observedAt=$([DateTimeOffset]::UtcNow.ToString('O'))`r`nstage=$Stage`r`n",
+        [Text.UTF8Encoding]::new($false)
+    )
+}
+Set-MaintenanceStage 'started'
+
 $allowedRoot = [IO.Path]::GetFullPath('C:\Exosuit').TrimEnd('\') + '\'
 foreach ($path in @($AuthorizationPath, $ReceiptPath)) {
     $resolved = [IO.Path]::GetFullPath($path)
@@ -28,6 +38,7 @@ $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 if ($identity.User.Value -cne 'S-1-5-18') {
     throw 'Field base maintenance must run as local SYSTEM.'
 }
+Set-MaintenanceStage 'system_identity_verified'
 
 $authorization = Get-Content -LiteralPath $AuthorizationPath -Raw | ConvertFrom-Json
 $now = [DateTimeOffset]::UtcNow
@@ -56,6 +67,7 @@ $selfDigest = (Get-FileHash -LiteralPath $selfPath -Algorithm SHA256).Hash.ToLow
 if ($selfDigest -cne [string]$authorization.maintenanceScriptSha256) {
     throw 'Field base maintenance script digest does not match its authorization.'
 }
+Set-MaintenanceStage 'authorization_verified'
 
 $bootstrapUnattendPath = 'C:\Windows\Panther\Unattend.xml'
 if (-not (Test-Path -LiteralPath $bootstrapUnattendPath -PathType Leaf)) {
@@ -73,6 +85,7 @@ $activeAdapters = @(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object 
 if ($activeAdapters.Count -ne 0) {
     throw 'Field base maintenance requires a network-detached staging VM.'
 }
+Set-MaintenanceStage 'network_detachment_verified'
 
 $configRoot = 'C:\Exosuit\Config'
 if (Test-Path -LiteralPath $configRoot) {
@@ -96,6 +109,7 @@ if (@($profiles | Where-Object { $_.Loaded -or $_.Special }).Count -ne 0) {
 }
 
 foreach ($profile in $profiles) { $profile | Remove-CimInstance }
+Set-MaintenanceStage 'profiles_removed'
 Remove-LocalUser -Name $accountName
 if (Get-LocalUser -Name $accountName -ErrorAction SilentlyContinue) {
     throw 'Authorized Field base account removal did not complete.'
@@ -107,6 +121,7 @@ $remainingUsers = @(Get-LocalUser | Where-Object { $_.SID.Value -notmatch '-(500
 if ($remainingUsers.Count -ne 0) {
     throw 'Field base maintenance found another non-built-in local account after cleanup.'
 }
+Set-MaintenanceStage 'account_cleanup_verified'
 
 $requiredFiles = @(
     'Exosuit.Agent.exe',
@@ -125,6 +140,7 @@ foreach ($name in $requiredFiles) {
 if (-not (Test-Path -LiteralPath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -PathType Leaf)) {
     throw 'Field base maintenance requires the reviewed SetupComplete hook.'
 }
+Set-MaintenanceStage 'components_verified'
 
 $maintenanceTaskName = 'ExosuitFieldBaseMaintenance'
 $maintenanceTask = Get-ScheduledTask -TaskName $maintenanceTaskName -ErrorAction Stop
@@ -134,6 +150,7 @@ if ($maintenanceTask.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
     throw 'Field base maintenance one-use task does not match the reviewed SYSTEM contract.'
 }
 Unregister-ScheduledTask -TaskName $maintenanceTaskName -Confirm:$false
+Set-MaintenanceStage 'maintenance_task_consumed'
 
 Remove-Item -LiteralPath $bootstrapUnattendPath -Force
 if (Test-Path -LiteralPath $bootstrapUnattendPath) {
@@ -166,7 +183,9 @@ $receipt = [ordered]@{
 }
 [IO.File]::WriteAllText($ReceiptPath, ($receipt | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 Remove-Item -LiteralPath $AuthorizationPath -Force
+Set-MaintenanceStage 'receipt_written_and_authorization_consumed'
 
 $sysprepPath = Join-Path $env:WINDIR 'System32\Sysprep\Sysprep.exe'
+Set-MaintenanceStage 'sysprep_started'
 $process = Start-Process -FilePath $sysprepPath -ArgumentList '/generalize', '/oobe', '/shutdown', '/quiet' -PassThru -Wait
 if ($process.ExitCode -ne 0) { throw "Sysprep failed with exit code $($process.ExitCode)." }
