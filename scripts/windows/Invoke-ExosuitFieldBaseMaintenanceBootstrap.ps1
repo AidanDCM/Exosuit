@@ -8,23 +8,27 @@ $authorizationPath = 'C:\Exosuit\Base\maintenance-authorization.json'
 $receiptPath = 'C:\Exosuit\Base\maintenance-receipt.json'
 $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
-$taskName = 'ExosuitFieldBaseMaintenance'
+$stagePath = 'C:\Exosuit\Logs\maintenance-stage.txt'
+$dispatchName = 'ExosuitFieldBaseMaintenance'
 
-function Write-BootstrapStatus([string]$ErrorText = '') {
+# Windows leaves scheduled tasks Queued for the whole Audit Mode session, so a
+# task is not a usable SYSTEM dispatch route here. The reviewed primary route is
+# the native auditSystem pass, which already runs as SYSTEM. This auditUser
+# bootstrap is the fallback: it dispatches the same fixed command through a
+# one-use LocalSystem service, which the SCM does start during setup.
+function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("observedAt=$([DateTimeOffset]::UtcNow.ToString('O'))")
-    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-    if ($task) {
-        $info = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction SilentlyContinue
-        $lines.Add("state=$($task.State)")
-        $lines.Add("principalUserId=$($task.Principal.UserId)")
-        $lines.Add("principalLogonType=$($task.Principal.LogonType)")
-        if ($info) {
-            $lines.Add("lastRun=$($info.LastRunTime.ToUniversalTime().ToString('O'))")
-            $lines.Add("lastResult=$($info.LastTaskResult)")
-        }
+    $lines.Add("localObservedAt=$([DateTime]::Now.ToString('O'))")
+    if ($Route) { $lines.Add("route=$Route") }
+    $lines.Add("receiptPresent=$(Test-Path -LiteralPath $receiptPath -PathType Leaf)")
+    $service = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction SilentlyContinue
+    if ($service) {
+        $lines.Add("serviceState=$($service.State)")
+        $lines.Add("serviceStartName=$($service.StartName)")
+        $lines.Add("serviceProcessId=$($service.ProcessId)")
     } else {
-        $lines.Add('state=absent')
+        $lines.Add('serviceState=absent')
     }
     if ($ErrorText) { $lines.Add("error=$($ErrorText -replace '[\r\n]+', ' ')") }
     [IO.File]::WriteAllLines($statusPath, $lines, [Text.UTF8Encoding]::new($false))
@@ -37,30 +41,44 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Field base maintenance bootstrap requires the built-in Audit Mode administrator.'
 }
 
+# The primary auditSystem route runs before this pass. If it already finished or
+# is still in flight, this fallback must neither treat that as a failure nor
+# dispatch a second concurrent maintenance run against the same authorization.
+if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
+    Write-BootstrapStatus -Route 'auditSystem_already_complete'
+    return
+}
+if (Test-Path -LiteralPath $stagePath -PathType Leaf) {
+    Write-BootstrapStatus -Route 'auditSystem_in_progress'
+    return
+}
+
 foreach ($path in @($authorizationPath, $maintenancePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
-if (Test-Path -LiteralPath $receiptPath) { throw 'Field base maintenance bootstrap refuses an existing receipt.' }
 
-$taskCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"'
-$createOutput = @(& schtasks.exe /Create /TN $taskName /TR $taskCommand /SC ONSTART /RU SYSTEM /RL HIGHEST /F 2>&1)
+$binPath = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"'
+$createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
 if ($LASTEXITCODE -ne 0) {
-    throw "Field base maintenance SYSTEM task creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
+    throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
 }
-$registered = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
-if ($registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
-    @($registered.Actions).Count -ne 1 -or
-    [string]$registered.Actions[0].Arguments -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
-    throw 'Field base maintenance task registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
+$registered = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction Stop
+if ([string]$registered.StartName -cne 'LocalSystem' -or
+    [string]$registered.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+    throw 'Field base maintenance service registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
-$runOutput = @(& schtasks.exe /Run /TN $taskName 2>&1)
-if ($LASTEXITCODE -ne 0) {
-    throw "Field base maintenance SYSTEM task start failed with exit code $($LASTEXITCODE): $($runOutput -join ' ')"
+
+# PowerShell is not a service binary, so the SCM never receives SERVICE_RUNNING
+# and reports 1053 after its start timeout. The dispatched SYSTEM process still
+# runs, and the maintenance script is the authority on whether it may proceed.
+$startOutput = @(& sc.exe start $dispatchName)
+if ($LASTEXITCODE -notin @(0, 1053)) {
+    throw "Field base maintenance SYSTEM service start failed with exit code $($LASTEXITCODE): $($startOutput -join ' ')"
 }
 Start-Sleep -Milliseconds 250
-Write-BootstrapStatus
+Write-BootstrapStatus -Route 'auditUser_service'
 return
 } catch {
-    Write-BootstrapStatus -ErrorText $_.Exception.Message
+    Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message
     throw
 }

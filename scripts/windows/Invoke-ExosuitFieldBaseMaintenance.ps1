@@ -142,14 +142,34 @@ if (-not (Test-Path -LiteralPath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -P
 }
 Set-MaintenanceStage 'components_verified'
 
-$maintenanceTaskName = 'ExosuitFieldBaseMaintenance'
-$maintenanceTask = Get-ScheduledTask -TaskName $maintenanceTaskName -ErrorAction Stop
-if ($maintenanceTask.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
-    @($maintenanceTask.Actions).Count -ne 1 -or
-    [string]$maintenanceTask.Actions[0].Arguments -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
-    throw 'Field base maintenance one-use task does not match the reviewed SYSTEM contract.'
+# The one-use dispatch mechanism is whichever route actually reached SYSTEM:
+# the native auditSystem pass leaves nothing behind, while the auditUser
+# fallback leaves a task or a service. Any residue that exists must match the
+# reviewed contract, and none of it may survive into the sealed image.
+$maintenanceDispatchName = 'ExosuitFieldBaseMaintenance'
+$maintenanceTask = Get-ScheduledTask -TaskName $maintenanceDispatchName -ErrorAction SilentlyContinue
+if ($maintenanceTask) {
+    if ($maintenanceTask.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
+        @($maintenanceTask.Actions).Count -ne 1 -or
+        [string]$maintenanceTask.Actions[0].Arguments -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+        throw 'Field base maintenance one-use task does not match the reviewed SYSTEM contract.'
+    }
+    Unregister-ScheduledTask -TaskName $maintenanceDispatchName -Confirm:$false
+    if (Get-ScheduledTask -TaskName $maintenanceDispatchName -ErrorAction SilentlyContinue) {
+        throw 'Field base maintenance did not consume its one-use task.'
+    }
 }
-Unregister-ScheduledTask -TaskName $maintenanceTaskName -Confirm:$false
+$maintenanceService = Get-CimInstance Win32_Service -Filter "Name='$maintenanceDispatchName'" -ErrorAction SilentlyContinue
+if ($maintenanceService) {
+    if ([string]$maintenanceService.StartName -cne 'LocalSystem' -or
+        [string]$maintenanceService.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+        throw 'Field base maintenance one-use service does not match the reviewed SYSTEM contract.'
+    }
+    & sc.exe delete $maintenanceDispatchName | Out-Null
+    if (@(Get-CimInstance Win32_Service -Filter "Name='$maintenanceDispatchName'" -ErrorAction SilentlyContinue).Count -ne 0) {
+        throw 'Field base maintenance did not consume its one-use service.'
+    }
+}
 Set-MaintenanceStage 'maintenance_task_consumed'
 
 Remove-Item -LiteralPath $bootstrapUnattendPath -Force
