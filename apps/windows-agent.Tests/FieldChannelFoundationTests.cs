@@ -31,7 +31,7 @@ public sealed class FieldChannelFoundationTests
         var changedPayload = envelope with { Payload = new Dictionary<string, object?> { ["healthy"] = false } };
         Assert.Throws<InvalidOperationException>(() => FieldChannelAuthentication.Verify(changedPayload, Secret, Field, FieldChannelDirection.GuestToHost, sentAt.AddSeconds(30)));
 
-        var changedSignature = envelope with { Signature = envelope.Signature[..^1] + (envelope.Signature.EndsWith('A') ? "B" : "A") };
+        var changedSignature = envelope with { Signature = (envelope.Signature.StartsWith('A') ? "B" : "A") + envelope.Signature[1..] };
         Assert.Throws<InvalidOperationException>(() => FieldChannelAuthentication.Verify(changedSignature, Secret, Field, FieldChannelDirection.GuestToHost, sentAt.AddSeconds(30)));
     }
 

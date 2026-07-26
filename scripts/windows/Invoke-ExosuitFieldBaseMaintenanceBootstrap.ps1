@@ -1,9 +1,5 @@
 [CmdletBinding()]
-param(
-    [Parameter()]
-    [ValidateRange(30, 900)]
-    [int]$TimeoutSeconds = 300
-)
+param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -46,12 +42,13 @@ foreach ($path in @($authorizationPath, $maintenancePath)) {
 }
 if (Test-Path -LiteralPath $receiptPath) { throw 'Field base maintenance bootstrap refuses an existing receipt.' }
 
-$startedAt = [DateTimeOffset]::UtcNow
 $taskCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"'
 $createOutput = @(& schtasks.exe /Create /TN $taskName /TR $taskCommand /SC ONSTART /RU SYSTEM /RL HIGHEST /F 2>&1)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM task creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
 }
+$taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::FromMinutes(10))
+Set-ScheduledTask -TaskName $taskName -Settings $taskSettings | Out-Null
 $registered = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
 if ($registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
     @($registered.Actions).Count -ne 1 -or
@@ -62,22 +59,9 @@ $runOutput = @(& schtasks.exe /Run /TN $taskName 2>&1)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM task start failed with exit code $($LASTEXITCODE): $($runOutput -join ' ')"
 }
-
-$deadline = $startedAt.AddSeconds($TimeoutSeconds)
-do {
-    if (Test-Path -LiteralPath $receiptPath -PathType Leaf) { return }
-    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-    if (-not $task) { Start-Sleep -Milliseconds 250; continue }
-    $info = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction Stop
-    Write-BootstrapStatus
-    $hasRun = $info.LastRunTime.ToUniversalTime() -ge $startedAt.UtcDateTime.AddSeconds(-2)
-    if ($hasRun -and $task.State -ne 'Running' -and $info.LastTaskResult -ne 0) {
-        throw "Field base maintenance SYSTEM task failed with result $($info.LastTaskResult)."
-    }
-    Start-Sleep -Seconds 1
-} while ([DateTimeOffset]::UtcNow -lt $deadline)
-
-throw "Field base maintenance SYSTEM task did not produce a receipt within $TimeoutSeconds seconds."
+Start-Sleep -Milliseconds 250
+Write-BootstrapStatus
+return
 } catch {
     Write-BootstrapStatus -ErrorText $_.Exception.Message
     throw

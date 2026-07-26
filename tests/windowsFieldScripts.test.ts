@@ -177,9 +177,11 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("/SC ONSTART /RU SYSTEM /RL HIGHEST /F");
     expect(baseMaintenanceBootstrap).toContain("schtasks.exe /Run /TN $taskName");
     expect(baseMaintenanceBootstrap).toContain("$registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18')");
+    expect(baseMaintenanceBootstrap).toContain("-AllowStartIfOnBatteries -DontStopIfGoingOnBatteries");
+    expect(baseMaintenanceBootstrap).toContain("Set-ScheduledTask -TaskName $taskName -Settings $taskSettings");
     expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -ErrorText $_.Exception.Message");
-    expect(baseMaintenanceBootstrap).toContain("Field base maintenance SYSTEM task failed with result");
-    expect(baseMaintenanceBootstrap).toContain("did not produce a receipt within $TimeoutSeconds seconds");
+    expect(baseMaintenanceBootstrap).toContain("Start-Sleep -Milliseconds 250");
+    expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");
     for (const content of [start, install, readKvp]) {
