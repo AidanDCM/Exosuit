@@ -167,6 +167,29 @@ asserting the shim the image path actually names, and locked by test.
 **The critical unknown above remains completely open.** The absence of the marker
 in this attempt means nothing.
 
+## RESOLVED — SYSTEM dispatch works
+
+Commit `920926a`. The boundary described above is crossed. Evidence:
+
+```
+dispatchedAtLocal=Sun 07/26/2026 19:09:37.51
+dispatchUser=WIN-4ODEDCOECCV$        <- machine account, i.e. LocalSystem
+stage=system_identity_verified
+```
+
+`Invoke-ExosuitFieldBaseMaintenance.ps1` executed and passed its own independent
+`S-1-5-18` check. The working mechanism is:
+
+1. `auditUser` `RunSynchronousCommand` runs the bootstrap as the built-in admin.
+2. The bootstrap creates a one-use `LocalSystem` service whose image path is
+   `cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd`.
+3. `sc start` returns `1053` — expected and harmless, since cmd is not a service
+   binary. The SCM kills the service process; the shim's work is already done.
+4. The shim records that it ran before anything can fail, then invokes the
+   maintenance script.
+
+`1053` is the normal outcome here and must not be read as failure.
+
 ## Second, independent blocker — guest clock
 
 Measured directly, same machine, same instant:
@@ -200,7 +223,65 @@ running system shifts displayed local time against an already-fixed UTC and does
 **Deliberately not done:** seeding the guest clock from `issuedAtUtc` in the
 authorization. That would make expiry unfailable and void its purpose as replay
 protection. A test now asserts the bootstrap references neither `expiresAt` nor
-`Set-Date`.
+`Set-Date`. Note that the `920926a` run would have produced a green v12 had this
+shortcut been taken, with expiry silently dead. The refusal was correct.
+
+### Mechanism, now fully established
+
+```
+guest local  = 19:10   (identical to host local)
+guest offset = -07:00
+guest UTC    = 02:10   (true host UTC 23:10)
+```
+
+The VM's RTC carries **host local time**, and the guest converts it to UTC using
+its own Pacific bias. The 3 hour error is exactly EDT minus PDT. Aligning the
+guest timezone to the host's therefore corrects UTC exactly, with no clock
+writing and no dependency on the authorization.
+
+**The constraint that makes this a design decision:** Windows derives system UTC
+from `RTC + bias` once at boot and then runs on its own tick. Changing the
+timezone on a running guest shifts displayed local time and cannot retroactively
+repair UTC. The timezone must therefore be correct *before a boot*.
+
+### Offline servicing — cause still unknown, earlier theory disproved
+
+An earlier draft of this document hypothesised that the v10 hives were dirty and
+that this explained both failures. **That is disproved.** Probe results
+(`v10-offline-serviceability.txt`, read-only against v10):
+
+- `Sysprep_succeeded.tag` present, no `pending.xml`, no `reboot.xml` — v10 is a
+  cleanly sysprepped image.
+- `SYSTEM.LOG1` is 0 bytes with logs dated from the original 2024 install,
+  consistent with cleanly flushed hives.
+- `reg load` fails with `ERROR_FILENAME_EXCED_RANGE` identically for both SYSTEM
+  (10MB) and SOFTWARE (71MB), on fresh copies at a 40 character path with a
+  6 character key name. A failure invariant to hive, path and key name is not a
+  property of the hive.
+- Command-line quoting was also ruled out: direct and `cmd /c` invocations both
+  parse the path and reach the privilege check identically.
+- The probe's own DISM checks returned `1639` (`ERROR_INVALID_COMMAND_LINE`) from
+  a malformed probe command line and tested nothing. The builder's original
+  failure was different: error `87`, with `get_OSVersion` failing at
+  `HRESULT=0x80070057`.
+
+So offline registry servicing fails for a reason not yet identified, and it is
+not image corruption.
+
+### Two candidate long-term fixes
+
+1. **Set the timezone in the guest, then reboot the VM.** Audit Mode persists
+   across reboots, and on the second boot Windows recomputes UTC from
+   `RTC + corrected bias`. Dispatch would move to an auto-start service, which is
+   the same mechanism already proven to work. Needs no offline registry access.
+   Cost: restructures the boot flow.
+2. **Fix the v10 base image's timezone once**, so every future generation
+   inherits it. Cleanest conceptually and removes the problem permanently, but
+   requires either offline servicing (currently failing) or booting the immutable
+   base, which its read-only design exists to prevent.
+
+Option 1 uses only proven mechanisms. Option 2 is the better end state. They are
+not exclusive: 1 unblocks v12 now, 2 belongs on the roadmap.
 
 ## Repository changes made today
 
@@ -231,12 +312,12 @@ L0 result from before this commit should be treated as noisy in both directions.
 | Host build pipeline | 75 | Reliable through VM boot |
 | Evidence collection | 75 | Substantially improved today |
 | Image promotion & hash verification | 40 | Code complete, has never executed |
-| Guest SYSTEM dispatch | 10 | Zero lines ever executed |
-| Guest time correctness | 0 | Confirmed broken, unfixed |
+| Guest SYSTEM dispatch | 70 | Proven working as LocalSystem; reached `system_identity_verified` |
+| Guest time correctness | 15 | Mechanism fully understood, fix designed, not implemented |
 | Sysprep / seal / receipt | 0 | Never reached |
 | Field generation lifecycle | 5 | Depends on a v12 that does not exist |
 | Runtime proofs (channel, heartbeat, identity, display, policy, attestation) | 0 | Outside the L0 claim boundary |
-| **Overall** | **~35** | Strong harness, unproven core |
+| **Overall** | **~42** | Harness strong, SYSTEM boundary crossed, seal still unproven |
 
 The validator's own `claimBoundary` states it proves nothing about interactive
 Hyper-V, Teach hooks, visual capture, learning, ChatGPT Field operation, or Pilot
@@ -244,21 +325,34 @@ execution. Production readiness being denied is correct.
 
 ## Questions for a reviewer
 
-1. Is a one-use LocalSystem service the right mechanism at all, or should this
-   restructure around OOBE + `SetupComplete.cmd`, which runs as SYSTEM natively
-   and needs no dispatch trick?
-2. Is the 3-hour guest clock skew a property of the v10 image, of this host's
-   Hyper-V configuration, or of how v10 was originally captured? Knowing which
-   determines whether the fix belongs in the image or the builder.
-3. Why does `reg load` fail with `ERROR_FILENAME_EXCED_RANGE` against this
-   offline hive with a 6-character key name, a short path, and transaction logs
-   present? Solving this unlocks the offline timezone fix.
+1. Reboot-then-dispatch (option 1) or fix the base image's timezone (option 2)?
+   Option 1 unblocks v12 with proven mechanisms; option 2 removes the class of
+   problem but conflicts with v10 being immutable and read-only by design.
+2. Is relying on `1053` plus a shim that outlives its own service acceptable as
+   a durable mechanism, or is it a workaround that should be replaced once v12
+   exists? It works, but it depends on the SCM killing only the process it
+   created.
+3. Why does `reg load` fail with `ERROR_FILENAME_EXCED_RANGE` invariant to hive,
+   path and key name, and why does DISM fail at `get_OSVersion` with
+   `0x80070057`, on an image that is demonstrably clean? Unexplained, and it
+   blocks all offline servicing for every future image operation, not just this
+   timezone fix.
 4. Does the stricter contract test in `dd55666` guard the right invariants? The
-   security properties it encodes were chosen by an agent, not by an owner.
+   security properties it encodes were chosen by an agent, not by an owner. This
+   now includes the assertion that the bootstrap may not call `Set-Date`, which
+   directly constrains which clock fixes are permissible.
 
 ## Bottom line
 
-The repository is validated and the harness is sound. The product is unproven.
-The gap is one Windows boundary, and after ten attempts it is characterised well
-enough to hand to someone else without loss of context — which was not true this
-morning.
+The SYSTEM dispatch boundary is crossed and proven. One blocker remains, the
+guest clock, and its mechanism is now fully understood rather than guessed: the
+VM's RTC carries host local time and the image's timezone differs from the host's.
+Two fixes are designed; neither is implemented.
+
+Progress today came from instrumenting rather than inferring. The four wrong root
+causes were all reached by reasoning from absent output; the boundary fell within
+one attempt of a marker being written before anything could fail. That is the
+lesson worth carrying into the remaining work.
+
+Nothing has been promoted, no gate has been loosened, and every refusal recorded
+here was the security model behaving correctly.
