@@ -28,7 +28,17 @@ function Invoke-ValidationStep {
     $logPath = Join-Path $runRoot "$Name.log"
     $exitCode = 0
     try {
-        & $Action *>&1 | Tee-Object -FilePath $logPath
+        # Native tools legitimately write progress and notices to stderr. Under
+        # ErrorActionPreference='Stop' the *>&1 merge turns any such line into a
+        # terminating NativeCommandError, failing steps whose command actually
+        # succeeded. The process exit code is the only authority here.
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & $Action *>&1 | Tee-Object -FilePath $logPath
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
         if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) {
             $exitCode = $LASTEXITCODE
             throw "Validation command exited with code $exitCode."
