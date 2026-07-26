@@ -19,5 +19,8 @@ echo dispatchUser=%USERNAME%>> "%EXOSUIT_MARKER%"
 echo dispatchSessionName=%SESSIONNAME%>> "%EXOSUIT_MARKER%"
 
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1 > "%EXOSUIT_LOG%" 2>&1
-echo maintenanceExitCode=%ERRORLEVEL%>> "%EXOSUIT_MARKER%"
-echo completedAtLocal=%DATE% %TIME%>> "%EXOSUIT_MARKER%"
+rem A space before the redirect is required: with a numeric ERRORLEVEL, the
+rem sequence %%ERRORLEVEL%%>> parses as a "1>>" stdout redirect and swallows the
+rem value, which is exactly what happened on the first instrumented attempt.
+echo maintenanceExitCode=%ERRORLEVEL% >> "%EXOSUIT_MARKER%"
+echo completedAtLocal=%DATE% %TIME% >> "%EXOSUIT_MARKER%"
