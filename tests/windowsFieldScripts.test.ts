@@ -161,6 +161,7 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Field base maintenance script digest does not match its authorization.");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendSha256");
     expect(systemBaseMaintenance).toContain("Field base maintenance bootstrap answer file does not match its authorization.");
+    expect(systemBaseMaintenance).toContain("Install-ExosuitFieldGuest.ps1");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");

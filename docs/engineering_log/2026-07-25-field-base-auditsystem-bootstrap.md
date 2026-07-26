@@ -1,8 +1,8 @@
-# Field base auditSystem maintenance bootstrap
+# Field base Audit Mode maintenance bootstrap
 
 ## Goal
 
-Replace the unproven assumption that a pre-Sysprep scheduled-task registration will execute on first boot with a one-use, digest-bound Windows `auditSystem` bootstrap that invokes the reviewed SYSTEM maintenance entrypoint without an interactive desktop or password.
+Replace the unproven assumption that a pre-Sysprep scheduled-task registration will execute on first boot with a one-use, digest-bound Windows Audit Mode bootstrap that invokes the reviewed SYSTEM maintenance entrypoint without owner interaction or a password.
 
 ## Files changed
 
@@ -14,7 +14,7 @@ The exact v12 builder and diagnostic collectors remain local evidence artifacts 
 
 ## Parts & Pieces and donor patterns considered
 
-The existing expiring authorization, script digest binding, fixed `C:\Exosuit` entrypoint, SYSTEM identity check, zero-network requirement, account/profile removal, consumed authorization, receipt, and Sysprep contract were retained. Windows unattended `auditSystem` was selected because it runs before an interactive desktop under SYSTEM. Password automation, PowerShell Direct, UAC bypass, persistent maintenance services, broad shell access, and VMConnect input were rejected.
+The existing expiring authorization, script digest binding, fixed `C:\Exosuit` entrypoint, SYSTEM identity check, zero-network requirement, account/profile removal, consumed authorization, receipt, and Sysprep contract were retained. Windows unattended `auditUser` runs a fixed installer under the automatically enabled built-in Audit Administrator; the installer immediately starts the existing task under SYSTEM. Password automation, PowerShell Direct, UAC bypass, persistent maintenance services, broad shell access, and VMConnect input were rejected.
 
 ## Tests added or updated
 
@@ -36,7 +36,7 @@ Live v12 attempt evidence: `artifacts/field-l4-base-build/v12/base-v12-build-res
 
 ## Assumptions and unvalidated areas
 
-The complete exact-head L0 validator must pass after commit. The `auditSystem` answer file has not yet executed live. SYSTEM dispatch, account removal, answer-file consumption, final Sysprep shutdown, offline receipt verification, immutable v12 promotion, and a fresh v12 disposable guest remain unvalidated.
+Exact-head L0 passed at `artifacts/field-validation/20260726T003049Z`. The first live answer file proved `oobeSystem` reseal and entry into Audit Mode, but Panther evidence showed `RunSynchronous` in `auditSystem` completed without executing because that setting is valid only in `auditUser` or `specialize`. The corrected `auditUser` route has not yet executed live. SYSTEM dispatch, account removal, answer-file consumption, final Sysprep shutdown, offline receipt verification, immutable v12 promotion, and a fresh v12 disposable guest remain unvalidated.
 
 ## Security impact
 
@@ -48,4 +48,4 @@ Do not inject the maintenance authorization or answer file. Stop and remove only
 
 ## Next recommended slice
 
-Commit and run exact-head L0. Rebuild v12 from immutable v10, prove `auditSystem` SYSTEM dispatch and offline receipt, promote only a matching read-only image, then provision and validate one fresh disposable generation.
+Commit and run exact-head L0. Rebuild v12 from immutable v10, prove `auditUser` installer-to-SYSTEM-task dispatch and offline receipt, promote only a matching read-only image, then provision and validate one fresh disposable generation.

@@ -65,7 +65,7 @@ $bootstrapUnattendDigest = (Get-FileHash -LiteralPath $bootstrapUnattendPath -Al
 $bootstrapUnattendText = Get-Content -LiteralPath $bootstrapUnattendPath -Raw
 if ($bootstrapUnattendDigest -cne [string]$authorization.bootstrapUnattendSha256 -or
     $bootstrapUnattendText -notlike '*ExosuitFieldBaseMaintenance*' -or
-    $bootstrapUnattendText -notlike '*Start-ExosuitFieldGuest.ps1*') {
+    $bootstrapUnattendText -notlike '*Install-ExosuitFieldGuest.ps1*') {
     throw 'Field base maintenance bootstrap answer file does not match its authorization.'
 }
 
