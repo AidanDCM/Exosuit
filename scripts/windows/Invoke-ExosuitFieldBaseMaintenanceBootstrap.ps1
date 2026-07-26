@@ -47,46 +47,21 @@ foreach ($path in @($authorizationPath, $maintenancePath)) {
 if (Test-Path -LiteralPath $receiptPath) { throw 'Field base maintenance bootstrap refuses an existing receipt.' }
 
 $startedAt = [DateTimeOffset]::UtcNow
-$taskXml = @'
-<?xml version="1.0" encoding="UTF-16"?>
-<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo><URI>\ExosuitFieldBaseMaintenance</URI></RegistrationInfo>
-  <Triggers />
-  <Principals>
-    <Principal id="System">
-      <UserId>S-1-5-18</UserId>
-      <LogonType>ServiceAccount</LogonType>
-      <RunLevel>HighestAvailable</RunLevel>
-    </Principal>
-  </Principals>
-  <Settings>
-    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
-    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
-    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-    <AllowHardTerminate>true</AllowHardTerminate>
-    <StartWhenAvailable>true</StartWhenAvailable>
-    <AllowStartOnDemand>true</AllowStartOnDemand>
-    <Enabled>true</Enabled>
-    <RunOnlyIfIdle>false</RunOnlyIfIdle>
-    <ExecutionTimeLimit>PT10M</ExecutionTimeLimit>
-  </Settings>
-  <Actions Context="System">
-    <Exec>
-      <Command>powershell.exe</Command>
-      <Arguments>-NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"</Arguments>
-    </Exec>
-  </Actions>
-</Task>
-'@
-Register-ScheduledTask -TaskName $taskName -Xml $taskXml -Force | Out-Null
+$taskCommand = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"'
+$createOutput = @(& schtasks.exe /Create /TN $taskName /TR $taskCommand /SC ONSTART /RU SYSTEM /RL HIGHEST /F 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Field base maintenance SYSTEM task creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
+}
 $registered = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
 if ($registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
-    $registered.Principal.LogonType -ne 'ServiceAccount' -or
     @($registered.Actions).Count -ne 1 -or
     [string]$registered.Actions[0].Arguments -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
-    throw 'Field base maintenance task registration did not preserve the reviewed SYSTEM service-account contract.'
+    throw 'Field base maintenance task registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
-Start-ScheduledTask -TaskName $taskName
+$runOutput = @(& schtasks.exe /Run /TN $taskName 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Field base maintenance SYSTEM task start failed with exit code $($LASTEXITCODE): $($runOutput -join ' ')"
+}
 
 $deadline = $startedAt.AddSeconds($TimeoutSeconds)
 do {

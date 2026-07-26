@@ -18,7 +18,7 @@ The host may authorize a fixed one-use maintenance operation only inside a netwo
 
 ## Controls
 
-- exact `S-1-5-18` and `ServiceAccount` are encoded in reviewed Task Scheduler XML;
+- task creation uses the Windows-supported `schtasks /RU SYSTEM /RL HIGHEST` path with a fixed reviewed action;
 - the registered principal and fixed action are checked before the task starts;
 - execution remains passwordless only for built-in local SYSTEM;
 - the maintenance script independently verifies SYSTEM identity, both authorized digests, expiration, detached networking, account scope, component presence, and the one-use task;
@@ -33,7 +33,7 @@ PowerShell parsing passed. Six focused Field administration tests, 240 full Type
 
 ## Residual risk
 
-Static and fake-provider tests cannot prove Windows Audit Mode preserves the service-account principal or that Sysprep completes. The next isolated build must capture the exported task/status, offline receipt, account/profile absence, consumed authorization, target digest, and read-only target state. Until then v12 remains unapproved and absent.
+The first live attempt after this audit proved raw XML `LogonType:ServiceAccount` is rejected by this Windows image with `0x80041318`; no task or maintenance stage was created, and no image was promoted. Static and fake-provider tests cannot prove the replacement `/RU SYSTEM` task executes or that Sysprep completes. The next isolated build must capture the exported task/status, offline receipt, account/profile absence, consumed authorization, target digest, and read-only target state. Until then v12 remains unapproved and absent.
 
 ## Verdict
 
