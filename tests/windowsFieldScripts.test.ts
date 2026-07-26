@@ -165,20 +165,32 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
-    expect(systemBaseMaintenance).toContain("Unregister-ScheduledTask -TaskName $maintenanceTaskName -Confirm:$false");
+    expect(systemBaseMaintenance).toContain("Unregister-ScheduledTask -TaskName $maintenanceDispatchName -Confirm:$false");
+    expect(systemBaseMaintenance).toContain("Field base maintenance did not consume its one-use task.");
+    expect(systemBaseMaintenance).toContain("Field base maintenance one-use service does not match the reviewed SYSTEM contract.");
+    expect(systemBaseMaintenance).toContain("sc.exe delete $maintenanceDispatchName");
+    expect(systemBaseMaintenance).toContain("Field base maintenance did not consume its one-use service.");
     expect(systemBaseMaintenance).toContain("maintenanceTaskConsumed = $true");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
-    expect(baseMaintenanceBootstrap).toContain("Get-ScheduledTaskInfo -TaskName $taskName");
     expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
-    expect(baseMaintenanceBootstrap).toContain("schtasks.exe /Create /TN $taskName");
-    expect(baseMaintenanceBootstrap).toContain("/SC ONSTART /RU SYSTEM /RL HIGHEST /F");
-    expect(baseMaintenanceBootstrap).toContain("schtasks.exe /Run /TN $taskName");
-    expect(baseMaintenanceBootstrap).toContain("$registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18')");
+    // Audit Mode leaves scheduled tasks Queued for the whole session, so the
+    // fallback dispatches through a one-use LocalSystem service instead. The
+    // SYSTEM identity and fixed-action contract must still be asserted before
+    // the service is started, and the bootstrap must never re-enter Task
+    // Scheduler.
+    expect(baseMaintenanceBootstrap).toContain("sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem");
+    expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartName -cne 'LocalSystem'");
+    expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*'");
+    expect(baseMaintenanceBootstrap).toContain("sc.exe start $dispatchName");
     expect(baseMaintenanceBootstrap).not.toContain("Set-ScheduledTask");
-    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -ErrorText $_.Exception.Message");
+    expect(baseMaintenanceBootstrap).not.toContain("schtasks.exe");
+    // A single authorization must never back two concurrent maintenance runs.
+    expect(baseMaintenanceBootstrap).toContain("auditSystem_already_complete");
+    expect(baseMaintenanceBootstrap).toContain("auditSystem_in_progress");
+    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message");
     expect(baseMaintenanceBootstrap).toContain("Start-Sleep -Milliseconds 250");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
