@@ -187,7 +187,10 @@ describe("Windows Field administration scripts", () => {
     // executables stay absolutely named and unquoted.
     expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\cmd.exe /c C:\\Exosuit\\Agent\\Dispatch-ExosuitFieldBaseMaintenance.cmd");
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartName -cne 'LocalSystem'");
-    expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*'");
+    // Must name the dispatch shim the image path actually uses. Asserting the
+    // old command string here made the bootstrap reject its own registration
+    // and throw before sc start, voiding a whole build attempt.
+    expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*'");
     expect(baseMaintenanceBootstrap).toContain("sc.exe start $dispatchName");
     expect(baseMaintenanceBootstrap).not.toContain("Set-ScheduledTask");
     expect(baseMaintenanceBootstrap).not.toContain("schtasks.exe");

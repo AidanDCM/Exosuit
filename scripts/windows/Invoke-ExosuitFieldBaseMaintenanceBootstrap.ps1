@@ -115,7 +115,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 $registered = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction Stop
 if ([string]$registered.StartName -cne 'LocalSystem' -or
-    [string]$registered.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+    [string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*') {
     throw 'Field base maintenance service registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
 

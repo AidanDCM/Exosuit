@@ -145,6 +145,28 @@ and captures the maintenance process's own output to `maintenance-dispatch.log`.
 | Marker, no stage file | PowerShell launches and dies before its first line — session 0 environment problem | Read `maintenance-dispatch.log` for the actual error |
 | Marker + stage file | Boundary crossed | Fix whatever stage it stopped at |
 
+### Attempt 11 was void — it tested nothing
+
+The `3857da1` build timed out with no marker, no dispatch log and no stage file,
+but **that result carries no information.** The bootstrap rejected its own
+registration and threw before `sc start` was reached:
+
+```
+servicePathName=C:\Windows\System32\cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd
+serviceExitCode=1077   (ERROR_SERVICE_NEVER_STARTED)
+error=Field base maintenance service registration did not preserve the reviewed
+      SYSTEM identity and fixed-action contract.
+```
+
+The `binPath` was changed to the shim while the contract check still asserted the
+path contained `Invoke-ExosuitFieldBaseMaintenance.ps1`, which the shim's path
+does not. SCM event `7045` records the service installed; there is no `7000` or
+`7009` because no start was attempted. Fixed in `Invoke-...Bootstrap.ps1` by
+asserting the shim the image path actually names, and locked by test.
+
+**The critical unknown above remains completely open.** The absence of the marker
+in this attempt means nothing.
+
 ## Second, independent blocker — guest clock
 
 Measured directly, same machine, same instant:
