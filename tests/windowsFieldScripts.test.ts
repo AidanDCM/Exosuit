@@ -191,7 +191,8 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("auditSystem_already_complete");
     expect(baseMaintenanceBootstrap).toContain("auditSystem_in_progress");
     expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message");
-    expect(baseMaintenanceBootstrap).toContain("Start-Sleep -Milliseconds 250");
+    expect(baseMaintenanceBootstrap).toContain("servicePathName=$($service.PathName)");
+    expect(baseMaintenanceBootstrap).toContain("serviceStartExitCode");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");

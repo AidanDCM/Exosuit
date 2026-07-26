@@ -10,6 +10,10 @@ $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
 $stagePath = 'C:\Exosuit\Logs\maintenance-stage.txt'
 $dispatchName = 'ExosuitFieldBaseMaintenance'
+# Declared up front so the status writer can run under StrictMode before a start
+# has been attempted, including on the early stand-down paths.
+$script:startExitCode = $null
+$script:startText = ''
 
 # Windows leaves scheduled tasks Queued for the whole Audit Mode session, so a
 # task is not a usable SYSTEM dispatch route here. The reviewed primary route is
@@ -27,9 +31,16 @@ function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
         $lines.Add("serviceState=$($service.State)")
         $lines.Add("serviceStartName=$($service.StartName)")
         $lines.Add("serviceProcessId=$($service.ProcessId)")
+        # The stored image path is the thing most likely to be mangled between
+        # PowerShell, sc.exe and the SCM, so record it verbatim.
+        $lines.Add("servicePathName=$($service.PathName)")
+        $lines.Add("serviceExitCode=$($service.ExitCode)")
+        $lines.Add("serviceErrorControl=$($service.ErrorControl)")
     } else {
         $lines.Add('serviceState=absent')
     }
+    if ($script:startExitCode -ne $null) { $lines.Add("serviceStartExitCode=$($script:startExitCode)") }
+    if ($script:startText) { $lines.Add("serviceStartOutput=$($script:startText -replace '[\r\n]+', ' ')") }
     if ($ErrorText) { $lines.Add("error=$($ErrorText -replace '[\r\n]+', ' ')") }
     [IO.File]::WriteAllLines($statusPath, $lines, [Text.UTF8Encoding]::new($false))
 }
@@ -57,7 +68,11 @@ foreach ($path in @($authorizationPath, $maintenancePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
 
-$binPath = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1"'
+# The service image path must survive PowerShell's native argument quoting and
+# the SCM's own parsing. The maintenance path contains no spaces, so it needs no
+# embedded quotes, and powershell.exe is named absolutely because a service is
+# not launched through an interactive shell's path resolution.
+$binPath = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
@@ -72,10 +87,14 @@ if ([string]$registered.StartName -cne 'LocalSystem' -or
 # and reports 1053 after its start timeout. The dispatched SYSTEM process still
 # runs, and the maintenance script is the authority on whether it may proceed.
 $startOutput = @(& sc.exe start $dispatchName)
+$script:startExitCode = $LASTEXITCODE
+$script:startText = $startOutput -join ' '
 if ($LASTEXITCODE -notin @(0, 1053)) {
     throw "Field base maintenance SYSTEM service start failed with exit code $($LASTEXITCODE): $($startOutput -join ' ')"
 }
-Start-Sleep -Milliseconds 250
+# The SCM reports a non-service binary as failed only after its start timeout,
+# so a single 250ms sample cannot distinguish "never launched" from "launching".
+Start-Sleep -Seconds 45
 Write-BootstrapStatus -Route 'auditUser_service'
 return
 } catch {
