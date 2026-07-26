@@ -99,15 +99,16 @@ try {
 }
 $script:utcAfterTimeSync = [DateTimeOffset]::UtcNow.ToString('O')
 
-# PowerShell never calls StartServiceCtrlDispatcher, so the SCM always fails the
-# start with 1053 after its timeout and then terminates the process it created.
-# The dispatched SYSTEM process must therefore outlive the service: cmd detaches
-# it and exits, leaving maintenance running under LocalSystem with no SCM handle
-# on it. Both executables are named absolutely because a service is not launched
-# through an interactive shell's path resolution, and no path here contains a
-# space, so the image path needs no embedded quoting to survive sc.exe.
-$maintenanceCommand = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
-$binPath = "C:\Windows\System32\cmd.exe /c start `"ExosuitFieldBaseMaintenance`" /b $maintenanceCommand"
+# The SCM fails a non-service binary with 1053 after a 30 second wait and then
+# terminates it, so the earlier attempt tried to detach with cmd's start /b.
+# Event 7009 proved that silently did nothing: the SCM waited the full 30
+# seconds, because start /b needs a console and a service in session 0 has none.
+#
+# Dispatch through the fixed reviewed shim instead. Its first action records
+# that the SYSTEM process executed at all, which four attempts of inference
+# could not establish. Both executables stay absolutely named and no path
+# contains a space, so the image path needs no quoting to survive sc.exe.
+$binPath = 'C:\Windows\System32\cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd'
 $createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"

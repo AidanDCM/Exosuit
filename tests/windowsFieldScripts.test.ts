@@ -185,8 +185,7 @@ describe("Windows Field administration scripts", () => {
     // The SCM terminates a non-service binary after its 1053 start timeout, so
     // the dispatched SYSTEM process must be detached to survive it. Both
     // executables stay absolutely named and unquoted.
-    expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\Exosuit\\Agent\\Invoke-ExosuitFieldBaseMaintenance.ps1");
-    expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\cmd.exe /c start");
+    expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\cmd.exe /c C:\\Exosuit\\Agent\\Dispatch-ExosuitFieldBaseMaintenance.cmd");
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartName -cne 'LocalSystem'");
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*'");
     expect(baseMaintenanceBootstrap).toContain("sc.exe start $dispatchName");
