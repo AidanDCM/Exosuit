@@ -195,8 +195,8 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).not.toContain("Set-ScheduledTask");
     expect(baseMaintenanceBootstrap).not.toContain("schtasks.exe");
     // A single authorization must never back two concurrent maintenance runs.
-    expect(baseMaintenanceBootstrap).toContain("auditSystem_already_complete");
-    expect(baseMaintenanceBootstrap).toContain("auditSystem_in_progress");
+    expect(baseMaintenanceBootstrap).toContain("stood_down_receipt_present");
+    expect(baseMaintenanceBootstrap).toContain("stood_down_maintenance_in_progress");
     expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message");
     // The host is the only time authority. The bootstrap may resynchronise the
     // guest clock through the Hyper-V integration service, but must never read

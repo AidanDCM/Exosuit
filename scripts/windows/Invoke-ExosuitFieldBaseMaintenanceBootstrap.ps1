@@ -18,11 +18,11 @@ $script:utcBeforeTimeSync = ''
 $script:utcAfterTimeSync = ''
 $script:timeSyncState = ''
 
-# Windows leaves scheduled tasks Queued for the whole Audit Mode session, so a
-# task is not a usable SYSTEM dispatch route here. The reviewed primary route is
-# the native auditSystem pass, which already runs as SYSTEM. This auditUser
-# bootstrap is the fallback: it dispatches the same fixed command through a
-# one-use LocalSystem service, which the SCM does start during setup.
+# Windows leaves scheduled tasks Queued for the whole Audit Mode session, and
+# Panther proved the auditSystem pass runs but dispatches nothing on this build,
+# for both RunSynchronous and RunAsynchronous. Neither is a usable SYSTEM route.
+# This auditUser bootstrap is now the only route: it dispatches one fixed
+# reviewed command through a one-use LocalSystem service.
 function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("observedAt=$([DateTimeOffset]::UtcNow.ToString('O'))")
@@ -58,15 +58,15 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Field base maintenance bootstrap requires the built-in Audit Mode administrator.'
 }
 
-# The primary auditSystem route runs before this pass. If it already finished or
-# is still in flight, this fallback must neither treat that as a failure nor
-# dispatch a second concurrent maintenance run against the same authorization.
+# A single authorization must never back two concurrent maintenance runs. On a
+# fresh clone neither marker exists, so these are no-ops; they matter only if
+# this pass is ever re-entered, and standing down is not a failure.
 if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
-    Write-BootstrapStatus -Route 'auditSystem_already_complete'
+    Write-BootstrapStatus -Route 'stood_down_receipt_present'
     return
 }
 if (Test-Path -LiteralPath $stagePath -PathType Leaf) {
-    Write-BootstrapStatus -Route 'auditSystem_in_progress'
+    Write-BootstrapStatus -Route 'stood_down_maintenance_in_progress'
     return
 }
 
@@ -119,9 +119,10 @@ if ([string]$registered.StartName -cne 'LocalSystem' -or
     throw 'Field base maintenance service registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
 
-# PowerShell is not a service binary, so the SCM never receives SERVICE_RUNNING
-# and reports 1053 after its start timeout. The dispatched SYSTEM process still
-# runs, and the maintenance script is the authority on whether it may proceed.
+# cmd is not a service binary either, so the SCM never receives SERVICE_RUNNING
+# and 1053 after its start timeout is the expected outcome, not a failure. What
+# matters is whether the shim ran at all, which its own marker records. The
+# maintenance script remains the authority on whether work may proceed.
 $startOutput = @(& sc.exe start $dispatchName)
 $script:startExitCode = $LASTEXITCODE
 $script:startText = $startOutput -join ' '
