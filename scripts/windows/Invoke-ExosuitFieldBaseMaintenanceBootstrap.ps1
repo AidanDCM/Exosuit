@@ -68,11 +68,15 @@ foreach ($path in @($authorizationPath, $maintenancePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
 
-# The service image path must survive PowerShell's native argument quoting and
-# the SCM's own parsing. The maintenance path contains no spaces, so it needs no
-# embedded quotes, and powershell.exe is named absolutely because a service is
-# not launched through an interactive shell's path resolution.
-$binPath = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
+# PowerShell never calls StartServiceCtrlDispatcher, so the SCM always fails the
+# start with 1053 after its timeout and then terminates the process it created.
+# The dispatched SYSTEM process must therefore outlive the service: cmd detaches
+# it and exits, leaving maintenance running under LocalSystem with no SCM handle
+# on it. Both executables are named absolutely because a service is not launched
+# through an interactive shell's path resolution, and no path here contains a
+# space, so the image path needs no embedded quoting to survive sc.exe.
+$maintenanceCommand = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
+$binPath = "C:\Windows\System32\cmd.exe /c start `"ExosuitFieldBaseMaintenance`" /b $maintenanceCommand"
 $createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
