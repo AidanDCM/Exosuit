@@ -165,11 +165,16 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
+    expect(systemBaseMaintenance).toContain("Unregister-ScheduledTask -TaskName $maintenanceTaskName -Confirm:$false");
+    expect(systemBaseMaintenance).toContain("maintenanceTaskConsumed = $true");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
     expect(baseMaintenanceBootstrap).toContain("Get-ScheduledTaskInfo -TaskName $taskName");
+    expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
+    expect(baseMaintenanceBootstrap).toContain("New-ScheduledTaskPrincipal -UserId 'SYSTEM'");
+    expect(baseMaintenanceBootstrap).toContain("Register-ScheduledTask -TaskName $taskName");
     expect(baseMaintenanceBootstrap).toContain("Field base maintenance SYSTEM task failed with result");
     expect(baseMaintenanceBootstrap).toContain("did not produce a receipt within $TimeoutSeconds seconds");
     for (const content of [start, install, readKvp]) {

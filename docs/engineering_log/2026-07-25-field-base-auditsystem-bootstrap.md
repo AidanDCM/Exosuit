@@ -19,7 +19,7 @@ The existing expiring authorization, script digest binding, fixed `C:\Exosuit` e
 
 ## Tests added or updated
 
-The Windows script contract requires a SHA-256-bound maintenance answer file, exact Exosuit maintenance marker and fixed bootstrap script, deletion before final Sysprep, absence verification, and receipt evidence that the bootstrap was consumed. The Audit Administrator bootstrap installs and starts the SYSTEM task, waits for a receipt, and reports a terminal task result or bounded timeout instead of returning before the outcome is known.
+The Windows script contract requires a SHA-256-bound maintenance answer file, exact Exosuit maintenance marker and fixed bootstrap script, deletion before final Sysprep, absence verification, and receipt evidence that the bootstrap was consumed. The Audit Administrator bootstrap registers a distinct one-use SYSTEM maintenance task, starts it, waits for a receipt, and reports task state/result or bounded timeout. The maintenance script validates and unregisters that exact task before sealing, preventing collision with the normal runtime task's `IgnoreNew` policy.
 
 ## Commands actually run
 
@@ -37,7 +37,7 @@ Live v12 attempt evidence: `artifacts/field-l4-base-build/v12/base-v12-build-res
 
 ## Assumptions and unvalidated areas
 
-Exact-head L0 passed at `artifacts/field-validation/20260726T010651Z`. The first live answer file proved `oobeSystem` reseal and entry into Audit Mode, but Panther evidence showed `RunSynchronous` in `auditSystem` completed without executing because that setting is valid only in `auditUser` or `specialize`. The corrected `auditUser` installer then executed live, but returned before the SYSTEM task outcome and the receipt remained absent. A reviewed wrapper now waits for a receipt or terminal task result and writes a bounded local log. The wrapper has not yet executed live. SYSTEM maintenance success, account removal, answer-file consumption, final Sysprep shutdown, offline receipt verification, immutable v12 promotion, and a fresh v12 disposable guest remain unvalidated.
+Exact-head L0 passed at `artifacts/field-validation/20260726T013934Z`. The first live answer file proved `oobeSystem` reseal and entry into Audit Mode, but Panther evidence showed `RunSynchronous` in `auditSystem` completed without executing because that setting is valid only in `auditUser` or `specialize`. The corrected `auditUser` installer executed, but the normal `ExosuitFieldGuest` task did not produce a receipt and remained nonterminal for the five-minute wrapper window. A distinct one-use maintenance task now avoids that instance collision and persists bounded status. This route has not yet executed live. SYSTEM maintenance success, account removal, answer-file consumption, final Sysprep shutdown, offline receipt verification, immutable v12 promotion, and a fresh v12 disposable guest remain unvalidated.
 
 ## Security impact
 

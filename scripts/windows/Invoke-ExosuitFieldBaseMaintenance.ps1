@@ -126,6 +126,15 @@ if (-not (Test-Path -LiteralPath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -P
     throw 'Field base maintenance requires the reviewed SetupComplete hook.'
 }
 
+$maintenanceTaskName = 'ExosuitFieldBaseMaintenance'
+$maintenanceTask = Get-ScheduledTask -TaskName $maintenanceTaskName -ErrorAction Stop
+if ($maintenanceTask.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
+    @($maintenanceTask.Actions).Count -ne 1 -or
+    [string]$maintenanceTask.Actions[0].Arguments -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+    throw 'Field base maintenance one-use task does not match the reviewed SYSTEM contract.'
+}
+Unregister-ScheduledTask -TaskName $maintenanceTaskName -Confirm:$false
+
 Remove-Item -LiteralPath $bootstrapUnattendPath -Force
 if (Test-Path -LiteralPath $bootstrapUnattendPath) {
     throw 'Field base maintenance did not consume its bootstrap answer file.'
@@ -151,6 +160,7 @@ $receipt = [ordered]@{
     maintenanceScriptSha256 = $selfDigest
     bootstrapUnattendSha256 = $bootstrapUnattendDigest
     bootstrapUnattendConsumed = $true
+    maintenanceTaskConsumed = $true
     componentDigests = $componentDigests
     sysprep = '/generalize /oobe /shutdown /quiet'
 }
