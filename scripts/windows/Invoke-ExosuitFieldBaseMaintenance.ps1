@@ -65,7 +65,7 @@ $bootstrapUnattendDigest = (Get-FileHash -LiteralPath $bootstrapUnattendPath -Al
 $bootstrapUnattendText = Get-Content -LiteralPath $bootstrapUnattendPath -Raw
 if ($bootstrapUnattendDigest -cne [string]$authorization.bootstrapUnattendSha256 -or
     $bootstrapUnattendText -notlike '*ExosuitFieldBaseMaintenance*' -or
-    $bootstrapUnattendText -notlike '*Install-ExosuitFieldGuest.ps1*') {
+    $bootstrapUnattendText -notlike '*Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1*') {
     throw 'Field base maintenance bootstrap answer file does not match its authorization.'
 }
 
@@ -113,6 +113,7 @@ $requiredFiles = @(
     'Initialize-ExosuitDevelopmentAccess.ps1',
     'Initialize-ExosuitFieldGuest.ps1',
     'Install-ExosuitFieldGuest.ps1',
+    'Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1',
     'Start-ExosuitFieldGuest.ps1'
 )
 $componentDigests = [ordered]@{}

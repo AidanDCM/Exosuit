@@ -104,6 +104,7 @@ describe("Windows Field administration scripts", () => {
     const sealBaseLauncher = await script("Seal-ExosuitFieldBase.cmd");
     const removeBaseAccount = await script("Remove-ExosuitFieldBaseAccount.ps1");
     const systemBaseMaintenance = await script("Invoke-ExosuitFieldBaseMaintenance.ps1");
+    const baseMaintenanceBootstrap = await script("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -161,12 +162,16 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Field base maintenance script digest does not match its authorization.");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendSha256");
     expect(systemBaseMaintenance).toContain("Field base maintenance bootstrap answer file does not match its authorization.");
-    expect(systemBaseMaintenance).toContain("Install-ExosuitFieldGuest.ps1");
+    expect(systemBaseMaintenance).toContain("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
+    expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
+    expect(baseMaintenanceBootstrap).toContain("Get-ScheduledTaskInfo -TaskName $taskName");
+    expect(baseMaintenanceBootstrap).toContain("Field base maintenance SYSTEM task failed with result");
+    expect(baseMaintenanceBootstrap).toContain("did not produce a receipt within $TimeoutSeconds seconds");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
