@@ -45,6 +45,7 @@ if ($authorization.contractVersion -ne 1 -or
     [string]$authorization.accountName -cnotmatch '^[A-Za-z][A-Za-z0-9]{2,19}$' -or
     [string]$authorization.nonce -cnotmatch '^[0-9a-f]{32}$' -or
     [string]$authorization.maintenanceScriptSha256 -cnotmatch '^[0-9a-f]{64}$' -or
+    [string]$authorization.bootstrapUnattendSha256 -cnotmatch '^[0-9a-f]{64}$' -or
     $expiresAt -le $now -or
     $expiresAt -gt $now.AddHours(4)) {
     throw 'Field base maintenance authorization is invalid or expired.'
@@ -54,6 +55,18 @@ $selfPath = $MyInvocation.MyCommand.Path
 $selfDigest = (Get-FileHash -LiteralPath $selfPath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($selfDigest -cne [string]$authorization.maintenanceScriptSha256) {
     throw 'Field base maintenance script digest does not match its authorization.'
+}
+
+$bootstrapUnattendPath = 'C:\Windows\Panther\Unattend.xml'
+if (-not (Test-Path -LiteralPath $bootstrapUnattendPath -PathType Leaf)) {
+    throw 'Field base maintenance bootstrap answer file is missing.'
+}
+$bootstrapUnattendDigest = (Get-FileHash -LiteralPath $bootstrapUnattendPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$bootstrapUnattendText = Get-Content -LiteralPath $bootstrapUnattendPath -Raw
+if ($bootstrapUnattendDigest -cne [string]$authorization.bootstrapUnattendSha256 -or
+    $bootstrapUnattendText -notlike '*ExosuitFieldBaseMaintenance*' -or
+    $bootstrapUnattendText -notlike '*Start-ExosuitFieldGuest.ps1*') {
+    throw 'Field base maintenance bootstrap answer file does not match its authorization.'
 }
 
 $activeAdapters = @(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object Status -eq 'Up')
@@ -112,6 +125,11 @@ if (-not (Test-Path -LiteralPath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -P
     throw 'Field base maintenance requires the reviewed SetupComplete hook.'
 }
 
+Remove-Item -LiteralPath $bootstrapUnattendPath -Force
+if (Test-Path -LiteralPath $bootstrapUnattendPath) {
+    throw 'Field base maintenance did not consume its bootstrap answer file.'
+}
+
 $receiptDirectory = Split-Path -Parent $ReceiptPath
 New-Item -ItemType Directory -Path $receiptDirectory -Force | Out-Null
 $receipt = [ordered]@{
@@ -130,6 +148,8 @@ $receipt = [ordered]@{
     removedAccountSid = $sid
     removedProfileCount = $profiles.Count
     maintenanceScriptSha256 = $selfDigest
+    bootstrapUnattendSha256 = $bootstrapUnattendDigest
+    bootstrapUnattendConsumed = $true
     componentDigests = $componentDigests
     sysprep = '/generalize /oobe /shutdown /quiet'
 }

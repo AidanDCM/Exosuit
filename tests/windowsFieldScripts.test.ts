@@ -159,6 +159,10 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Field base maintenance requires a network-detached staging VM.");
     expect(systemBaseMaintenance).toContain("maintenanceScriptSha256");
     expect(systemBaseMaintenance).toContain("Field base maintenance script digest does not match its authorization.");
+    expect(systemBaseMaintenance).toContain("bootstrapUnattendSha256");
+    expect(systemBaseMaintenance).toContain("Field base maintenance bootstrap answer file does not match its authorization.");
+    expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
+    expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
