@@ -47,8 +47,6 @@ $createOutput = @(& schtasks.exe /Create /TN $taskName /TR $taskCommand /SC ONST
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM task creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
 }
-$taskSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::FromMinutes(10))
-Set-ScheduledTask -TaskName $taskName -Settings $taskSettings | Out-Null
 $registered = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
 if ($registered.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
     @($registered.Actions).Count -ne 1 -or

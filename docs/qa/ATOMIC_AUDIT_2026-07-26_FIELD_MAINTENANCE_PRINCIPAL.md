@@ -20,7 +20,7 @@ The host may authorize a fixed one-use maintenance operation only inside a netwo
 
 - task creation uses the Windows-supported `schtasks /RU SYSTEM /RL HIGHEST` path with a fixed reviewed action;
 - the Audit Mode bootstrap returns immediately after validated dispatch so Windows Setup does not wait on a task queued behind its own synchronous pass;
-- battery restrictions are explicitly disabled and start-when-available is enabled for the isolated VM;
+- the native `/RU SYSTEM` registration is not rewritten through `Set-ScheduledTask`, which live evidence proved changes this image's effective logon type to `InteractiveToken`;
 - the registered principal and fixed action are checked before the task starts;
 - execution remains passwordless only for built-in local SYSTEM;
 - the maintenance script independently verifies SYSTEM identity, both authorized digests, expiration, detached networking, account scope, component presence, and the one-use task;
@@ -35,7 +35,7 @@ PowerShell parsing passed. Six focused Field administration tests, 240 full Type
 
 ## Residual risk
 
-The first live attempt after this audit proved raw XML `LogonType:ServiceAccount` is rejected by this Windows image with `0x80041318`; no task or maintenance stage was created. The second proved `/RU SYSTEM` preserved `SYSTEM`/`ServiceAccount`, but the task remained `Queued` while the synchronous `auditUser` bootstrap waited and the exported task retained battery restrictions. Neither attempt produced or promoted an image. Static and fake-provider tests cannot prove the asynchronous dispatch executes or that Sysprep completes. The next isolated build must capture the exported task/status, offline receipt, account/profile absence, consumed authorization, target digest, and read-only target state. Until then v12 remains unapproved and absent.
+The first live attempt after this audit proved raw XML `LogonType:ServiceAccount` is rejected by this Windows image with `0x80041318`; no task or maintenance stage was created. The second proved `/RU SYSTEM` preserved `SYSTEM`/`ServiceAccount`, but the task remained `Queued` while the synchronous `auditUser` bootstrap waited. The third returned from `auditUser`, but the intervening `Set-ScheduledTask` rewrite changed the exported logon type to `InteractiveToken`; the task again remained queued and no maintenance stage appeared. None produced or promoted an image. Static and fake-provider tests cannot prove untouched native registration plus asynchronous dispatch executes or that Sysprep completes. The next isolated build must capture the exported task/status, offline receipt, account/profile absence, consumed authorization, target digest, and read-only target state. Until then v12 remains unapproved and absent.
 
 ## Verdict
 
