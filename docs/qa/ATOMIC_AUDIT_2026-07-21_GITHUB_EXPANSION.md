@@ -11,6 +11,30 @@ This addendum does not upgrade the new modules to `github_validated`.
 
 GitHub Actions runs for the reviewed head fail before any workflow step starts. The CI, Windows, repository-contract, npm-audit, and NuGet-audit jobs report no executed steps. Therefore the repository cannot honestly claim hosted typecheck, tests, builds, or dependency audits for this expansion yet.
 
+### Cause identified 2026-07-27
+
+This audit recorded the symptom correctly but did not name the cause, and the "CI repair" work in this slice was therefore aimed at the wrong target. The cause is **GitHub account billing**, not workflow configuration.
+
+Every job in every workflow carries the same GitHub annotation:
+
+> The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings
+
+Evidence:
+
+| Run | Workflow | Date | Jobs affected |
+|---|---|---|---|
+| `29848199984` | Runner Smoke Test | 2026-07-21 | `Allocate ubuntu-latest`, `Allocate windows-latest` |
+| `30303482508` | Exosuit CI | 2026-07-27 | all three jobs |
+| `30303482527` | Security Audit | 2026-07-27 | npm dependency vulnerability audit |
+
+`runner-smoke.yml` is the decisive control. Its jobs contain a single `echo`/`Write-Output` step and no checkout, dependencies, cache, or job dependencies. Both the Linux and Windows jobs fail identically with the billing annotation. A workflow that only requests a runner cannot fail for a configuration reason, which excludes YAML validity, `runs-on` labels, the project-surface detection gate, npm cache settings, and the missing lockfile.
+
+The CI changes listed under "Implemented changes" below were therefore not fixes for this blockage. They may still be independently reasonable, but none of them could have restored hosted runs, and none should be cited as CI repair evidence.
+
+The repository is private, so Actions draws on a monthly free-minutes allowance and `windows-latest` bills at roughly twice the Linux rate. Resolution requires the account owner to act in GitHub Billing & plans; it is not reachable from this repository.
+
+This correction does not change any verdict in this audit. The hosted-validation block stands, and its reason is now stated accurately.
+
 Existing Windows Sandbox evidence and earlier validated core evidence remain valid for the exact commits on which they were recorded. They do not automatically validate the new TypeScript expansion.
 
 ## Implemented changes

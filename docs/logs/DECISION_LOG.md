@@ -93,3 +93,15 @@
 **Rule going forward:** Any change to the registered tool list must update `tests/documentedToolSurface.test.ts` expectations, the runbook allowlist, and the README surface list in the same slice. The registered surface is the authority; documents follow it, and the test enforces the agreement in both directions.
 
 **Open question for the owner:** whether Phase 1 acceptance should present the desktop core alone. If so, the coordinator registration needs an explicit composition flag in `src/server.ts`; it cannot be achieved by scoping a document.
+
+## 2026-07-27 — Hosted CI is blocked by account billing; keep the runner smoke test
+
+**Decision:** Record GitHub account billing as the identified cause of the hosted-CI blockage, stop attempting to fix it by editing workflow YAML, and retain `.github/workflows/runner-smoke.yml` permanently as the diagnostic control.
+
+**Reason:** Every job in every workflow fails with GitHub's annotation that the job was not started because account payments failed or the spending limit needs raising. The smoke test isolates this conclusively: its jobs contain one `echo` step with no checkout, dependencies, cache, or job dependencies, and both the Linux and Windows jobs fail identically. A workflow that only requests a runner cannot fail for a configuration reason.
+
+Four earlier commits changed the project-surface detection gate, job independence, and npm cache settings while chasing this blockage. None could have worked, because none of those things were the cause. The repository recorded the symptom honestly but never named the cause, so the wrong diagnosis was re-derived repeatedly.
+
+**Consequences:** Resolution requires the account owner to act in GitHub Billing & plans and is not reachable from this repository. Until then, hosted CI is unavailable, no hosted evidence may be claimed, and `npm run validate:typescript` is the substitute gate. Two defects reached the canonical branch during the outage — a build-breaking `as const` and a prompt-injection guard gap — which is the concrete cost of running without the gate.
+
+**Rule going forward:** Before changing workflow files to fix a hosted-run failure, dispatch `runner-smoke.yml` first. If it fails, the problem is account-level and no workflow edit will help.

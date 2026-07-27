@@ -41,7 +41,23 @@ The single-agent Windows core has bounded Windows Sandbox evidence for semantic 
 
 The newer workflow, virtual-desktop, multi-agent, browser, visual-policy, skill, and resource-governance slices are GitHub-source implementations with focused local reconstruction tests. They are **not** yet approved as interactive Windows, connected ChatGPT, multi-window, virtual-desktop, multi-agent, browser-extension, visual-capture, or production evidence.
 
-As of the latest development cycle, GitHub-hosted workflow jobs are failing before checkout with no steps allocated. The repository does not mislabel that runner/account failure as passing hosted CI. Run the reproducible local validation command and attach exact evidence until hosted runners are available again.
+### Hosted CI is blocked by account billing, not by this repository
+
+GitHub-hosted workflow jobs fail before checkout with no steps allocated. **The cause is account billing, not workflow configuration.** Every job in every workflow carries the same GitHub annotation:
+
+> The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings
+
+`.github/workflows/runner-smoke.yml` isolates this. Its only steps echo a line, and both its `ubuntu-latest` and `windows-latest` jobs fail identically with that annotation. A workflow that does nothing but request a runner cannot fail for a configuration reason, so YAML, `runs-on` labels, job dependencies, caching, and lockfiles are all excluded.
+
+**Do not attempt to fix this by editing workflows.** Several past commits changed the detection gate, job independence, and npm cache settings while chasing this; none could have worked. The fix is in GitHub account settings under Billing & plans: resolve the failed payment or raise the Actions spending limit. This repository is private, so Actions draws on a monthly free-minutes allowance, and `windows-latest` bills at roughly twice the Linux rate.
+
+Until billing is restored, hosted CI is unavailable and no hosted evidence may be claimed. Run the reproducible local validation chain and attach exact evidence instead:
+
+```bash
+npm run validate:typescript
+```
+
+Re-run `runner-smoke.yml` from the Actions tab to check whether billing has been restored. It is the cheapest available probe; keep it.
 
 ## Architecture
 
