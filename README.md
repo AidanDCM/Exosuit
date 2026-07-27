@@ -93,6 +93,15 @@ A single Windows session has one foreground focus and one physical mouse/keyboar
 
 ## Current MCP surface
 
+The exposed surface is selected by `EXOSUIT_MCP_SURFACE`:
+
+| Value | Tools exposed |
+|---|---|
+| unset or `core` (default) | desktop core only, 13 tools |
+| `full` | desktop core plus coordinator, 27 tools |
+
+`core` is the default because the coordinator is `in_progress` with no hosted CI and no interactive evidence, and `docs/CODEX_HANDOFF.md` requires that a tunnel session discover only reviewed tools. An unrecognized value fails startup rather than defaulting. The gateway prints its surface on startup.
+
 ### Desktop core
 
 - `desktop_get_status`
@@ -112,6 +121,8 @@ A single Windows session has one foreground focus and one physical mouse/keyboar
 The desktop core is thirteen tools. Both execution tools route through one authoritative execution path and one local policy path; the physical variant cannot supply an approval token.
 
 ### Coordinator
+
+Requires `EXOSUIT_MCP_SURFACE=full`. Not exposed by default and not part of Phase 1 acceptance.
 
 - `desktop_refresh_workspace`
 - `desktop_get_workspace`
@@ -137,6 +148,7 @@ Workflow tools do not approve their own work. Desktop steps still enter the ordi
 | desktop provider | fake |
 | fake mode | sandbox |
 | Windows mode | observe |
+| MCP surface | `core`; coordinator tools require explicit `EXOSUIT_MCP_SURFACE=full` |
 | bind address | `127.0.0.1` |
 | physical input | disabled |
 | full control | restart-only; cannot be enabled by MCP or the panel |

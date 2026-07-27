@@ -105,3 +105,17 @@ Four earlier commits changed the project-surface detection gate, job independenc
 **Consequences:** Resolution requires the account owner to act in GitHub Billing & plans and is not reachable from this repository. Until then, hosted CI is unavailable, no hosted evidence may be claimed, and `npm run validate:typescript` is the substitute gate. Two defects reached the canonical branch during the outage — a build-breaking `as const` and a prompt-injection guard gap — which is the concrete cost of running without the gate.
 
 **Rule going forward:** Before changing workflow files to fix a hosted-run failure, dispatch `runner-smoke.yml` first. If it fails, the problem is account-level and no workflow edit will help.
+
+## 2026-07-27 — The MCP surface is core by default; the coordinator is opt-in
+
+**Decision:** Add `EXOSUIT_MCP_SURFACE` to `src/server.ts` with values `core` and `full`. `core` is the default and exposes the thirteen desktop-core tools. `full` additionally exposes the fourteen coordinator tools. An unrecognized value throws at startup rather than falling back to either mode.
+
+**Reason:** `composeServer` previously registered `registerCoordinatorMcpTools` unconditionally, so every connected pilot discovered all twenty-seven tools with no way to narrow them. That conflicted with `docs/CODEX_HANDOFF.md`, which requires Phase 9 to confirm the discovered list matches the reviewed core surface and Phase 10 to confirm only reviewed tools are discovered, and which treats an unexpected discovered tool as a stop condition.
+
+The coordinator is `in_progress` in the master roadmap with no hosted CI evidence and no interactive multi-window evidence. Exposing fourteen unvalidated tools to a pilot by default contradicted deny-by-default and the safety-asymmetry rule that expanding autonomy is never the safe direction.
+
+**Why `core` is the default rather than `full`:** the safe state must be the one reached by omission. An operator who forgets the variable gets the reviewed, narrower surface; widening requires a deliberate act. The reverse default would have preserved the exposure it was meant to fix.
+
+**Scope limit:** this controls **exposure only**. It is not a security boundary for the coordinator's behavior. Workflow and agent state still hydrate under `core`, and every coordinator policy, approval, and verification requirement is unchanged in both modes. Hiding a tool must never be treated as a substitute for its safety controls.
+
+**Consequences:** Phase 1 acceptance now runs against thirteen tools, and the runbook allowlist, `docs/CODEX_HANDOFF.md`, `README.md`, and `docs/ARCHITECTURE.md` all state that. Coordinator acceptance belongs to Phase 2 and needs `EXOSUIT_MCP_SURFACE=full` plus its own promotion gate. `tests/mcpProtocol.test.ts` opts into `full` explicitly because it asserts the complete surface.

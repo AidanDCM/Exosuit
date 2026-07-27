@@ -116,7 +116,13 @@ Run tunnel-client from the reviewed repository root. Confirm the tunnel-client p
 
 ## Exact expected tool allowlist
 
-ChatGPT must discover exactly these twenty-seven tools for the reviewed version.
+Phase 1 acceptance runs the default `core` surface. **ChatGPT must discover exactly these thirteen tools and nothing else.**
+
+Leave `EXOSUIT_MCP_SURFACE` unset, or set it explicitly:
+
+```powershell
+$env:EXOSUIT_MCP_SURFACE = 'core'
+```
 
 Desktop core, thirteen tools registered by `src/mcp.ts` and `src/motorMcp.ts`:
 
@@ -134,28 +140,23 @@ Desktop core, thirteen tools registered by `src/mcp.ts` and `src/motorMcp.ts`:
 - `desktop_propose_physical_input`
 - `desktop_execute_physical_proposal`
 
-Coordinator, fourteen tools registered by `src/coordinatorMcp.ts`:
+Stop if any tool is missing or an unexpected tool appears. Review the commit and MCP server before continuing. **Count the discovered tools; thirteen is correct for Phase 1.**
 
-- `desktop_refresh_workspace`
-- `desktop_get_workspace`
-- `desktop_list_windows`
-- `desktop_create_workflow`
-- `desktop_list_workflows`
-- `desktop_get_workflow`
-- `desktop_run_next_workflow_step`
-- `desktop_continue_approved_workflow_step`
-- `desktop_pause_workflow`
-- `desktop_resume_workflow`
-- `desktop_cancel_workflow`
-- `desktop_list_workflow_artifacts`
-- `desktop_get_workflow_audit`
-- `desktop_list_agents`
+If you see twenty-seven, the coordinator surface is enabled. Stop, confirm `EXOSUIT_MCP_SURFACE` is unset or `core`, restart the gateway, and reconnect before continuing. Do not proceed through Phase 1 against the coordinator surface: it is `in_progress` in the master roadmap with no hosted CI and no interactive evidence.
 
-Stop if any tool is missing or an unexpected tool appears. Review the commit and MCP server before continuing. Count the discovered tools; twenty-seven is correct.
+The gateway prints its surface on startup, so verify before connecting ChatGPT:
 
-`src/server.ts` registers the coordinator tools unconditionally in `composeServer`. There is no environment flag that hides them, so a tunnel session cannot present the desktop core alone. If Phase 1 acceptance is intended to cover the desktop core only, that scoping decision has to be made in the server composition and recorded, not assumed from this document.
+```text
+Exosuit MCP server connected over stdio. MCP surface: core (desktop core only; coordinator tools are not exposed). ...
+```
 
-`tests/documentedToolSurface.test.ts` asserts this list against the tools actually registered, discovered over a real client/server transport pair. It fails if this section and the server disagree in either direction.
+### Coordinator surface, not part of Phase 1
+
+Setting `EXOSUIT_MCP_SURFACE=full` additionally exposes fourteen coordinator tools registered by `src/coordinatorMcp.ts`: `desktop_refresh_workspace`, `desktop_get_workspace`, `desktop_list_windows`, `desktop_create_workflow`, `desktop_list_workflows`, `desktop_get_workflow`, `desktop_run_next_workflow_step`, `desktop_continue_approved_workflow_step`, `desktop_pause_workflow`, `desktop_resume_workflow`, `desktop_cancel_workflow`, `desktop_list_workflow_artifacts`, `desktop_get_workflow_audit`, and `desktop_list_agents`.
+
+That surface belongs to Phase 2 acceptance and has its own promotion gate. An unrecognized `EXOSUIT_MCP_SURFACE` value fails startup rather than defaulting.
+
+`tests/documentedToolSurface.test.ts` asserts the list above against the tools actually registered on the `core` surface, discovered over a real client/server transport pair. It fails if this section and the server disagree in either direction, and separately asserts that no coordinator tool is reachable on `core`.
 
 Two of these tools can execute, but there is one authoritative execution path: `desktop_execute_proposal` and `desktop_execute_physical_proposal` both reach the same orchestrator method and the same single agent execute endpoint. `desktop_execute_physical_proposal` accepts a proposal ID only and cannot supply an approval token. `desktop_propose_physical_input` can only create a proposal; it cannot enable full control or bypass the local typed approval.
 

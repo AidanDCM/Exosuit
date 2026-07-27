@@ -48,7 +48,9 @@ describe("MCP protocol boundary", () => {
       agent: new FakeDesktopAgent(),
       applicationMaps: new ApplicationMapStore(),
     });
-    const server = createExosuitMcpServer(orchestrator);
+    // This test asserts the complete surface, so it opts into the coordinator explicitly.
+    // The default composition is `core`; see tests/documentedToolSurface.test.ts.
+    const server = createExosuitMcpServer(orchestrator, { EXOSUIT_MCP_SURFACE: "full" });
     const client = new Client({ name: "exosuit-test-client", version: "1.0.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 

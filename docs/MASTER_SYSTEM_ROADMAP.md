@@ -401,6 +401,8 @@ All tests in `docs/CODEX_HANDOFF.md` pass on one exact commit. PR #1 remains dra
 
 **Implementation note (2026-07-27):** Implemented on this branch: `src/coordinator.ts`, `src/workflowRuntime.ts`, `src/coordinatorMcp.ts`, `src/orchestratorWorkflowExecutor.ts`, `src/workspaceSync.ts`, and fourteen coordinator MCP tools. Local tests pass. There is no hosted CI evidence and no interactive three-window evidence, so the promotion gate below is **not** met.
 
+This surface is **not exposed by default**. It requires `EXOSUIT_MCP_SURFACE=full`; the default `core` composition omits it so Phase 1 acceptance runs against the reviewed thirteen-tool surface. Coordinator acceptance is Phase 2 work with its own gate.
+
 ### Objective
 
 Allow one pilot to perceive, reason across, and coordinate multiple windows in one Windows session without confusing identity, focus, data, or execution order.

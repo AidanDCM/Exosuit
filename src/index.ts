@@ -34,6 +34,11 @@ async function main(): Promise<void> {
   process.stderr.write(
     [
       "Exosuit MCP server connected over stdio.",
+      `MCP surface: ${startup.mcpSurface}${
+        startup.mcpSurface === "core"
+          ? " (desktop core only; coordinator tools are not exposed)."
+          : " (desktop core plus the unvalidated coordinator surface)."
+      }`,
       `Loaded ${mapHydration.loaded} application map(s); skipped ${mapHydration.skipped}.`,
       `Workflow persistence: ${startup.workflowPersistenceMode}; hydrated ${startup.hydratedWorkflows}.`,
       `Hydrated ${startup.hydratedAgents} supervisor agent record(s).`,

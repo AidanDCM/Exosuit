@@ -240,15 +240,18 @@ $env:EXOSUIT_AGENT_MODE = 'http'
 $env:EXOSUIT_AGENT_URL = 'http://127.0.0.1:43117'
 $env:EXOSUIT_AGENT_TOKEN = '<same-random-local-token>'
 $env:EXOSUIT_GATEWAY_REQUEST_TIMEOUT_MS = '20000'
+$env:EXOSUIT_MCP_SURFACE = 'core'
 npm run start:mcp
 ```
+
+`core` is the default, so the assignment above is belt-and-braces rather than required. It is written explicitly because this phase and Phase 10 both check the discovered tool list, and an inherited `full` from an earlier shell would silently widen the surface under test. Confirm the startup line reports `MCP surface: core` before continuing.
 
 Validate:
 
 - non-loopback URL rejected,
 - weak token rejected,
 - gateway timeout distinguishable from caller cancellation,
-- MCP tool list matches the reviewed current-core surface,
+- MCP tool list matches the reviewed current-core surface, which is exactly the thirteen tools in `docs/SECURE_MCP_TUNNEL_RUNBOOK.md`; discovering twenty-seven means the coordinator surface is enabled and this phase must stop and restart with `EXOSUIT_MCP_SURFACE=core`,
 - physical proposal cannot enable full control,
 - execution respects local approval state,
 - hostile visible instructions block mutation,
@@ -262,7 +265,7 @@ Follow `docs/SECURE_MCP_TUNNEL_RUNBOOK.md` and current official OpenAI instructi
 2. Run tunnel diagnostics.
 3. Add it as a private developer-mode ChatGPT app.
 4. Set permissions to **Always ask** initially.
-5. Confirm only reviewed Exosuit tools are discovered.
+5. Confirm only reviewed Exosuit tools are discovered: exactly thirteen, matching the runbook allowlist. Stop if fourteen coordinator tools appear.
 6. Start a new conversation and explicitly select Exosuit.
 
 Do not expose the Windows agent directly or improvise a public tunnel.

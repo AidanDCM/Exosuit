@@ -64,6 +64,19 @@ No model can approve its own action, enable full control, register a remote agen
 
 `src/contracts.ts`, `src/orchestrator.ts`, `src/mcp.ts`, `src/motorMcp.ts`, and `src/server.ts` expose bounded desktop tools. Every action includes a target, rationale, route, and expected result. The existing orchestrator remains the only path to the Windows agent.
 
+### Surface composition
+
+`src/server.ts` composes the exposed MCP surface from `EXOSUIT_MCP_SURFACE`:
+
+| Value | Composition |
+|---|---|
+| unset or `core` (default) | `src/mcp.ts` plus `src/motorMcp.ts`, 13 tools |
+| `full` | the above plus `src/coordinatorMcp.ts`, 27 tools |
+
+`core` is the default because the coordinator carries no hosted CI or interactive evidence, so an unvalidated surface must be opted into rather than reached by default. An unrecognized value throws at startup instead of falling back. `full` is a strict superset: enabling the coordinator may add tools but never removes or renames a core one, which `tests/documentedToolSurface.test.ts` asserts.
+
+Surface selection controls **exposure only**. Workflow and agent state still hydrate on `core`, and the coordinator's own policy, approval, and verification requirements are unchanged in either mode. Hiding a tool is not a substitute for its safety controls.
+
 ### Local Windows authority
 
 The .NET agent owns:
