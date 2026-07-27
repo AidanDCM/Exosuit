@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { fieldBootstrapCheckNameSchema } from "../src/fieldBootstrap.js";
 
 async function script(name: string): Promise<string> {
   return readFile(`scripts/windows/${name}`, "utf8");
@@ -241,6 +242,15 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("servicePathName=$($service.PathName)");
     expect(baseMaintenanceBootstrap).toContain("serviceStartExitCode");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
+    // The guest agent carries its own copy of the mandatory check list so it can
+    // decide when a bootstrap report is complete. If the two drift, the agent
+    // either withholds a completing report forever or claims completeness it
+    // cannot justify, and neither is visible from the host until a live run.
+    const agentRuntime = await readFile("apps/windows-agent/FieldKvpRuntime.cs", "utf8");
+    const agentCheckBlock = agentRuntime.match(/MandatoryBootstrapChecks\s*=\s*\{([\s\S]*?)\};/);
+    expect(agentCheckBlock?.[1]).toBeDefined();
+    const agentChecks = [...(agentCheckBlock?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((match) => match[1]);
+    expect(agentChecks).toEqual([...fieldBootstrapCheckNameSchema.options]);
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");
     for (const content of [start, install, readKvp]) {

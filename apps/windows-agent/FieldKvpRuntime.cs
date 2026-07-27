@@ -49,10 +49,16 @@ public static class FieldKvpRuntime
                 ["transport"] = "hyperv_kvp",
             }));
 
+        // Sent without runtime attestation: the heartbeat has not started, so
+        // claiming heartbeat_started here would be false rather than merely
+        // incomplete. The host evaluator reports not_ready until the completing
+        // report below arrives.
         var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
         WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
             configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
         var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
+        var heartbeatStarted = false;
+        var lastSecureDesktopActive = false;
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -66,7 +72,9 @@ public static class FieldKvpRuntime
                         ["bootId"] = bootId.ToString(),
                         ["transport"] = "hyperv_kvp",
                     }));
-                bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
+                bootstrap = ReadBootstrapStatus(
+                    configuration.BootstrapReportPath,
+                    heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
                 WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
                     configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
                 nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
@@ -99,6 +107,20 @@ public static class FieldKvpRuntime
             };
             WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
                 configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
+            lastSecureDesktopActive = secureDesktop;
+
+            // The first heartbeat is the evidence for heartbeat_started, so the
+            // completing bootstrap report is sent immediately after it rather
+            // than waiting up to four minutes for the next control refresh.
+            if (!heartbeatStarted)
+            {
+                heartbeatStarted = true;
+                bootstrap = ReadBootstrapStatus(
+                    configuration.BootstrapReportPath,
+                    new FieldRuntimeAttestation(secureDesktop, true));
+                WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+            }
             await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
         }
     }
@@ -245,7 +267,14 @@ public static class FieldKvpRuntime
         return secret;
     }
 
-    private static IReadOnlyDictionary<string, object?> ReadBootstrapStatus(string path)
+    /// <summary>
+    /// Runtime facts only the running agent can attest. The guest precheck
+    /// deliberately omits the corresponding bootstrap checks, because a script
+    /// that has not started the agent cannot honestly report on the agent.
+    /// </summary>
+    internal readonly record struct FieldRuntimeAttestation(bool SecureDesktopActive, bool HeartbeatStarted);
+
+    private static IReadOnlyDictionary<string, object?> ReadBootstrapStatus(string path, FieldRuntimeAttestation? attestation = null)
     {
         if (!File.Exists(path))
         {
@@ -257,20 +286,81 @@ public static class FieldKvpRuntime
         }
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var root = document.RootElement;
-        var checks = root.GetProperty("checks").EnumerateArray().ToArray();
-        var failed = checks
-            .Where(check => !check.GetProperty("passed").GetBoolean())
-            .Select(check => check.GetProperty("name").GetString())
-            .Where(name => name is not null)
-            .ToArray();
+
+        var checks = new List<object?>();
+        var reported = new List<string>();
+        var failed = new List<string>();
+        foreach (var check in root.GetProperty("checks").EnumerateArray())
+        {
+            checks.Add(check.Clone());
+            var name = check.GetProperty("name").GetString();
+            if (name is null) continue;
+            reported.Add(name);
+            if (!check.GetProperty("passed").GetBoolean()) failed.Add(name);
+        }
+
+        var reportedAt = root.GetProperty("reportedAt").GetString();
+
+        // Without the agent's own checks the report can only ever be incomplete,
+        // so the host evaluator returns not_ready forever. Contribute them once
+        // the heartbeat is genuinely running, and never before: claiming
+        // heartbeat_started early would turn an incomplete report into a false one.
+        if (attestation is { } runtime)
+        {
+            var observedAt = WireDate(DateTimeOffset.UtcNow);
+            foreach (var (name, passed, summary) in new[]
+            {
+                ("secure_desktop_inactive", !runtime.SecureDesktopActive, "Secure desktop activity was checked by the guest agent."),
+                ("heartbeat_started", runtime.HeartbeatStarted, "Guest agent heartbeat emission was checked by the guest agent."),
+            })
+            {
+                if (reported.Contains(name)) continue;
+                checks.Add(new Dictionary<string, object?>
+                {
+                    ["name"] = name,
+                    ["passed"] = passed,
+                    ["observedAt"] = observedAt,
+                    ["summary"] = summary,
+                    ["evidence"] = new Dictionary<string, object?>(),
+                });
+                reported.Add(name);
+                if (!passed) failed.Add(name);
+            }
+            // The evaluator requires every check timestamp to fall at or before
+            // reportedAt, so the report must be restamped to cover the ones just
+            // added.
+            reportedAt = observedAt;
+        }
+
+        var report = new Dictionary<string, object?>
+        {
+            ["contractVersion"] = root.GetProperty("contractVersion").GetInt32(),
+            ["identity"] = root.GetProperty("identity").Clone(),
+            ["manifestDigest"] = root.GetProperty("manifestDigest").GetString(),
+            ["reportedAt"] = reportedAt,
+            ["checks"] = checks,
+        };
+
+        var complete = MandatoryBootstrapChecks.All(reported.Contains);
         return new Dictionary<string, object?>
         {
-            ["status"] = failed.Length == 0 ? "not_ready" : "failed",
+            ["status"] = failed.Count > 0 ? "failed" : complete ? "ready" : "not_ready",
             ["manifestDigest"] = root.GetProperty("manifestDigest").GetString(),
-            ["failedChecks"] = failed,
-            ["report"] = root.Clone(),
+            ["failedChecks"] = failed.ToArray(),
+            ["report"] = report,
         };
     }
+
+    /// <summary>
+    /// Mirrors fieldBootstrapCheckNameSchema. The host evaluator treats any
+    /// absent name as missing, so this list must stay in step with it.
+    /// </summary>
+    private static readonly string[] MandatoryBootstrapChecks =
+    {
+        "identity", "base_image", "personal_state", "task_disk", "directory_layout",
+        "display_contract", "agent_binary", "channel_key", "policy_binding",
+        "session_unlocked", "secure_desktop_inactive", "heartbeat_started",
+    };
 
     private static void WriteEnvelope(RegistryKey guestKey, string name, FieldChannelEnvelope envelope)
     {
