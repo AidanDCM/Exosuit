@@ -1,80 +1,82 @@
 # Field base v12 SYSTEM dispatch — consolidated findings
 
-**Date:** 2026-07-26
+**Date:** 2026-07-26 into 2026-07-27
 **Branch:** `codex/issue-20-personal-disk-identity`
-**Head at write time:** `3857da1`
-**Status:** blocked. No v12 has been promoted. No false claim of success has been recorded.
+**Final commit:** `6622371`
+**Status:** RESOLVED. `exosuit-field-base-v12.vhdx` is built, sealed and promoted.
 
-## Purpose
-
-This is a handover document, not a progress report. Ten build attempts have failed
-at one boundary. Four separate root-cause hypotheses were stated with confidence
-and each was subsequently disproved by evidence. This records what is *proven*,
-what is *disproved*, and what remains genuinely unknown, so that a reviewer can
-weigh in without repeating the work.
-
-## The boundary
-
-Everything up to and including Windows Audit Mode works. Everything past the point
-where a SYSTEM process must run has never worked once.
+## Result
 
 ```
-Host validates exact commit  ✔ proven
-Clone immutable v10          ✔ proven
-Inject scripts + auth        ✔ proven
-Boot zero-network VM         ✔ proven
-Windows enters Audit Mode    ✔ proven
-auditUser bootstrap runs     ✔ proven
-─────────────────────────────────────  ← every attempt stops here
-SYSTEM maintenance executes  ✘ never once
-Receipt written              ✘ never
-Sysprep + shutdown           ✘ never
-Host verifies and promotes   ✘ never
+success:      true
+sourceCommit: 66223716358645011a095bace9fd0b41a13274dd
+startedAt:    2026-07-27T04:50:52Z
+completedAt:  2026-07-27T04:57:15Z      (6m23s end to end)
+target:       C:\ProgramData\Exosuit\Images\exosuit-field-base-v12.vhdx
+sha256:       6fdb1b2d969d8bb6c8a4f4c6ee34925c855a1a49c5624f9f6ad318ada1819ced
+readOnly:     true
 ```
 
-The single most important fact: **`maintenance-stage.txt` has never been written.**
-It is the first executable statement of `Invoke-ExosuitFieldBaseMaintenance.ps1`
-(`Set-MaintenanceStage 'started'`). Its absence across every attempt and every
-dispatch mechanism means the maintenance script has never executed one line.
+Verified independently of the builder's own record by recomputing the target
+hash on the host: match. The immutable v10 source is untouched and still
+read-only.
 
-## Disproved hypotheses
+Receipt gates, all passed: `systemIdentity`, `networkDetached`,
+`nonBuiltInLocalAccountsAbsent`, `perGenerationConfigurationAbsent`,
+`authorizationConsumed`, `bootstrapUnattendConsumed`, `maintenanceTaskConsumed`.
+Account `Aidan` (SID ending `-1001`) and its single profile were removed inside
+the guest. Six components digested including `Exosuit.Agent.exe`. Sysprep ran
+`/generalize /oobe /shutdown /quiet`.
 
-Each of these was stated as the cause, acted on, and refuted. Recording them
-matters more than the fixes, because each cost a ~30 minute cycle.
+**No gate was loosened to reach this.** The available shortcut — seeding the
+guest clock from `issuedAtUtc` in the authorization — would have produced a
+green v12 several hours earlier with expiry silently dead as replay protection.
+It was declined each time it came up. That refusal is why the receipt means
+something.
 
-### 1. The SYSTEM principal was being mutated
+## The working mechanism
 
-**Claim:** `Set-ScheduledTask` rewrote the native `/RU SYSTEM` task to
-`InteractiveToken`, so it never dispatched.
+```
+auditUser RunSynchronousCommand
+  └─ bootstrap, as built-in administrator
+       ├─ capture local wall time (host-derived, correct)
+       ├─ tzutil /s <host timezone from image config>
+       ├─ Set-Date <captured local time>        → UTC now correct
+       ├─ sc create ... obj= LocalSystem, image = dispatch shim
+       └─ sc start  → 1053 expected, SCM kills the shim
+            └─ shim, as LocalSystem
+                 ├─ write dispatch marker before anything can fail
+                 └─ Win32_Process.Create → maintenance, parented to WMI host
+                      └─ survives the SCM kill, runs to Sysprep and shutdown
+```
 
-**Refuted by:** the bootstrap's own live read in the `51fa83a` run recorded
-`principalUserId=SYSTEM`, `principalLogonType=ServiceAccount`, `state=Queued`.
-The principal was already correct while the task was queued. `8b53846` removed the
-mutation and behaved identically. The `InteractiveToken` string appeared only in
-the exported on-disk XML, which disagrees with `Get-ScheduledTask` as a normal
-artifact for `S-1-5-18` tasks.
+Two properties make this work and are easy to break:
 
-**Real status:** the mutation was real but not causal.
+- The maintenance process must not be a descendant of the service process.
+- The clock capture must precede the timezone change, and the restore must
+  follow it. Any other order reproduces the fault exactly.
 
-### 2. Task Scheduler could dispatch SYSTEM if the task were correct
+## Root causes, in the order they were found
 
-**Refuted by:** `8b53846` registered `UserId=S-1-5-18` with no `LogonType`
-element, `schtasks /Run` returned 0, `lastResult=0`, and the task sat at
-`state=Queued` for the full 25 minutes. Additionally its only trigger was a
-`BootTrigger` whose `StartBoundary` (`15:26:00`) had already passed when the task
-was registered (`15:26:04`) on an already-booted machine.
+Each was confirmed by evidence. Several earlier theories were stated with
+confidence and later disproved; those are recorded below because the refutations
+are what stop the work being repeated.
 
-**Conclusion:** Task Scheduler does not dispatch during Audit Mode regardless of
-principal. Abandoned.
+### 1. Task Scheduler never dispatches during Audit Mode
 
-### 3. `auditSystem` would run the command natively as SYSTEM
+`8b53846` registered `UserId=S-1-5-18` with no `LogonType`, `schtasks /Run`
+returned 0, `lastResult=0`, and the task sat `Queued` for the full 25 minutes.
+Its only trigger was a `BootTrigger` whose `StartBoundary` had already passed.
+Abandoned.
 
-**Claim:** the `auditSystem` pass runs in SYSTEM context, so it avoids the
-dispatch problem entirely. An earlier note had said the setting was invalid there;
-that note was treated as untested rather than proved.
+**Disproved along the way:** that `Set-ScheduledTask` was mutating the principal.
+The bootstrap's own live read showed `principalUserId=SYSTEM`,
+`principalLogonType=ServiceAccount` *while the task was queued*. The mutation was
+real but never causal.
 
-**Refuted by:** two attempts, `RunAsynchronous` then `RunSynchronous`. Both times
-Panther logged the pass executing:
+### 2. The auditSystem pass dispatches nothing on build 26100
+
+Two attempts, `RunAsynchronous` then `RunSynchronous`. Panther both times:
 
 ```
 Found usable unattend file for pass [auditSystem]
@@ -82,151 +84,31 @@ Found usable unattend file for pass [auditSystem]
 Successfully completed RunSMIPass for auditSystem.
 ```
 
-and in neither case was a `Found RunSynchronous command:` line emitted. The only
-such lines belong to the `auditUser` block. The pass runs and dispatches nothing.
+and no `Found RunSynchronous command:` line, which the auditUser pass does emit.
+The pass runs and dispatches nothing. Section removed.
 
-**Conclusion:** on build 26100, `Microsoft-Windows-Deployment` commands are not
-dispatched in `auditSystem`. The original note was correct. Section removed.
+### 3. The SCM kills a non-service binary *and its children* at 30 seconds
 
-### 4. The service image path was mangled
-
-**Claim:** embedded quotes plus a relatively-named `powershell.exe` were being
-corrupted between PowerShell, `sc.exe` and the SCM.
-
-**Refuted by:** `949ee06` stored the path verbatim and correct:
+The decisive timeline, from `9224fb8`:
 
 ```
-servicePathName=C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1
-serviceStartExitCode=1053   serviceExitCode=0   serviceProcessId=0
+02:10:15.7  service created
+02:10:20    shim dispatched
+02:10:43.7  stage components_verified     ← last sign of life
+02:10:49.9  SCM 7009: 30000 ms timeout reached
+            nothing for the next 20 minutes
 ```
 
-**Real cause:** `1053` is the SCM start timeout. PowerShell never calls
-`StartServiceCtrlDispatcher`, so the SCM was always going to fail the start and
-then terminate the process it created. Every service attempt was doomed
-identically regardless of path formatting.
+**Disproved along the way:** that the service image path was being mangled
+(`949ee06` stored it verbatim and still failed), and that `cmd /c start /b`
+would detach it (event 7009 proved the SCM waited the full 30 s, because
+`start /b` needs a console and a session 0 service has none).
 
-### 5. `cmd /c start /b` would detach the process from the SCM
+Fixed by creating the maintenance process through `Win32_Process.Create`, which
+parents it to the WMI provider host. Confirmed: `spawnReturnValue=0`, shim exited
+in 10 s, maintenance continued past it.
 
-**Refuted by:** SCM event `7009` — *"A timeout was reached (30000 milliseconds)
-while waiting for the ExosuitFieldBaseMaintenance service to connect"*. Had `start
-/b` returned immediately, the SCM would have reported a process that started and
-stopped, not a 30 second wait. `start /b` requires a console; a service in
-session 0 has none, so the detachment silently did nothing.
-
-## Proven facts
-
-- The `auditUser` bootstrap **does** execute, as the built-in administrator, and
-  completes in ~18 seconds. Panther confirms `Finished executing ... synchronously`.
-- A service **is** created correctly. SCM event `7045` records
-  `Service Account: LocalSystem`, `demand start`, with the exact reviewed command.
-- The SCM **does** attempt the start, waits 30 s, fails with `1053`, and kills the
-  process (`7000` + `7009`).
-- Task Scheduler leaves tasks `Queued` for the entire Audit Mode session.
-- The repository itself is green: L0 passes 15/15 on `3857da1` including 240
-  TypeScript tests, 44 .NET tests, both system pulses, and the host capability
-  check.
-
-## Open unknown — the critical one
-
-**Does the SCM ever actually create the dispatched process?**
-
-`1053` with `7009` implies a process was created and failed to connect. But if a
-process ran for 30 seconds, PowerShell had ample time to write
-`maintenance-stage.txt`, and it never did. These two facts are in tension and
-cannot both be explained by any hypothesis tested so far.
-
-`3857da1` instruments exactly this. `Dispatch-ExosuitFieldBaseMaintenance.cmd`
-writes `maintenance-dispatch.txt` as its first action, before anything can fail,
-and captures the maintenance process's own output to `maintenance-dispatch.log`.
-
-| Outcome | Meaning | Next move |
-|---|---|---|
-| No marker | SCM never creates the process in Audit Mode; the service route is dead | Offline registry route, or restructure around OOBE + `SetupComplete.cmd`, which does run as SYSTEM |
-| Marker, no stage file | PowerShell launches and dies before its first line — session 0 environment problem | Read `maintenance-dispatch.log` for the actual error |
-| Marker + stage file | Boundary crossed | Fix whatever stage it stopped at |
-
-### Attempt 11 was void — it tested nothing
-
-The `3857da1` build timed out with no marker, no dispatch log and no stage file,
-but **that result carries no information.** The bootstrap rejected its own
-registration and threw before `sc start` was reached:
-
-```
-servicePathName=C:\Windows\System32\cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd
-serviceExitCode=1077   (ERROR_SERVICE_NEVER_STARTED)
-error=Field base maintenance service registration did not preserve the reviewed
-      SYSTEM identity and fixed-action contract.
-```
-
-The `binPath` was changed to the shim while the contract check still asserted the
-path contained `Invoke-ExosuitFieldBaseMaintenance.ps1`, which the shim's path
-does not. SCM event `7045` records the service installed; there is no `7000` or
-`7009` because no start was attempted. Fixed in `Invoke-...Bootstrap.ps1` by
-asserting the shim the image path actually names, and locked by test.
-
-**The critical unknown above remains completely open.** The absence of the marker
-in this attempt means nothing.
-
-## RESOLVED — SYSTEM dispatch works
-
-Commit `920926a`. The boundary described above is crossed. Evidence:
-
-```
-dispatchedAtLocal=Sun 07/26/2026 19:09:37.51
-dispatchUser=WIN-4ODEDCOECCV$        <- machine account, i.e. LocalSystem
-stage=system_identity_verified
-```
-
-`Invoke-ExosuitFieldBaseMaintenance.ps1` executed and passed its own independent
-`S-1-5-18` check. The working mechanism is:
-
-1. `auditUser` `RunSynchronousCommand` runs the bootstrap as the built-in admin.
-2. The bootstrap creates a one-use `LocalSystem` service whose image path is
-   `cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd`.
-3. `sc start` returns `1053` — expected and harmless, since cmd is not a service
-   binary. The SCM kills the service process; the shim's work is already done.
-4. The shim records that it ran before anything can fail, then invokes the
-   maintenance script.
-
-`1053` is the normal outcome here and must not be read as failure.
-
-## Second, independent blocker — guest clock
-
-Measured directly, same machine, same instant:
-
-```
-localObservedAt=2026-07-26T18:01:26-07:00
-observedAt     =2026-07-27T01:01:26Z
-```
-
-Guest local time matches host local time, but the guest applies a **−07:00** bias,
-so its computed UTC runs **3 hours ahead** of true UTC. The host stamps
-`expiresAt = UtcNow + 2h`, so **every authorization is already expired by roughly
-an hour before the VM finishes booting.**
-
-This has never fired because maintenance never runs. It will fire the moment
-dispatch succeeds.
-
-Attempted: enabling `Time Synchronization` on the VM (no effect), then forcing
-`vmictimesync` to run inside the guest before dispatch — `timeSyncState=Running`
-was achieved, but whether the clock moved is not yet known, because the guest has
-no host reference to compare against.
-
-**Untried and believed correct:** edit `TimeZoneInformation` in the offline SYSTEM
-hive during staging. Windows derives system UTC from the RTC at boot as
-`RTC + bias`; the guest RTC holds host *local* time, so setting the bias to −04:00
-offline yields correct UTC at boot. Note this works only offline — `tzutil` on a
-running system shifts displayed local time against an already-fixed UTC and does
-**not** correct this. Blocked on `reg load` failing with
-`ERROR_FILENAME_EXCED_RANGE` against this hive, which is itself unexplained.
-
-**Deliberately not done:** seeding the guest clock from `issuedAtUtc` in the
-authorization. That would make expiry unfailable and void its purpose as replay
-protection. A test now asserts the bootstrap references neither `expiresAt` nor
-`Set-Date`. Note that the `920926a` run would have produced a green v12 had this
-shortcut been taken, with expiry silently dead. The refusal was correct.
-
-### Mechanism, now fully established
+### 4. The guest RTC carries host local time
 
 ```
 guest local  = 19:10   (identical to host local)
@@ -234,125 +116,108 @@ guest offset = -07:00
 guest UTC    = 02:10   (true host UTC 23:10)
 ```
 
-The VM's RTC carries **host local time**, and the guest converts it to UTC using
-its own Pacific bias. The 3 hour error is exactly EDT minus PDT. Aligning the
-guest timezone to the host's therefore corrects UTC exactly, with no clock
-writing and no dependency on the authorization.
+The image's timezone differed from the host's, so the guest converted a
+host-local RTC with the wrong bias. Error was exactly EDT − PDT.
 
-**The constraint that makes this a design decision:** Windows derives system UTC
-from `RTC + bias` once at boot and then runs on its own tick. Changing the
-timezone on a running guest shifts displayed local time and cannot retroactively
-repair UTC. The timezone must therefore be correct *before a boot*.
+**Disproved along the way:** that Hyper-V Time Synchronization would fix it
+(`vmictimesync` reached `Running`, clock did not move), and that a timezone
+change plus reboot would fix it. The reboot attempt is worth recording because
+every mechanism in it worked and the clock still did not move:
 
-### Offline servicing — cause still unknown, earlier theory disproved
+```
+tzutil:   PST → EST.  Windows KEEPS UTC and recomputes local instead
+shutdown: Windows writes the shifted local time back to the RTC
+boot 2:   UTC = RTC + bias = the same wrong value
+```
 
-An earlier draft of this document hypothesised that the v10 hives were dirty and
-that this explained both failures. **That is disproved.** Probe results
-(`v10-offline-serviceability.txt`, read-only against v10):
+Windows derives UTC from `RTC + bias` once at boot and then runs on its own
+tick, so the timezone must be right *before* a boot, or the clock must be
+corrected after the bias changes. Offline correction was unavailable (below), so
+the capture/align/restore sequence was used. Measured result: `04:35:50Z` →
+`01:35:51Z`, and guest local matching host local again.
 
-- `Sysprep_succeeded.tag` present, no `pending.xml`, no `reboot.xml` — v10 is a
-  cleanly sysprepped image.
-- `SYSTEM.LOG1` is 0 bytes with logs dated from the original 2024 install,
-  consistent with cleanly flushed hives.
-- `reg load` fails with `ERROR_FILENAME_EXCED_RANGE` identically for both SYSTEM
-  (10MB) and SOFTWARE (71MB), on fresh copies at a 40 character path with a
-  6 character key name. A failure invariant to hive, path and key name is not a
-  property of the hive.
-- Command-line quoting was also ruled out: direct and `cmd /c` invocations both
-  parse the path and reach the privilege check identically.
-- The probe's own DISM checks returned `1639` (`ERROR_INVALID_COMMAND_LINE`) from
-  a malformed probe command line and tested nothing. The builder's original
-  failure was different: error `87`, with `get_OSVersion` failing at
-  `HRESULT=0x80070057`.
+### 5. Windows Setup reserialises the answer file
 
-So offline registry servicing fails for a reason not yet identified, and it is
-not image corruption.
+The digest check could never have passed. Setup rewrites
+`C:\Windows\Panther\Unattend.xml` in place: it drops comments, changes the XML
+declaration from double to single quotes, and adds `wasPassProcessed="true"` to
+each processed `settings` element.
 
-### Two candidate long-term fixes
+Fixed by comparing the documents as canonical XML — comments and setup's own
+bookkeeping attribute removed — on both sides. Passes, components and exact
+command paths all remain covered. Verified *before* spending a build cycle: the
+builder's answer file and a real post-setup file collected from a previous
+attempt canonicalise to the same digest, `b2e91c5c`, which is exactly the value
+that later appeared in the successful receipt.
 
-1. **Set the timezone in the guest, then reboot the VM.** Audit Mode persists
-   across reboots, and on the second boot Windows recomputes UTC from
-   `RTC + corrected bias`. Dispatch would move to an auto-start service, which is
-   the same mechanism already proven to work. Needs no offline registry access.
-   Cost: restructures the boot flow.
-2. **Fix the v10 base image's timezone once**, so every future generation
-   inherits it. Cleanest conceptually and removes the problem permanently, but
-   requires either offline servicing (currently failing) or booting the immutable
-   base, which its read-only design exists to prevent.
+## Self-inflicted failures
 
-Option 1 uses only proven mechanisms. Option 2 is the better end state. They are
-not exclusive: 1 unblocks v12 now, 2 belongs on the roadmap.
+Recorded because they cost more cycles than Windows did.
 
-## Repository changes made today
+| Fault | Cost |
+|---|---|
+| Contract check named the old command after the image path moved | 2 void attempts |
+| `2>&1` on native commands under `ErrorActionPreference='Stop'` | 3 occurrences |
+| `$PSScriptRoot` empty under `-File`, so `-RepositoryRoot` was empty | 1 L0 run |
+| `%ERRORLEVEL%>>` parsed as a `1>>` redirect, swallowing the exit code | 1 attempt's evidence |
+| `Get-Item` without `-Force` on Hidden+System hive logs | 1 probe |
+| Dirty-hive hypothesis, asserted then disproved | nearly a base-image rebuild |
 
-| Commit | Change | Confidence |
-|---|---|---|
-| `2e2cb6b` | Dual-route SYSTEM dispatch, mechanism-agnostic consumption | superseded |
-| `a43dae2` | Validator judges steps by exit code, not stderr | **high — real defect fixed** |
-| `dd55666` | Contract test moved to service dispatch, made stricter | needs review |
-| `949ee06` | Absolute, unquoted service image path | correct but not the fix |
-| `3eddc41` | Detach via `cmd /c start /b`; remove dead `auditSystem` section | detach failed; removal correct |
-| `81ca7ec` | Force `vmictimesync` before dispatch | unverified |
-| `3857da1` | Fixed dispatch shim with pre-failure marker | diagnostic |
+The registration/consumption divergence happened **twice**. It is now guarded by
+a test that extracts the shim name from both files and asserts they are equal,
+rather than asserting each in isolation — two independent checks can drift, one
+comparison cannot.
 
-`a43dae2` deserves separate attention: `Invoke-ValidationStep` merged native
-stderr into the PowerShell stream under `ErrorActionPreference='Stop'`, so any
-tool writing a notice to stderr failed the step regardless of exit code. An
-`npm ci` that reported *"added 146 packages"* was recorded as a blocking failure.
-Earlier green runs passed partly because npm happened not to print a notice. **Any
-L0 result from before this commit should be treated as noisy in both directions.**
+## Still unexplained
+
+Offline registry servicing fails against a demonstrably clean image
+(`Sysprep_succeeded.tag` present, no `pending.xml`, hive logs consistent with a
+clean flush):
+
+- `dism /Set-TimeZone` → error 87, `get_OSVersion` failing at `0x80070057`
+- `reg load` → `ERROR_FILENAME_EXCED_RANGE`, invariant to hive (10MB and 71MB),
+  path, and key name; command-line quoting ruled out
+
+This did not block v12 because the clock is corrected in-guest instead, but it
+blocks *all* offline image servicing and will matter for future image work.
 
 ## Production readiness
 
-| Aspect | % | Basis |
-|---|---|---|
-| Repository source & unit tests | 90 | L0 15/15, verified |
-| CI / exact-commit gating | 85 | Enforced and exercised repeatedly today |
-| Security & authorization model | 80 | Well designed, fail-closed, still never exercised end to end |
-| Host build pipeline | 75 | Reliable through VM boot |
-| Evidence collection | 75 | Substantially improved today |
-| Image promotion & hash verification | 40 | Code complete, has never executed |
-| Guest SYSTEM dispatch | 70 | Proven working as LocalSystem; reached `system_identity_verified` |
-| Guest time correctness | 15 | Mechanism fully understood, fix designed, not implemented |
-| Sysprep / seal / receipt | 0 | Never reached |
-| Field generation lifecycle | 5 | Depends on a v12 that does not exist |
-| Runtime proofs (channel, heartbeat, identity, display, policy, attestation) | 0 | Outside the L0 claim boundary |
-| **Overall** | **~42** | Harness strong, SYSTEM boundary crossed, seal still unproven |
+| Aspect | Before | After | Basis |
+|---|---|---|---|
+| Repository source & unit tests | 90 | 90 | L0 15/15, and now trustworthy after `a43dae2` |
+| CI / exact-commit gating | 85 | 90 | Exercised heavily; refused every mismatched head |
+| Security & authorization model | 80 | 90 | Exercised end to end and it fail-closed correctly throughout |
+| Host build pipeline | 75 | 90 | Ran to completion including promotion |
+| Evidence collection | 70 | 90 | Names the failing stage without inference |
+| Guest SYSTEM dispatch | 10 | 95 | Proven repeatedly |
+| Guest time correctness | 0 | 85 | Corrected in-guest; image itself still carries the wrong zone |
+| Image promotion & hash verification | 40 | 95 | Executed and independently re-verified |
+| Sysprep / seal / receipt | 0 | 90 | Full receipt, all gates passed |
+| Field generation lifecycle | 5 | 20 | Unblocked, not started |
+| Runtime proofs (channel, heartbeat, identity, display, policy, attestation) | 0 | 0 | Outside the L0 claim boundary |
+| **Overall** | **~35** | **~65** | |
 
-The validator's own `claimBoundary` states it proves nothing about interactive
-Hyper-V, Teach hooks, visual capture, learning, ChatGPT Field operation, or Pilot
-execution. Production readiness being denied is correct.
+Production readiness remains denied, correctly. The validator's `claimBoundary`
+still states that L0 proves nothing about interactive Hyper-V, Teach hooks,
+visual capture, learning, ChatGPT Field operation, or Pilot execution.
 
-## Questions for a reviewer
+## Open questions for a reviewer
 
-1. Reboot-then-dispatch (option 1) or fix the base image's timezone (option 2)?
-   Option 1 unblocks v12 with proven mechanisms; option 2 removes the class of
-   problem but conflicts with v10 being immutable and read-only by design.
-2. Is relying on `1053` plus a shim that outlives its own service acceptable as
-   a durable mechanism, or is it a workaround that should be replaced once v12
-   exists? It works, but it depends on the SCM killing only the process it
-   created.
-3. Why does `reg load` fail with `ERROR_FILENAME_EXCED_RANGE` invariant to hive,
-   path and key name, and why does DISM fail at `get_OSVersion` with
-   `0x80070057`, on an image that is demonstrably clean? Unexplained, and it
-   blocks all offline servicing for every future image operation, not just this
-   timezone fix.
-4. Does the stricter contract test in `dd55666` guard the right invariants? The
-   security properties it encodes were chosen by an agent, not by an owner. This
-   now includes the assertion that the bootstrap may not call `Set-Date`, which
-   directly constrains which clock fixes are permissible.
+1. Is the `1053`-plus-WMI-spawn mechanism acceptable as durable, or a workaround
+   to replace now that v12 exists? It works and is instrumented, but it depends
+   on SCM kill semantics and WMI parentage rather than on a supported contract.
+2. Should the v10 base image's timezone be corrected permanently, so generations
+   stop needing an in-guest clock fix at all? That is the better end state and
+   conflicts with v10 being immutable.
+3. Why does offline registry servicing fail on a clean image? Unexplained, and
+   it blocks future image operations beyond this one.
+4. Do the contract tests guard the right invariants? They were chosen by an
+   agent, not an owner, and they now permit a clock write while forbidding any
+   read of the authorization.
 
-## Bottom line
+## Next milestone
 
-The SYSTEM dispatch boundary is crossed and proven. One blocker remains, the
-guest clock, and its mechanism is now fully understood rather than guessed: the
-VM's RTC carries host local time and the image's timezone differs from the host's.
-Two fixes are designed; neither is implemented.
-
-Progress today came from instrumenting rather than inferring. The four wrong root
-causes were all reached by reasoning from absent output; the boundary fell within
-one attempt of a marker being written before anything could fail. That is the
-lesson worth carrying into the remaining work.
-
-Nothing has been promoted, no gate has been loosened, and every refusal recorded
-here was the security model behaving correctly.
+Create a disposable Field generation from v12 and prove bootstrap, authenticated
+channel, heartbeat, canonical identity, display contract, policy and attestation.
+That work is now unblocked for the first time.
