@@ -10,44 +10,45 @@ $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $timeZonePath = 'C:\Exosuit\Base\host-timezone.txt'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
 $stagePath = 'C:\Exosuit\Logs\maintenance-stage.txt'
-$preparedPath = 'C:\Exosuit\Logs\maintenance-prepared.txt'
 $dispatchName = 'ExosuitFieldBaseMaintenance'
 # Declared up front so the status writer can run under StrictMode before a
-# preparation has been attempted, including on the early stand-down paths.
+# dispatch has been attempted, including on the early stand-down paths.
 $script:timeZoneBefore = ''
 $script:timeZoneAfter = ''
-$script:createExitCode = $null
-$script:createText = ''
+$script:utcBeforeAlignment = ''
+$script:utcAfterAlignment = ''
+$script:startExitCode = $null
+$script:startText = ''
 
 # Windows leaves scheduled tasks Queued for the whole Audit Mode session, and
-# Panther proved the auditSystem pass runs but dispatches nothing on this build,
-# for both RunSynchronous and RunAsynchronous. The working route is a one-use
-# LocalSystem service dispatching a shim that outlives the SCM's start timeout.
+# Panther proved the auditSystem pass runs but dispatches nothing on this build.
+# The working route is a one-use LocalSystem service dispatching a shim that
+# outlives the SCM's start timeout.
 #
-# That route is proven to reach the maintenance script, which then fail-closes on
-# an authorization it reads as expired: the VM's RTC carries host local time and
-# this image's timezone differs from the host's, so the guest computes a UTC
-# hours ahead. Windows derives system UTC from RTC + bias once at boot and then
-# runs on its own tick, so correcting the timezone on a running guest cannot
-# repair UTC. It has to be corrected before a boot.
+# The guest also computes a UTC hours ahead of the host, which fail-closes
+# maintenance on an authorization it reads as expired. The VM's RTC carries host
+# local time, and this image's timezone differs from the host's, so the guest
+# converts that RTC with the wrong bias. Correcting the timezone alone does not
+# fix it: Windows holds UTC fixed and shifts local time instead, and a reboot
+# then writes that shifted local time back to the RTC, preserving the error
+# exactly. Measured: local moved from matching the host to three hours off it
+# while UTC never changed.
 #
-# So this pass prepares rather than dispatches: align the timezone, register the
-# dispatch service to start automatically, and reboot. Audit Mode persists across
-# the reboot, and the second boot computes UTC from the corrected bias before the
-# service runs. The host remains the only time authority - the timezone comes
-# from image configuration written by the builder, never from the authorization
-# this run is about to be checked against.
+# So realign both. Take the local wall time first - it is host-derived and
+# correct - then set the timezone, then restore that same local reading. UTC is
+# recomputed from a correct local time and a correct bias. The host remains the
+# only time authority: the timezone is image configuration written by the
+# builder, the wall time comes from the guest's own RTC, and the authorization
+# whose expiry is about to be checked is never read here.
 function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("observedAt=$([DateTimeOffset]::UtcNow.ToString('O'))")
     $lines.Add("localObservedAt=$([DateTime]::Now.ToString('O'))")
     if ($Route) { $lines.Add("route=$Route") }
     $lines.Add("receiptPresent=$(Test-Path -LiteralPath $receiptPath -PathType Leaf)")
-    $lines.Add("preparedPresent=$(Test-Path -LiteralPath $preparedPath -PathType Leaf)")
     $service = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction SilentlyContinue
     if ($service) {
         $lines.Add("serviceState=$($service.State)")
-        $lines.Add("serviceStartMode=$($service.StartMode)")
         $lines.Add("serviceStartName=$($service.StartName)")
         $lines.Add("serviceProcessId=$($service.ProcessId)")
         $lines.Add("servicePathName=$($service.PathName)")
@@ -57,8 +58,10 @@ function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     }
     if ($script:timeZoneBefore) { $lines.Add("timeZoneBefore=$($script:timeZoneBefore)") }
     if ($script:timeZoneAfter) { $lines.Add("timeZoneAfter=$($script:timeZoneAfter)") }
-    if ($script:createExitCode -ne $null) { $lines.Add("serviceCreateExitCode=$($script:createExitCode)") }
-    if ($script:createText) { $lines.Add("serviceCreateOutput=$($script:createText -replace '[\r\n]+', ' ')") }
+    if ($script:utcBeforeAlignment) { $lines.Add("utcBeforeAlignment=$($script:utcBeforeAlignment)") }
+    if ($script:utcAfterAlignment) { $lines.Add("utcAfterAlignment=$($script:utcAfterAlignment)") }
+    if ($script:startExitCode -ne $null) { $lines.Add("serviceStartExitCode=$($script:startExitCode)") }
+    if ($script:startText) { $lines.Add("serviceStartOutput=$($script:startText -replace '[\r\n]+', ' ')") }
     if ($ErrorText) { $lines.Add("error=$($ErrorText -replace '[\r\n]+', ' ')") }
     [IO.File]::WriteAllLines($statusPath, $lines, [Text.UTF8Encoding]::new($false))
 }
@@ -70,9 +73,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Field base maintenance bootstrap requires the built-in Audit Mode administrator.'
 }
 
-# This pass re-runs on the boot it triggers. Standing down then is mandatory:
-# preparing twice would reboot the VM again on every audit pass and consume the
-# whole build deadline in a loop without ever dispatching maintenance.
+# A single authorization must never back two concurrent maintenance runs.
 if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
     Write-BootstrapStatus -Route 'stood_down_receipt_present'
     return
@@ -81,64 +82,54 @@ if (Test-Path -LiteralPath $stagePath -PathType Leaf) {
     Write-BootstrapStatus -Route 'stood_down_maintenance_in_progress'
     return
 }
-if (Test-Path -LiteralPath $preparedPath -PathType Leaf) {
-    Write-BootstrapStatus -Route 'stood_down_already_prepared'
-    return
-}
 
 foreach ($path in @($authorizationPath, $maintenancePath, $timeZonePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
 
-# Timezone alignment. The identifier is image configuration written by the
-# builder from the host that stamps the authorization, so the guest and that host
-# agree on what UTC means. Nothing here reads the authorization itself.
+$script:utcBeforeAlignment = [DateTimeOffset]::UtcNow.ToString('O')
 $script:timeZoneBefore = (Get-TimeZone).Id
 $hostTimeZoneId = (Get-Content -LiteralPath $timeZonePath -Raw).Trim()
 if ($hostTimeZoneId -notmatch '^[A-Za-z0-9 .\-+()]{1,80}$') {
     throw 'Field base maintenance host timezone identifier is not a plain timezone name.'
 }
+
+# Captured before the bias changes, and carried across with a monotonic
+# stopwatch so the restore does not lose the time the alignment itself takes.
+$localBeforeAlignment = [DateTime]::Now
+$alignmentTimer = [Diagnostics.Stopwatch]::StartNew()
 & tzutil.exe /s $hostTimeZoneId
 if ($LASTEXITCODE -ne 0) { throw "Field base maintenance timezone alignment failed with exit code $($LASTEXITCODE)." }
 $script:timeZoneAfter = (Get-TimeZone).Id
 if ($script:timeZoneAfter -cne $hostTimeZoneId) { throw 'Field base maintenance timezone alignment did not take effect.' }
+$alignmentTimer.Stop()
+Set-Date -Date $localBeforeAlignment.Add($alignmentTimer.Elapsed) | Out-Null
+$script:utcAfterAlignment = [DateTimeOffset]::UtcNow.ToString('O')
 
-# Registered to start automatically so the SCM dispatches it on the next boot,
-# once UTC has been recomputed from the corrected bias. cmd is not a service
-# binary, so the SCM will fail the start with 1053 and terminate it; the shim
-# records that it ran and leaves maintenance running beyond that.
 $binPath = 'C:\Windows\System32\cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd'
-$createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= auto obj= LocalSystem)
-$script:createExitCode = $LASTEXITCODE
-$script:createText = $createOutput -join ' '
+$createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
 }
 $registered = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction Stop
 if ([string]$registered.StartName -cne 'LocalSystem' -or
-    [string]$registered.StartMode -cne 'Auto' -or
     [string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*') {
     throw 'Field base maintenance service registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
 
-# Written before the reboot is requested, so a reboot that happens at any point
-# after this cannot re-enter preparation.
-$preparedLines = @(
-    "preparedAtUtc=$([DateTimeOffset]::UtcNow.ToString('O'))",
-    "preparedAtLocal=$([DateTime]::Now.ToString('O'))",
-    "timeZoneBefore=$($script:timeZoneBefore)",
-    "timeZoneAfter=$($script:timeZoneAfter)",
-    "serviceStartMode=$($registered.StartMode)"
-)
-[IO.File]::WriteAllLines($preparedPath, $preparedLines, [Text.UTF8Encoding]::new($false))
-
-Write-BootstrapStatus -Route 'prepared_awaiting_reboot'
-# Deferred briefly so this synchronous pass returns and Windows Setup can finish
-# before the restart is taken.
-& shutdown.exe /r /t 15 /c 'Exosuit Field base maintenance timezone alignment'
-if ($LASTEXITCODE -ne 0) { throw "Field base maintenance reboot request failed with exit code $($LASTEXITCODE)." }
+# cmd is not a service binary, so the SCM never receives SERVICE_RUNNING and
+# 1053 after its start timeout is the expected outcome, not a failure. What
+# matters is whether the shim ran, which its own marker records.
+$startOutput = @(& sc.exe start $dispatchName)
+$script:startExitCode = $LASTEXITCODE
+$script:startText = $startOutput -join ' '
+if ($LASTEXITCODE -notin @(0, 1053)) {
+    throw "Field base maintenance SYSTEM service start failed with exit code $($LASTEXITCODE): $($startOutput -join ' ')"
+}
+Start-Sleep -Seconds 45
+Write-BootstrapStatus -Route 'auditUser_service'
 return
 } catch {
-    Write-BootstrapStatus -Route 'prepare_failed' -ErrorText $_.Exception.Message
+    Write-BootstrapStatus -Route 'dispatch_failed' -ErrorText $_.Exception.Message
     throw
 }

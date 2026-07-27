@@ -177,46 +177,42 @@ describe("Windows Field administration scripts", () => {
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
     expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
     // Audit Mode leaves scheduled tasks Queued for the whole session, so dispatch
-    // goes through a one-use LocalSystem service. It must be registered to start
-    // automatically, because it now runs on the boot that follows timezone
-    // alignment rather than being started in this pass.
-    expect(baseMaintenanceBootstrap).toContain("sc.exe create $dispatchName binPath= $binPath type= own start= auto obj= LocalSystem");
+    // goes through a one-use LocalSystem service running the reviewed shim.
+    expect(baseMaintenanceBootstrap).toContain("sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem");
     expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\cmd.exe /c C:\\Exosuit\\Agent\\Dispatch-ExosuitFieldBaseMaintenance.cmd");
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartName -cne 'LocalSystem'");
-    expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartMode -cne 'Auto'");
     // Must name the dispatch shim the image path actually uses. Asserting the
     // old command string here made the bootstrap reject its own registration
     // and throw before the dispatch, voiding a whole build attempt.
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*'");
+    expect(baseMaintenanceBootstrap).toContain("sc.exe start $dispatchName");
     expect(baseMaintenanceBootstrap).not.toContain("Set-ScheduledTask");
     expect(baseMaintenanceBootstrap).not.toContain("schtasks.exe");
-    // The guest clock is corrected before the boot that recomputes UTC from it.
-    // The timezone is image configuration written by the builder, so the guest
-    // still never derives its clock from the authorization it will be checked
-    // against, and the prepared marker must be written before the restart is
-    // requested or this pass would re-prepare and reboot on every audit pass.
-    expect(baseMaintenanceBootstrap).toContain("tzutil.exe /s $hostTimeZoneId");
-    expect(baseMaintenanceBootstrap).toContain("host-timezone.txt");
-    expect(baseMaintenanceBootstrap).toContain("stood_down_already_prepared");
-    const preparedMarkerIndex = baseMaintenanceBootstrap.indexOf("preparedAtUtc=");
-    const rebootIndex = baseMaintenanceBootstrap.indexOf("shutdown.exe /r");
-    expect(preparedMarkerIndex).toBeGreaterThan(-1);
-    expect(rebootIndex).toBeGreaterThan(preparedMarkerIndex);
     // A single authorization must never back two concurrent maintenance runs.
     expect(baseMaintenanceBootstrap).toContain("stood_down_receipt_present");
     expect(baseMaintenanceBootstrap).toContain("stood_down_maintenance_in_progress");
-    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'prepare_failed' -ErrorText $_.Exception.Message");
-    // The host is the only time authority. The bootstrap may resynchronise the
-    // guest clock through the Hyper-V integration service, but must never read
-    // the authorization it is about to dispatch a check against - deriving the
-    // clock from expiresAt would silently void expiry as replay protection.
-    // vmictimesync was tried and measured ineffective: the service reached
-    // Running and the guest UTC did not move, because the error is the image's
-    // timezone rather than a drifting clock. Timezone alignment replaces it.
+    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'dispatch_failed' -ErrorText $_.Exception.Message");
+    // Clock alignment. Correcting the timezone alone cannot repair UTC: Windows
+    // holds UTC fixed and shifts local time, and a reboot then writes that
+    // shifted local time back to the RTC, preserving the error exactly. So the
+    // host-derived local wall time is captured BEFORE the bias changes and
+    // restored after it, which is the only ordering that yields a correct UTC.
+    expect(baseMaintenanceBootstrap).toContain("tzutil.exe /s $hostTimeZoneId");
+    expect(baseMaintenanceBootstrap).toContain("host-timezone.txt");
+    const localCaptureIndex = baseMaintenanceBootstrap.indexOf("$localBeforeAlignment = [DateTime]::Now");
+    const tzutilIndex = baseMaintenanceBootstrap.indexOf("tzutil.exe /s");
+    const setDateIndex = baseMaintenanceBootstrap.indexOf("Set-Date -Date $localBeforeAlignment");
+    expect(localCaptureIndex).toBeGreaterThan(-1);
+    expect(tzutilIndex).toBeGreaterThan(localCaptureIndex);
+    expect(setDateIndex).toBeGreaterThan(tzutilIndex);
+    // The host is the only time authority. Writing the clock is permitted, but
+    // the value must never come from the authorization whose expiry is about to
+    // be checked - deriving it from expiresAt would silently void expiry as
+    // replay protection. This guard, not a ban on clock writes, is the invariant.
     expect(baseMaintenanceBootstrap).not.toContain("expiresAt");
-    expect(baseMaintenanceBootstrap).not.toContain("Set-Date");
+    expect(baseMaintenanceBootstrap).not.toContain("maintenance-authorization.json' -Raw");
     expect(baseMaintenanceBootstrap).toContain("servicePathName=$($service.PathName)");
-    expect(baseMaintenanceBootstrap).toContain("serviceCreateExitCode");
+    expect(baseMaintenanceBootstrap).toContain("serviceStartExitCode");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");
