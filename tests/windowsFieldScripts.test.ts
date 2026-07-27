@@ -137,6 +137,14 @@ describe("Windows Field administration scripts", () => {
     expect(setupComplete).toContain("-Command");
     expect(setupComplete).toContain("-Confirm:$false");
     expect(setupComplete).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
+    // New-LocalUser caps Description at 48 characters. A 61 character value
+    // failed validation in the guest, so ExosuitDev was never created and the
+    // agent never published its handshake. Assert both the guard and the
+    // literal, since the failure is silent from the host's point of view.
+    expect(developmentAccess).toContain("New-LocalUser allows 48.");
+    const developmentDescription = developmentAccess.match(/\$accountDescription = '([^']+)'/);
+    expect(developmentDescription?.[1]).toBeDefined();
+    expect(developmentDescription![1].length).toBeLessThanOrEqual(48);
     expect(setupComplete).toContain("-NoRestart");
     expect(setupComplete).toContain("if errorlevel 1 exit /b 1");
     expect(setupComplete).toContain('del /f /q "C:\\Windows\\Panther\\Unattend.xml"');

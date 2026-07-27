@@ -50,11 +50,20 @@ if (Get-LocalUser -Name $userName -ErrorAction SilentlyContinue) {
 }
 
 $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+# New-LocalUser caps Description at 48 characters. The previous 61 character
+# text failed validation, so the account was never created, no development
+# marker was written, and the guest agent never published its handshake. The
+# non-production warning is kept; only the wording is shortened. Asserted here
+# so a future edit fails loudly rather than silently breaking guest bring-up.
+$accountDescription = 'Exosuit disposable dev guest; not production'
+if ($accountDescription.Length -gt 48) {
+    throw "Development access description is $($accountDescription.Length) characters; New-LocalUser allows 48."
+}
 $user = New-LocalUser `
     -Name $userName `
     -Password $securePassword `
     -AccountNeverExpires `
-    -Description 'Exosuit disposable development guest; forbidden in production'
+    -Description $accountDescription
 $usersGroup = Get-LocalGroup -SID 'S-1-5-32-545'
 Add-LocalGroupMember -Group $usersGroup -Member $user
 
