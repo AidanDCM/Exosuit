@@ -190,8 +190,12 @@ if ($maintenanceTask) {
 }
 $maintenanceService = Get-CimInstance Win32_Service -Filter "Name='$maintenanceDispatchName'" -ErrorAction SilentlyContinue
 if ($maintenanceService) {
+    # Must name the dispatch shim the service image path actually uses. This
+    # asserted the maintenance script's own path while the service ran the shim,
+    # so consumption rejected a service the bootstrap had just registered
+    # correctly, and the run died one stage short of writing its receipt.
     if ([string]$maintenanceService.StartName -cne 'LocalSystem' -or
-        [string]$maintenanceService.PathName -notlike '*Invoke-ExosuitFieldBaseMaintenance.ps1*') {
+        [string]$maintenanceService.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*') {
         throw 'Field base maintenance one-use service does not match the reviewed SYSTEM contract.'
     }
     & sc.exe delete $maintenanceDispatchName | Out-Null

@@ -176,6 +176,17 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Unregister-ScheduledTask -TaskName $maintenanceDispatchName -Confirm:$false");
     expect(systemBaseMaintenance).toContain("Field base maintenance did not consume its one-use task.");
     expect(systemBaseMaintenance).toContain("Field base maintenance one-use service does not match the reviewed SYSTEM contract.");
+    // The bootstrap registers the service and the maintenance script consumes
+    // it, so both must name the same dispatch shim. Divergence here has voided
+    // two build attempts: once when registration rejected itself, and once when
+    // consumption rejected a correctly registered service one stage short of the
+    // receipt. Assert they agree rather than asserting each in isolation.
+    const dispatchShim = "Dispatch-ExosuitFieldBaseMaintenance.cmd";
+    const bootstrapServiceCheck = baseMaintenanceBootstrap.match(/\$registered\.PathName -notlike '\*([^*]+)\*'/);
+    const maintenanceServiceCheck = systemBaseMaintenance.match(/\$maintenanceService\.PathName -notlike '\*([^*]+)\*'/);
+    expect(bootstrapServiceCheck?.[1]).toBe(dispatchShim);
+    expect(maintenanceServiceCheck?.[1]).toBe(dispatchShim);
+    expect(baseMaintenanceBootstrap).toContain(`/c C:\\Exosuit\\Agent\\${dispatchShim}`);
     expect(systemBaseMaintenance).toContain("sc.exe delete $maintenanceDispatchName");
     expect(systemBaseMaintenance).toContain("Field base maintenance did not consume its one-use service.");
     expect(systemBaseMaintenance).toContain("maintenanceTaskConsumed = $true");
