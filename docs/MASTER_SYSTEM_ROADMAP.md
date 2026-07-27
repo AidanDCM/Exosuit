@@ -3,7 +3,7 @@
 **Status:** Authoritative planning document  
 **Applies to:** `AidanDCM/Exosuit`  
 **Canonical development branch:** `build/exosuit-mvp` until the local acceptance gate is complete  
-**Last major planning revision:** 2026-07-17
+**Last major planning revision:** 2026-07-22
 
 ## Purpose
 
@@ -316,7 +316,7 @@ Leases expire and are invalidated by emergency stop, agent disconnect, target ge
 
 ## Phase 0 — Governance and source-of-truth reconciliation
 
-**Status:** in_progress with this document
+**Status:** github_validated
 
 ### Objective
 
@@ -342,6 +342,10 @@ Create one planning authority, remove contradictory status language, and make ro
 ### Promotion gate
 
 Phase 0 becomes `github_validated` when CI passes on the reconciled documentation commit.
+
+### Completion evidence
+
+Phase 0 is `github_validated`. The reconciled documentation and repository contract passed in the GitHub validation recorded by `docs/qa/GITHUB_PHASE_FINAL_AUDIT.md`. This status closes only the governance and source-of-truth phase; it does not promote real Windows behavior, ChatGPT connectivity, or any later roadmap capability.
 
 ## Phase 1 — Current core: interactive Windows and ChatGPT acceptance
 
