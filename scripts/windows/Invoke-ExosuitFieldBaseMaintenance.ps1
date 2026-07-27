@@ -69,12 +69,41 @@ if ($selfDigest -cne [string]$authorization.maintenanceScriptSha256) {
 }
 Set-MaintenanceStage 'authorization_verified'
 
+# Windows Setup does not leave the answer file byte-identical to the one that
+# was injected: it reserialises the document, dropping comments and rewriting
+# the XML declaration's quote style, and annotates each processed settings
+# element with wasPassProcessed. A byte digest of the live file can therefore
+# never match the reviewed content, which is what blocked this check.
+#
+# Compare the documents as XML instead. Comments and setup's own bookkeeping
+# attribute are removed, and everything that determines what actually ran - the
+# passes, components, and the exact command paths - is still covered.
+function Get-CanonicalUnattendDigest {
+    param([Parameter(Mandatory)][string]$Xml)
+    $document = [Xml.XmlDocument]::new()
+    $document.PreserveWhitespace = $false
+    $document.LoadXml($Xml)
+    foreach ($comment in @($document.SelectNodes('//comment()'))) {
+        $null = $comment.ParentNode.RemoveChild($comment)
+    }
+    foreach ($processed in @($document.SelectNodes('//*[@wasPassProcessed]'))) {
+        $null = $processed.RemoveAttribute('wasPassProcessed')
+    }
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes($document.DocumentElement.OuterXml)
+        return ([BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+}
+
 $bootstrapUnattendPath = 'C:\Windows\Panther\Unattend.xml'
 if (-not (Test-Path -LiteralPath $bootstrapUnattendPath -PathType Leaf)) {
     throw 'Field base maintenance bootstrap answer file is missing.'
 }
-$bootstrapUnattendDigest = (Get-FileHash -LiteralPath $bootstrapUnattendPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $bootstrapUnattendText = Get-Content -LiteralPath $bootstrapUnattendPath -Raw
+$bootstrapUnattendDigest = Get-CanonicalUnattendDigest -Xml $bootstrapUnattendText
 if ($bootstrapUnattendDigest -cne [string]$authorization.bootstrapUnattendSha256 -or
     $bootstrapUnattendText -notlike '*ExosuitFieldBaseMaintenance*' -or
     $bootstrapUnattendText -notlike '*Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1*') {
