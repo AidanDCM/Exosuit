@@ -87,12 +87,25 @@ The current GitHub-validated core includes:
 Current promotion status:
 
 - GitHub core: `github_validated`
-- Real Windows behavior: `planned`, pending Codex evidence
+- Real Windows behavior: `in_progress`, partial Windows Sandbox evidence recorded in `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md`; full matrix incomplete
 - ChatGPT private-app operation: `planned`, pending local tunnel acceptance
-- Multi-window coordinator: `planned` by this roadmap; not implemented
-- Virtual-desktop coordination: `planned` by this roadmap; not implemented
-- Multi-agent/VM supervisor: `planned` by this roadmap; not implemented
+- Multi-window coordinator: `in_progress`, implemented on this branch
+- Virtual-desktop coordination: `in_progress`, switch-intent foundation implemented on this branch
+- Multi-agent/VM supervisor: `in_progress`, registry and routing foundations implemented on this branch
+- Browser semantic companion: `in_progress`, contracts and mock provider only
+- Approved skills: `in_progress`, signed registry foundation only; execution not enabled
+- Reliability and persistence: `in_progress`, checkpoint and support-bundle foundations implemented
+- Performance and resource governance: `in_progress`, quota and backpressure foundations implemented
+- Privacy-preserving visual sensor: `proposed`, disabled synthetic-only foundation; capture not implemented
 - Production release: `blocked`
+
+### Status reconciliation, 2026-07-27
+
+This section previously described the coordinator, virtual-desktop, and multi-agent phases as `planned` and **not implemented**, while the branch contained working implementations of those phases and more. The phase entries below carried the same contradiction.
+
+Nothing was promoted to `github_validated` by this reconciliation, and nothing may be until hosted CI runs again. Per the status vocabulary, `in_progress` means implementation exists on a branch but evidence is incomplete, which is precisely the current state: the local validation chain passes, but hosted CI has been blocked by an account billing issue and cannot supply the CI and security-check evidence that `github_validated` requires. See `README.md` and `docs/qa/ATOMIC_AUDIT_2026-07-21_GITHUB_EXPANSION.md`.
+
+The near-term execution order below was also not followed. Phases 2 through 10 were built before Phase 1 acceptance completed. That is recorded here as fact rather than retroactively justified; the ordering question is left to the owner.
 
 ## System-wide invariants
 
@@ -349,7 +362,11 @@ Phase 0 is `github_validated`. The reconciled documentation and repository contr
 
 ## Phase 1 — Current core: interactive Windows and ChatGPT acceptance
 
-**Status:** planned; implementation is GitHub validated
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** partial evidence exists. `docs/qa/CODEX_WINDOWS_ACCEPTANCE.md` records Windows Sandbox evidence for a scoped semantic action, the seven full-control startup denials, wrong-window and missing-target denials, emergency-stop interruption, and a verified audit chain, pinned to a 2026-07-18 commit that predates the coordinator expansion. The fake-provider chain was re-validated on the current head on 2026-07-27.
+
+Still missing: the Secure MCP Tunnel step, ChatGPT private-app acceptance, the DPI and multi-monitor matrix, and application-map privacy inspection against real applications. The promotion gate below is **not** met.
 
 ### Objective
 
@@ -380,7 +397,9 @@ All tests in `docs/CODEX_HANDOFF.md` pass on one exact commit. PR #1 remains dra
 
 ## Phase 2 — Multi-window Workspace Coordinator
 
-**Status:** planned
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Implemented on this branch: `src/coordinator.ts`, `src/workflowRuntime.ts`, `src/coordinatorMcp.ts`, `src/orchestratorWorkflowExecutor.ts`, `src/workspaceSync.ts`, and fourteen coordinator MCP tools. Local tests pass. There is no hosted CI evidence and no interactive three-window evidence, so the promotion gate below is **not** met.
 
 ### Objective
 
@@ -448,7 +467,9 @@ No workflow may be called multi-window validated until fake DAG tests and intera
 
 ## Phase 3 — Windows Virtual Desktop Awareness
 
-**Status:** planned
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Switch-intent lifecycle implemented in `src/virtualDesktop.ts` with local tests. There is no native virtual-desktop evidence from a real Windows session, so the promotion gate below is **not** met.
 
 ### Objective
 
@@ -494,7 +515,9 @@ Virtual-desktop support must never be inferred from window titles. Desktop ident
 
 ## Phase 4 — Multi-agent and VM/remote-session Supervisor
 
-**Status:** planned
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Registry, routing, and authenticated registration implemented in `src/supervisor.ts`, `src/supervisorRouter.ts`, `src/supervisorStore.ts`, `src/agentRegistration.ts`, and `src/agentChannelAuth.ts`. There is no real multi-VM or remote-session evidence, so the promotion gate below is **not** met.
 
 ### Objective
 
@@ -545,7 +568,9 @@ The host must never attempt to operate the internals of a VM merely by treating 
 
 ## Phase 5 — Browser Semantic Companion
 
-**Status:** planned
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Contracts, guard, and mock provider implemented in `src/browserCompanion.ts` and `src/browserCompanionGuard.ts`. **No browser extension exists and none is installed.** There is no real browser evidence, so the promotion gate below is **not** met.
 
 ### Objective
 
@@ -602,6 +627,8 @@ The companion must be transparent and user-installed. Detection resistance is no
 
 **Status:** proposed pending dedicated privacy review
 
+**Implementation note (2026-07-27):** this status is deliberately left at `proposed` even though `src/visualPrivacy.ts` exists on the branch. That module is a disabled, synthetic-only consent and redaction foundation. **No screen capture is implemented in the Windows provider, screenshots remain disabled by default, and nothing here authorizes enabling them.** The critical privacy audit named in the promotion gate below has not happened, and it remains a hard precondition. Do not read the presence of the module as progress toward capture.
+
 ### Objective
 
 Provide a fallback for canvas, remote-desktop surfaces, custom-rendered applications, and controls absent from accessibility APIs.
@@ -643,7 +670,9 @@ This phase requires a new critical privacy audit before implementation is enable
 
 ## Phase 7 — Approved Skills and Workflow Library
 
-**Status:** planned after coordinator validation
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Signed manifest and durable registry implemented in `src/skills.ts` and `src/skillStore.ts`. **Skill execution is not enabled.** Coordinator validation has not completed, so the original sequencing precondition remains unmet.
 
 ### Objective
 
@@ -717,7 +746,9 @@ Provide a clear local interface for trust, supervision, approvals, workflow stat
 
 ## Phase 9 — Reliability, Persistence, and Recovery
 
-**Status:** planned; portions begin in Phase 2
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Checkpoint persistence, encrypted checkpoints, and support bundles implemented in `src/fileCheckpointStore.ts`, `src/encryptedCheckpointStore.ts`, `src/runtimeFactory.ts`, and `src/supportBundle.ts`. There is no crash/restart evidence against a real workload, so the promotion gate below is **not** met.
 
 ### Objective
 
@@ -754,7 +785,9 @@ After uncertainty, Exosuit observes and reconciles before retrying. It never ass
 
 ## Phase 10 — Performance and Resource Governance
 
-**Status:** planned
+**Status:** in_progress
+
+**Implementation note (2026-07-27):** Quotas, backpressure, and latency percentiles implemented in `src/performance.ts` and `src/resourceGovernance.ts`. **No benchmark numbers have been established**; this phase requires targets derived from local benchmarks rather than invented in advance.
 
 ### Objectives
 

@@ -89,7 +89,9 @@ npm run test:pulse
 - TypeScript tests: **135 passed, 30 files, zero failures** (was 124 passed / 1 failed / 125 on pristine origin).
 - Full-chain system pulse: passed, 1 test.
 - Pattern widening validated against 7 positive and 9 negative fixtures before the edit.
-- .NET tests: **not run.** No .NET SDK is installed in this environment; `dotnet --list-sdks` reports no SDKs found. `AGENTS.md` requires `dotnet test` for meaningful changes. This slice changes no C# file, but the required command was not executed and this log does not claim it was.
+- .NET tests: **not run at the time of this commit.** `dotnet --list-sdks` reported no SDKs found. `AGENTS.md` requires `dotnet test` for meaningful changes. This slice changes no C# file, but the required command was not executed and this log did not claim it was.
+
+> **Correction, 2026-07-27.** The premise was wrong. The .NET 8 SDK was installed at `%USERPROFILE%\.dotnet` (8.0.423); the `PATH` `dotnet` is a hostfxr-only install at `C:\Program Files\dotnet` with no SDK, which is why `--list-sdks` came back empty. The gate has since been run against the commit that followed this one: restore, `build --configuration Release -warnaserror` with 0 warnings and 0 errors, and **29/29 tests passed**. See `docs/engineering_log/2026-07-27-run-dotnet-gate-and-phase2-revalidation.md`.
 - No real Windows UI Automation, physical input, Secure MCP Tunnel, or ChatGPT acceptance test was attempted.
 
 ## Assumptions and unvalidated areas

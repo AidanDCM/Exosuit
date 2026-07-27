@@ -43,6 +43,8 @@ dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
 - Relative Markdown link check: passed; all repository-local links resolve.
 - `git diff --check`: passed.
 - .NET tests: not run because no .NET SDK is installed in the current environment; the `dotnet` host reported that no SDKs were found.
+
+> **Correction, 2026-07-27.** The observation was accurate but the conclusion was wrong. The .NET 8 SDK **was** installed at `%USERPROFILE%\.dotnet` (8.0.423) the whole time. `dotnet` on `PATH` resolves to `C:\Program Files\dotnet\dotnet.exe`, which contains a host but no SDK, so `--list-sdks` returned empty. The tests were runnable and were not run. See `docs/engineering_log/2026-07-27-run-dotnet-gate-and-phase2-revalidation.md`.
 - No real Windows UI Automation, physical input, emergency-stop timing, Secure MCP Tunnel, or ChatGPT acceptance test was attempted.
 
 ## Assumptions and unvalidated areas

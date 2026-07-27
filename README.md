@@ -180,6 +180,18 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
+### If `dotnet --list-sdks` reports no SDKs
+
+Check for a user-local install before concluding the SDK is missing:
+
+```powershell
+& "$env:USERPROFILE\.dotnet\dotnet.exe" --list-sdks
+```
+
+A machine can carry two .NET installs: a user-local one at `%USERPROFILE%\.dotnet` that has the SDK, and a hostfxr-only one at `C:\Program Files\dotnet` that does not. If the Program Files path comes first on `PATH`, `dotnet --list-sdks` returns empty and the SDK looks absent while it is installed and usable.
+
+This cost two development sessions, which recorded ".NET tests: not run because no .NET SDK is installed" when the tests were runnable the whole time. Either put `%USERPROFILE%\.dotnet` ahead on `PATH`, or invoke that binary by full path.
+
 Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`.
 
 ## Planning and evidence

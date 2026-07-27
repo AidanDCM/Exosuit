@@ -98,3 +98,5 @@ Revert this commit. Documentation returns to the previous lists and the test is 
 1. Owner decision: should Phase 1 acceptance present the desktop core alone? If yes, add an explicit composition flag to `src/server.ts` and a test that the coordinator surface is absent when it is off. This cannot be done in a document.
 2. Reconcile the roadmap phase statuses with what the branch actually implements, and record what evidence Phases 2 and later hold. The roadmap's own change-control rule requires a decision-log entry for changes touching remote agents, persistence, or physical input.
 3. Only then return to Phase 1 environment work: install the .NET 8 SDK and provision the disposable VM or dedicated account required by `docs/CODEX_HANDOFF.md`.
+
+> **Correction, 2026-07-27.** Item 3 was based on a wrong premise. The .NET 8 SDK was already installed at `%USERPROFILE%\.dotnet` (8.0.423) and only shadowed on `PATH`. No installation is required; the remaining Phase 1 dependency is the disposable environment alone. See `docs/engineering_log/2026-07-27-run-dotnet-gate-and-phase2-revalidation.md`.
