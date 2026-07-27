@@ -23,7 +23,9 @@ const DESTRUCTIVE_PATTERN = /delete|remove|erase|destroy|format|factory reset|dr
 const EXTERNAL_EFFECT_PATTERN = /send|submit|publish|post|upload|deploy|purchase|buy|pay|transfer|trade|place order|confirm booking|change password|security settings/i;
 const AUTH_PATTERN = /login|log in|sign in|authenticate|account recovery|two[- ]?factor|2fa|mfa/i;
 const PROMPT_INJECTION_PATTERNS: RegExp[] = [
-  /ignore (all|any|the|your) previous instructions/i,
+  // The qualifier is optional on purpose. Requiring all/any/the/your missed the bare
+  // "ignore previous instructions", which is the most common phrasing of this attack.
+  /\b(?:ignore|disregard|forget)\s+(?:all\s+|any\s+|the\s+|your\s+)?(?:previous|prior|earlier|above|preceding)\s+(?:instructions?|prompts?|rules?|directions?)/i,
   /reveal (the )?(system prompt|secret|token|password|credentials)/i,
   /send (the )?(data|files|secrets|credentials) to/i,
   /run (this|the following) command/i,

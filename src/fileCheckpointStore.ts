@@ -54,7 +54,7 @@ export class FileWorkflowCheckpointStore implements WorkflowCheckpointStore {
       throw new Error("Workflow checkpoint identity is inconsistent.");
     }
     const unsigned = {
-      schemaVersion: CHECKPOINT_SCHEMA_VERSION as const,
+      schemaVersion: CHECKPOINT_SCHEMA_VERSION,
       workflowId: payload.workflow.definition.workflowId,
       savedAt: new Date().toISOString(),
       payload,
