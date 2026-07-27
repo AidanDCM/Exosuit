@@ -176,37 +176,47 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
     expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
-    // Audit Mode leaves scheduled tasks Queued for the whole session, so the
-    // fallback dispatches through a one-use LocalSystem service instead. The
-    // SYSTEM identity and fixed-action contract must still be asserted before
-    // the service is started, and the bootstrap must never re-enter Task
-    // Scheduler.
-    expect(baseMaintenanceBootstrap).toContain("sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem");
-    // The SCM terminates a non-service binary after its 1053 start timeout, so
-    // the dispatched SYSTEM process must be detached to survive it. Both
-    // executables stay absolutely named and unquoted.
+    // Audit Mode leaves scheduled tasks Queued for the whole session, so dispatch
+    // goes through a one-use LocalSystem service. It must be registered to start
+    // automatically, because it now runs on the boot that follows timezone
+    // alignment rather than being started in this pass.
+    expect(baseMaintenanceBootstrap).toContain("sc.exe create $dispatchName binPath= $binPath type= own start= auto obj= LocalSystem");
     expect(baseMaintenanceBootstrap).toContain("C:\\Windows\\System32\\cmd.exe /c C:\\Exosuit\\Agent\\Dispatch-ExosuitFieldBaseMaintenance.cmd");
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartName -cne 'LocalSystem'");
+    expect(baseMaintenanceBootstrap).toContain("[string]$registered.StartMode -cne 'Auto'");
     // Must name the dispatch shim the image path actually uses. Asserting the
     // old command string here made the bootstrap reject its own registration
-    // and throw before sc start, voiding a whole build attempt.
+    // and throw before the dispatch, voiding a whole build attempt.
     expect(baseMaintenanceBootstrap).toContain("[string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*'");
-    expect(baseMaintenanceBootstrap).toContain("sc.exe start $dispatchName");
     expect(baseMaintenanceBootstrap).not.toContain("Set-ScheduledTask");
     expect(baseMaintenanceBootstrap).not.toContain("schtasks.exe");
+    // The guest clock is corrected before the boot that recomputes UTC from it.
+    // The timezone is image configuration written by the builder, so the guest
+    // still never derives its clock from the authorization it will be checked
+    // against, and the prepared marker must be written before the restart is
+    // requested or this pass would re-prepare and reboot on every audit pass.
+    expect(baseMaintenanceBootstrap).toContain("tzutil.exe /s $hostTimeZoneId");
+    expect(baseMaintenanceBootstrap).toContain("host-timezone.txt");
+    expect(baseMaintenanceBootstrap).toContain("stood_down_already_prepared");
+    const preparedMarkerIndex = baseMaintenanceBootstrap.indexOf("preparedAtUtc=");
+    const rebootIndex = baseMaintenanceBootstrap.indexOf("shutdown.exe /r");
+    expect(preparedMarkerIndex).toBeGreaterThan(-1);
+    expect(rebootIndex).toBeGreaterThan(preparedMarkerIndex);
     // A single authorization must never back two concurrent maintenance runs.
     expect(baseMaintenanceBootstrap).toContain("stood_down_receipt_present");
     expect(baseMaintenanceBootstrap).toContain("stood_down_maintenance_in_progress");
-    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message");
+    expect(baseMaintenanceBootstrap).toContain("Write-BootstrapStatus -Route 'prepare_failed' -ErrorText $_.Exception.Message");
     // The host is the only time authority. The bootstrap may resynchronise the
     // guest clock through the Hyper-V integration service, but must never read
     // the authorization it is about to dispatch a check against - deriving the
     // clock from expiresAt would silently void expiry as replay protection.
-    expect(baseMaintenanceBootstrap).toContain("vmictimesync");
+    // vmictimesync was tried and measured ineffective: the service reached
+    // Running and the guest UTC did not move, because the error is the image's
+    // timezone rather than a drifting clock. Timezone alignment replaces it.
     expect(baseMaintenanceBootstrap).not.toContain("expiresAt");
     expect(baseMaintenanceBootstrap).not.toContain("Set-Date");
     expect(baseMaintenanceBootstrap).toContain("servicePathName=$($service.PathName)");
-    expect(baseMaintenanceBootstrap).toContain("serviceStartExitCode");
+    expect(baseMaintenanceBootstrap).toContain("serviceCreateExitCode");
     expect(baseMaintenanceBootstrap).not.toContain("did not produce a receipt within");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");

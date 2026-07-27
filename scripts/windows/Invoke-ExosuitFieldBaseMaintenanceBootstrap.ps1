@@ -7,46 +7,58 @@ $ErrorActionPreference = 'Stop'
 $authorizationPath = 'C:\Exosuit\Base\maintenance-authorization.json'
 $receiptPath = 'C:\Exosuit\Base\maintenance-receipt.json'
 $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
+$timeZonePath = 'C:\Exosuit\Base\host-timezone.txt'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
 $stagePath = 'C:\Exosuit\Logs\maintenance-stage.txt'
+$preparedPath = 'C:\Exosuit\Logs\maintenance-prepared.txt'
 $dispatchName = 'ExosuitFieldBaseMaintenance'
-# Declared up front so the status writer can run under StrictMode before a start
-# has been attempted, including on the early stand-down paths.
-$script:startExitCode = $null
-$script:startText = ''
-$script:utcBeforeTimeSync = ''
-$script:utcAfterTimeSync = ''
-$script:timeSyncState = ''
+# Declared up front so the status writer can run under StrictMode before a
+# preparation has been attempted, including on the early stand-down paths.
+$script:timeZoneBefore = ''
+$script:timeZoneAfter = ''
+$script:createExitCode = $null
+$script:createText = ''
 
 # Windows leaves scheduled tasks Queued for the whole Audit Mode session, and
 # Panther proved the auditSystem pass runs but dispatches nothing on this build,
-# for both RunSynchronous and RunAsynchronous. Neither is a usable SYSTEM route.
-# This auditUser bootstrap is now the only route: it dispatches one fixed
-# reviewed command through a one-use LocalSystem service.
+# for both RunSynchronous and RunAsynchronous. The working route is a one-use
+# LocalSystem service dispatching a shim that outlives the SCM's start timeout.
+#
+# That route is proven to reach the maintenance script, which then fail-closes on
+# an authorization it reads as expired: the VM's RTC carries host local time and
+# this image's timezone differs from the host's, so the guest computes a UTC
+# hours ahead. Windows derives system UTC from RTC + bias once at boot and then
+# runs on its own tick, so correcting the timezone on a running guest cannot
+# repair UTC. It has to be corrected before a boot.
+#
+# So this pass prepares rather than dispatches: align the timezone, register the
+# dispatch service to start automatically, and reboot. Audit Mode persists across
+# the reboot, and the second boot computes UTC from the corrected bias before the
+# service runs. The host remains the only time authority - the timezone comes
+# from image configuration written by the builder, never from the authorization
+# this run is about to be checked against.
 function Write-BootstrapStatus([string]$Route = '', [string]$ErrorText = '') {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("observedAt=$([DateTimeOffset]::UtcNow.ToString('O'))")
     $lines.Add("localObservedAt=$([DateTime]::Now.ToString('O'))")
     if ($Route) { $lines.Add("route=$Route") }
     $lines.Add("receiptPresent=$(Test-Path -LiteralPath $receiptPath -PathType Leaf)")
+    $lines.Add("preparedPresent=$(Test-Path -LiteralPath $preparedPath -PathType Leaf)")
     $service = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction SilentlyContinue
     if ($service) {
         $lines.Add("serviceState=$($service.State)")
+        $lines.Add("serviceStartMode=$($service.StartMode)")
         $lines.Add("serviceStartName=$($service.StartName)")
         $lines.Add("serviceProcessId=$($service.ProcessId)")
-        # The stored image path is the thing most likely to be mangled between
-        # PowerShell, sc.exe and the SCM, so record it verbatim.
         $lines.Add("servicePathName=$($service.PathName)")
         $lines.Add("serviceExitCode=$($service.ExitCode)")
-        $lines.Add("serviceErrorControl=$($service.ErrorControl)")
     } else {
         $lines.Add('serviceState=absent')
     }
-    if ($script:timeSyncState) { $lines.Add("timeSyncState=$($script:timeSyncState)") }
-    if ($script:utcBeforeTimeSync) { $lines.Add("utcBeforeTimeSync=$($script:utcBeforeTimeSync)") }
-    if ($script:utcAfterTimeSync) { $lines.Add("utcAfterTimeSync=$($script:utcAfterTimeSync)") }
-    if ($script:startExitCode -ne $null) { $lines.Add("serviceStartExitCode=$($script:startExitCode)") }
-    if ($script:startText) { $lines.Add("serviceStartOutput=$($script:startText -replace '[\r\n]+', ' ')") }
+    if ($script:timeZoneBefore) { $lines.Add("timeZoneBefore=$($script:timeZoneBefore)") }
+    if ($script:timeZoneAfter) { $lines.Add("timeZoneAfter=$($script:timeZoneAfter)") }
+    if ($script:createExitCode -ne $null) { $lines.Add("serviceCreateExitCode=$($script:createExitCode)") }
+    if ($script:createText) { $lines.Add("serviceCreateOutput=$($script:createText -replace '[\r\n]+', ' ')") }
     if ($ErrorText) { $lines.Add("error=$($ErrorText -replace '[\r\n]+', ' ')") }
     [IO.File]::WriteAllLines($statusPath, $lines, [Text.UTF8Encoding]::new($false))
 }
@@ -58,9 +70,9 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     throw 'Field base maintenance bootstrap requires the built-in Audit Mode administrator.'
 }
 
-# A single authorization must never back two concurrent maintenance runs. On a
-# fresh clone neither marker exists, so these are no-ops; they matter only if
-# this pass is ever re-entered, and standing down is not a failure.
+# This pass re-runs on the boot it triggers. Standing down then is mandatory:
+# preparing twice would reboot the VM again on every audit pass and consume the
+# whole build deadline in a loop without ever dispatching maintenance.
 if (Test-Path -LiteralPath $receiptPath -PathType Leaf) {
     Write-BootstrapStatus -Route 'stood_down_receipt_present'
     return
@@ -69,72 +81,64 @@ if (Test-Path -LiteralPath $stagePath -PathType Leaf) {
     Write-BootstrapStatus -Route 'stood_down_maintenance_in_progress'
     return
 }
+if (Test-Path -LiteralPath $preparedPath -PathType Leaf) {
+    Write-BootstrapStatus -Route 'stood_down_already_prepared'
+    return
+}
 
-foreach ($path in @($authorizationPath, $maintenancePath)) {
+foreach ($path in @($authorizationPath, $maintenancePath, $timeZonePath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Field base maintenance bootstrap file is missing: $path" }
 }
 
-# Evidence across attempts showed this guest computing a UTC three hours ahead
-# of the host, which pre-expires every authorization. Enabling Time
-# Synchronization on the VM was not enough, so make the guest-side integration
-# service run and resynchronise before dispatch. The host stays the sole time
-# authority: nothing here derives the clock from the authorization it is about
-# to check, so expiry keeps its replay-protection meaning. Best effort by
-# design - the maintenance script must remain the thing that refuses stale work.
-$script:utcBeforeTimeSync = [DateTimeOffset]::UtcNow.ToString('O')
-try {
-    $timeSyncService = Get-Service -Name 'vmictimesync' -ErrorAction Stop
-    if ($timeSyncService.StartType -eq 'Disabled') {
-        Set-Service -Name 'vmictimesync' -StartupType Automatic
-    }
-    if ($timeSyncService.Status -ne 'Running') {
-        Start-Service -Name 'vmictimesync'
-    } else {
-        Restart-Service -Name 'vmictimesync' -Force
-    }
-    Start-Sleep -Seconds 10
-    $script:timeSyncState = (Get-Service -Name 'vmictimesync').Status.ToString()
-} catch {
-    $script:timeSyncState = "unavailable: $($_.Exception.Message -replace '[\r\n]+', ' ')"
+# Timezone alignment. The identifier is image configuration written by the
+# builder from the host that stamps the authorization, so the guest and that host
+# agree on what UTC means. Nothing here reads the authorization itself.
+$script:timeZoneBefore = (Get-TimeZone).Id
+$hostTimeZoneId = (Get-Content -LiteralPath $timeZonePath -Raw).Trim()
+if ($hostTimeZoneId -notmatch '^[A-Za-z0-9 .\-+()]{1,80}$') {
+    throw 'Field base maintenance host timezone identifier is not a plain timezone name.'
 }
-$script:utcAfterTimeSync = [DateTimeOffset]::UtcNow.ToString('O')
+& tzutil.exe /s $hostTimeZoneId
+if ($LASTEXITCODE -ne 0) { throw "Field base maintenance timezone alignment failed with exit code $($LASTEXITCODE)." }
+$script:timeZoneAfter = (Get-TimeZone).Id
+if ($script:timeZoneAfter -cne $hostTimeZoneId) { throw 'Field base maintenance timezone alignment did not take effect.' }
 
-# The SCM fails a non-service binary with 1053 after a 30 second wait and then
-# terminates it, so the earlier attempt tried to detach with cmd's start /b.
-# Event 7009 proved that silently did nothing: the SCM waited the full 30
-# seconds, because start /b needs a console and a service in session 0 has none.
-#
-# Dispatch through the fixed reviewed shim instead. Its first action records
-# that the SYSTEM process executed at all, which four attempts of inference
-# could not establish. Both executables stay absolutely named and no path
-# contains a space, so the image path needs no quoting to survive sc.exe.
+# Registered to start automatically so the SCM dispatches it on the next boot,
+# once UTC has been recomputed from the corrected bias. cmd is not a service
+# binary, so the SCM will fail the start with 1053 and terminate it; the shim
+# records that it ran and leaves maintenance running beyond that.
 $binPath = 'C:\Windows\System32\cmd.exe /c C:\Exosuit\Agent\Dispatch-ExosuitFieldBaseMaintenance.cmd'
-$createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= demand obj= LocalSystem)
+$createOutput = @(& sc.exe create $dispatchName binPath= $binPath type= own start= auto obj= LocalSystem)
+$script:createExitCode = $LASTEXITCODE
+$script:createText = $createOutput -join ' '
 if ($LASTEXITCODE -ne 0) {
     throw "Field base maintenance SYSTEM service creation failed with exit code $($LASTEXITCODE): $($createOutput -join ' ')"
 }
 $registered = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction Stop
 if ([string]$registered.StartName -cne 'LocalSystem' -or
+    [string]$registered.StartMode -cne 'Auto' -or
     [string]$registered.PathName -notlike '*Dispatch-ExosuitFieldBaseMaintenance.cmd*') {
     throw 'Field base maintenance service registration did not preserve the reviewed SYSTEM identity and fixed-action contract.'
 }
 
-# cmd is not a service binary either, so the SCM never receives SERVICE_RUNNING
-# and 1053 after its start timeout is the expected outcome, not a failure. What
-# matters is whether the shim ran at all, which its own marker records. The
-# maintenance script remains the authority on whether work may proceed.
-$startOutput = @(& sc.exe start $dispatchName)
-$script:startExitCode = $LASTEXITCODE
-$script:startText = $startOutput -join ' '
-if ($LASTEXITCODE -notin @(0, 1053)) {
-    throw "Field base maintenance SYSTEM service start failed with exit code $($LASTEXITCODE): $($startOutput -join ' ')"
-}
-# The SCM reports a non-service binary as failed only after its start timeout,
-# so a single 250ms sample cannot distinguish "never launched" from "launching".
-Start-Sleep -Seconds 45
-Write-BootstrapStatus -Route 'auditUser_service'
+# Written before the reboot is requested, so a reboot that happens at any point
+# after this cannot re-enter preparation.
+$preparedLines = @(
+    "preparedAtUtc=$([DateTimeOffset]::UtcNow.ToString('O'))",
+    "preparedAtLocal=$([DateTime]::Now.ToString('O'))",
+    "timeZoneBefore=$($script:timeZoneBefore)",
+    "timeZoneAfter=$($script:timeZoneAfter)",
+    "serviceStartMode=$($registered.StartMode)"
+)
+[IO.File]::WriteAllLines($preparedPath, $preparedLines, [Text.UTF8Encoding]::new($false))
+
+Write-BootstrapStatus -Route 'prepared_awaiting_reboot'
+# Deferred briefly so this synchronous pass returns and Windows Setup can finish
+# before the restart is taken.
+& shutdown.exe /r /t 15 /c 'Exosuit Field base maintenance timezone alignment'
+if ($LASTEXITCODE -ne 0) { throw "Field base maintenance reboot request failed with exit code $($LASTEXITCODE)." }
 return
 } catch {
-    Write-BootstrapStatus -Route 'auditUser_service' -ErrorText $_.Exception.Message
+    Write-BootstrapStatus -Route 'prepare_failed' -ErrorText $_.Exception.Message
     throw
 }
