@@ -29,7 +29,7 @@ The current architecture supports that North Star without coupling the body to o
 - narrow tool discovery with read/write annotations,
 - status, observation, element search, application-map memory, proposal, execution, emergency stop, and audit tools,
 - explicit physical-input proposal tool,
-- one authoritative proposal execution tool,
+- one authoritative proposal execution path,
 - gateway-to-agent request deadlines,
 - loop and prompt-injection guards.
 
@@ -133,7 +133,17 @@ Final focus-safety refinement:
 - commit `e6d9fa32d7ece9ab9956d8ee3d6dd64a0d883b53`,
 - added explicit denial for physical text targeting an unfocused element,
 - added a dedicated negative .NET regression test,
-- retained one authoritative MCP execution tool.
+- retained one authoritative MCP execution path.
+
+### Correction recorded 2026-07-27
+
+Two bullets above originally read "one authoritative proposal execution tool" and "retained one authoritative MCP execution tool." That wording was inaccurate about the tool surface and is corrected to "path."
+
+At the commit this audit reviewed, `src/server.ts` registered thirteen tools, not twelve: eleven from `src/mcp.ts` plus `desktop_propose_physical_input` and `desktop_execute_physical_proposal` from `src/motorMcp.ts`. Two tool names can execute. Both call the same `ExosuitOrchestrator.executeProposal` and reach the same single agent execute endpoint, so the underlying execution path, approval requirement, fresh policy reevaluation, and fingerprint validation were never duplicated or weakened.
+
+This corrects a description of the reviewed surface. It does not change code, the CI runs cited above, or any evidence class. The original CI evidence was produced against the same thirteen-tool surface; `tests/mcpProtocol.test.ts` asserted all thirteen names at the time of that run.
+
+**This audit is historical and its surface counts are frozen at its review commit.** The branch has since added the coordinator, supervisor, virtual-desktop, browser-companion, skill, performance, and support-bundle work, and the registered surface is now twenty-seven tools. Do not read any count in this document as a description of the current branch. `tests/documentedToolSurface.test.ts` and `docs/SECURE_MCP_TUNNEL_RUNBOOK.md` track the live surface.
 
 ### Dependency/security validation
 

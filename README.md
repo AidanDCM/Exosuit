@@ -87,10 +87,13 @@ A single Windows session has one foreground focus and one physical mouse/keyboar
 - `desktop_get_application_map`
 - `desktop_match_application_map`
 - `desktop_propose_action`
-- `desktop_propose_physical_input`
 - `desktop_execute_proposal`
 - `desktop_emergency_stop`
 - `desktop_get_audit_log`
+- `desktop_propose_physical_input`
+- `desktop_execute_physical_proposal`
+
+The desktop core is thirteen tools. Both execution tools route through one authoritative execution path and one local policy path; the physical variant cannot supply an approval token.
 
 ### Coordinator
 

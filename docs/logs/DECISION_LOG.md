@@ -81,3 +81,15 @@
 **Decision:** Multi-VM and remote-session support will use a supervisor coordinating an Exosuit agent inside every controlled Windows session. The host must not treat a VM display window as semantic access to the guest desktop.
 
 **Reason:** UI Automation, focus, input, and approval are session-bound. Per-session agents preserve correct identity, policy, interruption, and audit boundaries.
+
+## 2026-07-27 — Execution invariant is one path, not one tool name
+
+**Decision:** Restate the 2026-07-17 "One authoritative execution tool" decision as **one authoritative execution path**. The invariant is that every returned proposal reaches one orchestrator method, one agent execute endpoint, and one local policy path. The number of MCP tool names that can reach that path is a surface-documentation question, not a safety invariant.
+
+**Reason:** The desktop core has two execution tool names, `desktop_execute_proposal` and `desktop_execute_physical_proposal`. Both call `ExosuitOrchestrator.executeProposal`, so the invariant held, but the "one tool" phrasing propagated into `README.md`, `docs/ARCHITECTURE.md`, `docs/SECURE_MCP_TUNNEL_RUNBOOK.md`, and `docs/qa/GITHUB_PHASE_FINAL_AUDIT.md` as lists that omitted `desktop_execute_physical_proposal` entirely.
+
+**Second finding, same slice:** the drift was worse than a single missing name. `src/server.ts` registers the coordinator surface unconditionally in `composeServer`, so the live tool count is twenty-seven, while `docs/SECURE_MCP_TUNNEL_RUNBOOK.md` still published a thirteen-name allowlist. `docs/CODEX_HANDOFF.md` Phase 10 instructs the validator to confirm that only reviewed tools are discovered, and treats an unexpected discovered tool as a stop condition. A Phase 1 run against that runbook would have found fourteen undocumented coordinator tools.
+
+**Rule going forward:** Any change to the registered tool list must update `tests/documentedToolSurface.test.ts` expectations, the runbook allowlist, and the README surface list in the same slice. The registered surface is the authority; documents follow it, and the test enforces the agreement in both directions.
+
+**Open question for the owner:** whether Phase 1 acceptance should present the desktop core alone. If so, the coordinator registration needs an explicit composition flag in `src/server.ts`; it cannot be achieved by scoping a document.

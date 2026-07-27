@@ -116,7 +116,9 @@ Run tunnel-client from the reviewed repository root. Confirm the tunnel-client p
 
 ## Exact expected tool allowlist
 
-ChatGPT must discover exactly these tools for the reviewed version:
+ChatGPT must discover exactly these twenty-seven tools for the reviewed version.
+
+Desktop core, thirteen tools registered by `src/mcp.ts` and `src/motorMcp.ts`:
 
 - `desktop_get_status`
 - `desktop_observe`
@@ -126,14 +128,36 @@ ChatGPT must discover exactly these tools for the reviewed version:
 - `desktop_get_application_map`
 - `desktop_match_application_map`
 - `desktop_propose_action`
-- `desktop_propose_physical_input`
 - `desktop_execute_proposal`
 - `desktop_emergency_stop`
 - `desktop_get_audit_log`
+- `desktop_propose_physical_input`
+- `desktop_execute_physical_proposal`
 
-Stop if any tool is missing or an unexpected tool appears. Review the commit and MCP server before continuing.
+Coordinator, fourteen tools registered by `src/coordinatorMcp.ts`:
 
-There is one authoritative execution tool. `desktop_propose_physical_input` can only create a proposal; it cannot enable full control or bypass the local typed approval.
+- `desktop_refresh_workspace`
+- `desktop_get_workspace`
+- `desktop_list_windows`
+- `desktop_create_workflow`
+- `desktop_list_workflows`
+- `desktop_get_workflow`
+- `desktop_run_next_workflow_step`
+- `desktop_continue_approved_workflow_step`
+- `desktop_pause_workflow`
+- `desktop_resume_workflow`
+- `desktop_cancel_workflow`
+- `desktop_list_workflow_artifacts`
+- `desktop_get_workflow_audit`
+- `desktop_list_agents`
+
+Stop if any tool is missing or an unexpected tool appears. Review the commit and MCP server before continuing. Count the discovered tools; twenty-seven is correct.
+
+`src/server.ts` registers the coordinator tools unconditionally in `composeServer`. There is no environment flag that hides them, so a tunnel session cannot present the desktop core alone. If Phase 1 acceptance is intended to cover the desktop core only, that scoping decision has to be made in the server composition and recorded, not assumed from this document.
+
+`tests/documentedToolSurface.test.ts` asserts this list against the tools actually registered, discovered over a real client/server transport pair. It fails if this section and the server disagree in either direction.
+
+Two of these tools can execute, but there is one authoritative execution path: `desktop_execute_proposal` and `desktop_execute_physical_proposal` both reach the same orchestrator method and the same single agent execute endpoint. `desktop_execute_physical_proposal` accepts a proposal ID only and cannot supply an approval token. `desktop_propose_physical_input` can only create a proposal; it cannot enable full control or bypass the local typed approval.
 
 ## Fake-provider acceptance sequence
 
