@@ -6,6 +6,7 @@ const pairs = [
   ["src/fieldContracts.ts", "tests/fieldContracts.test.ts"],
   ["src/fieldRegistry.ts", "tests/fieldRegistry.test.ts"],
   ["src/fieldManager.ts", "tests/fieldManager.test.ts"],
+  ["src/fieldManagerStore.ts", "tests/fieldManagerStore.test.ts"],
   ["src/fieldProvisioningPlan.ts", "tests/fieldProvisioningPlan.test.ts"],
   ["src/fieldBootstrap.ts", "tests/fieldBootstrap.test.ts"],
   ["src/fieldChannel.ts", "tests/fieldChannel.test.ts"],
@@ -100,6 +101,7 @@ for (const path of sourcePaths) {
 
 const invariants = new Map([
   ["src/fieldContracts.ts", ["subsystem: z.literal(\"field\")", "allowHostDesktopAccess: z.literal(false)", "timingSafeEqual"]],
+  ["src/fieldManagerStore.ts", ["timingSafeEqual", "failed integrity verification", "mode: 0o600", "flag: \"wx\""]],
   ["src/fieldProvisioningPlan.ts", ["runtimeOverlay", "differencing: z.literal(true)", "Runtime overlay must be a child"]],
   ["src/fieldChannel.ts", ["timingSafeEqual", "message ID was replayed", "nonce was replayed", "sequence must increase strictly"]],
   ["src/fieldHeartbeat.ts", ["Guest heartbeat expired", "boot identity changed", "cannot report the desktop ready"]],

@@ -65,14 +65,14 @@ These percentages are planning estimates, not release claims:
 | Glove Windows core and ChatGPT surface | 100% | 40% | 55% |
 | Multi-window coordination | 95% | 50% | 60% |
 | Virtual-desktop coordination | 60% | 15% | 30% |
-| Supervisor, multi-agent, and Field management | 70% | 25% | 40% |
+| Supervisor, multi-agent, and Field management | 75% | 30% | 45% |
 | Browser companion | 40% | 10% | 20% |
 | Visual sensor and privacy pipeline | 15% | 0% | 5% |
 | Teach and demonstration foundations | 55% | 20% | 30% |
 | Processing, Shadow, Correction, and personal models | 20% | 5% | 10% |
 | Skills and Assisted Mode | 50% | 15% | 25% |
 | Cockpit and owner controls | 15% | 5% | 10% |
-| Reliability and recovery | 70% | 30% | 45% |
+| Reliability and recovery | 73% | 32% | 48% |
 | Performance and capacity | 65% | 35% | 50% |
 | Packaging, signing, update, uninstall | 0% | 0% | 0% |
 | Production security/privacy operations | 10% | 5% | 5% |
@@ -87,7 +87,7 @@ Overall: approximately **65% implemented, 30% evidenced, and 20–25% production
 2. Fix source/test/documentation defects found by those gates.
 3. Harden authentication ordering, visual-redaction bounds, and uncertain browser outcomes with negative tests and Level 4 audit updates.
 4. Reconcile current readiness manifests and manuals with exact evidence.
-5. Add fake/pure reliability, corruption, restart, and failure-injection coverage.
+5. Continue fake/pure failure-injection coverage; durable Field Manager restart, corruption, and bounds coverage is implemented.
 6. Prepare reproducible non-mutating Hyper-V plans and read-only capability evidence.
 7. Implement source-only components behind disabled defaults where the roadmap has no owner gate.
 8. Keep every slice independently disableable and push it to a review branch/draft PR.

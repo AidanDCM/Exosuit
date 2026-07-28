@@ -7,7 +7,7 @@
 
 ## Evidence warning
 
-The former Glove build branch and Field development branch are being consolidated on `codex/unify-glove-field`. The Field branch head `e10e921` passed its exact-head L0 validator on 2026-07-28: 240 TypeScript tests, 44 .NET tests, both system pulses, build, contract validators, dependency audit, PowerShell checks, and the read-only host-capability check. The merged working tree subsequently passed 280 TypeScript tests and 44 .NET tests; exact-head merged evidence is still required after the integration commit.
+The former Glove build branch and Field development branch are consolidated on `codex/unify-glove-field`. Hardened consolidated commit `7a7c435` passed its exact-head L0 validator on 2026-07-28: 284 TypeScript tests, 44 .NET tests, both system pulses, build, contract validators, dependency audit, PowerShell checks, and the read-only host-capability check. Later source slices must continue to pass the same gates before promotion.
 
 Live development evidence exists for a disposable v13 Hyper-V generation: provisioning, guest bootstrap, authenticated KVP channel, heartbeat, and readiness. That evidence used development auto-login and unattended setup, was not repeated as a production matrix, and does not promote Teach, Shadow, Pilot, or production. GitHub-hosted jobs remain blocked before checkout by account billing.
 
@@ -33,7 +33,7 @@ Therefore:
 | Surface | Main files | Current evidence | Live capability? |
 |---|---|---|---|
 | identity, generation, display, policy, attestation | `fieldContracts.ts`, `.NET FieldFoundation.cs` | TS/.NET tests written | no live attestation channel |
-| lifecycle and Glove binding | `fieldRegistry.ts`, `fieldManager.ts` | fake lifecycle and audit tests | in-memory/fake provider |
+| lifecycle and Glove binding | `fieldRegistry.ts`, `fieldManager.ts`, `fieldManagerStore.ts` | fake lifecycle, restart, integrity, and audit-chain tests | durable snapshot primitive; fake provider |
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
@@ -166,6 +166,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 
 - supported, reviewed Hyper-V provider integrated behind `FieldProvisioner`;
 - production-repeatable VM lifecycle and failure-injection evidence;
+- automatic transactional checkpoint/reconciliation around live provider effects;
 - base-image immutability proof across the required repeated matrix;
 - protected channel-key persistence and rotation evidence;
 - production-authenticated guest bootstrap/heartbeat evidence without development access;

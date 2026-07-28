@@ -117,7 +117,7 @@ Required scenarios:
 - persistent manager recovery after process restart;
 - idempotent cleanup.
 
-Production requires durable registry and audit persistence; in-memory state is insufficient.
+The source implementation now includes a bounded, atomic, integrity-protected snapshot for registry records, policy bindings, and the complete hash-linked audit chain. Restart, missing-file, tamper, duplicate-binding, broken-chain, and size-bound cases are covered with a fake provider. Production still requires transactional live-provider checkpoint/reconciliation and crash/failure-injection evidence; a snapshot alone does not prove that a Hyper-V side effect and local state committed together.
 
 ## 7. Storage and disk identity
 

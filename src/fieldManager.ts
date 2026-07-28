@@ -27,6 +27,20 @@ export const fieldManagerEventSchema = z.object({
 });
 export type FieldManagerEvent = z.infer<typeof fieldManagerEventSchema>;
 
+export const fieldManagerPolicyBindingSchema = z.object({
+  field: fieldRefSchema,
+  policyHash: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const fieldManagerStateSchema = z.object({
+  contractVersion: z.literal(1),
+  savedAt: z.string().datetime(),
+  records: z.array(fieldRecordSchema).max(10_000),
+  policyBindings: z.array(fieldManagerPolicyBindingSchema).max(10_000),
+  audit: z.array(fieldManagerEventSchema).max(100_000),
+});
+export type FieldManagerState = z.infer<typeof fieldManagerStateSchema>;
+
 export interface FieldProvisioner {
   readonly name: string;
   provision(input: { identity: FieldIdentity; policy: FieldPolicy; attestation: FieldAttestation }): Promise<Record<string, unknown>>;
@@ -77,12 +91,43 @@ function fieldKey(field: FieldRef): string {
 export class FieldManager {
   readonly #registry: FieldRegistry;
   readonly #provisioner: FieldProvisioner;
-  readonly #audit: FieldManagerEvent[] = [];
-  readonly #provisionedPolicyHashes = new Map<string, string>();
+  readonly #audit: FieldManagerEvent[];
+  readonly #provisionedPolicyHashes: Map<string, string>;
 
-  constructor(options: { provisioner: FieldProvisioner; registry?: FieldRegistry }) {
+  constructor(options: { provisioner: FieldProvisioner; state?: FieldManagerState }) {
     this.#provisioner = options.provisioner;
-    this.#registry = options.registry ?? new FieldRegistry();
+    if (options.state) {
+      const state = fieldManagerStateSchema.parse(structuredClone(options.state));
+      validateState(state);
+      this.#registry = new FieldRegistry(state.records);
+      this.#audit = structuredClone(state.audit);
+      this.#provisionedPolicyHashes = new Map(
+        state.policyBindings.map((binding) => [fieldKey(binding.field), binding.policyHash]),
+      );
+    } else {
+      this.#registry = new FieldRegistry();
+      this.#audit = [];
+      this.#provisionedPolicyHashes = new Map();
+    }
+  }
+
+  exportState(now = new Date()): FieldManagerState {
+    const records = this.#registry.list().map((record) => fieldRecordSchema.parse(structuredClone(record)));
+    const byKey = new Map(records.map((record) => [fieldKey(record.identity), record]));
+    const policyBindings = [...this.#provisionedPolicyHashes.entries()]
+      .map(([key, policyHash]) => {
+        const record = byKey.get(key);
+        if (!record) throw new Error("Field Manager policy binding refers to an unknown field generation.");
+        return { field: fieldRefSchema.parse(record.identity), policyHash };
+      })
+      .sort((left, right) => fieldKey(left.field).localeCompare(fieldKey(right.field)));
+    return fieldManagerStateSchema.parse({
+      contractVersion: 1,
+      savedAt: now.toISOString(),
+      records,
+      policyBindings,
+      audit: structuredClone(this.#audit),
+    });
   }
 
   plan(input: { identity: FieldIdentity; gloveAgentId: string; actor: string; now?: Date }): FieldRecord {
@@ -241,5 +286,38 @@ export class FieldManager {
     const event = fieldManagerEventSchema.parse({ ...unsigned, hash: sha256Canonical(unsigned) });
     this.#audit.push(event);
     return event;
+  }
+}
+
+function validateState(state: FieldManagerState): void {
+  const recordKeys = new Set<string>();
+  for (const record of state.records) {
+    const key = fieldKey(record.identity);
+    if (recordKeys.has(key)) throw new Error("Stored Field Manager state contains a duplicate field generation.");
+    recordKeys.add(key);
+  }
+
+  const bindingKeys = new Set<string>();
+  for (const binding of state.policyBindings) {
+    const key = fieldKey(binding.field);
+    if (bindingKeys.has(key)) throw new Error("Stored Field Manager state contains a duplicate policy binding.");
+    if (!recordKeys.has(key)) throw new Error("Stored Field Manager policy binding refers to an unknown field generation.");
+    const record = state.records.find((candidate) => fieldKey(candidate.identity) === key);
+    if (record?.lifecycle === "destroyed") throw new Error("Destroyed fields cannot retain a policy binding.");
+    bindingKeys.add(key);
+  }
+
+  let previousHash = "0".repeat(64);
+  const eventIds = new Set<string>();
+  for (const [sequence, event] of state.audit.entries()) {
+    if (event.sequence !== sequence) throw new Error("Stored Field Manager audit sequence is not contiguous.");
+    if (eventIds.has(event.eventId)) throw new Error("Stored Field Manager audit contains a duplicate event ID.");
+    if (!recordKeys.has(fieldKey(event.field))) throw new Error("Stored Field Manager audit refers to an unknown field generation.");
+    const { hash, ...unsigned } = event;
+    if (event.previousHash !== previousHash || sha256Canonical(unsigned) !== hash) {
+      throw new Error("Stored Field Manager audit failed chain verification.");
+    }
+    eventIds.add(event.eventId);
+    previousHash = hash;
   }
 }

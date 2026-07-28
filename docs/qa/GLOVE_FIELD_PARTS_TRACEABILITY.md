@@ -29,7 +29,7 @@
 |---|---|---|---|
 | `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies bounded fake/live environments and scene state | existing Glove tests; Field scene/lifecycle tests written |
 | `command-broker` | principles adapted; no arbitrary shell | typed `FieldProvisioner`, strict provisioning plan, no command field | fake manager and plan tests written |
-| `event_ledger` | tamper-evident Glove and coordinator ledgers | hash-linked Field Manager audit with separate actor/subsystem identity | source and tests written; persistence pending |
+| `event_ledger` | tamper-evident Glove and coordinator ledgers | hash-linked Field Manager audit with separate actor/subsystem identity | bounded atomic snapshot, integrity and restart tests implemented; live transaction evidence pending |
 | `reconciliation` | expected result vs provider evidence | policy/attestation, scene, artifact bytes, and future provider results reconciled | attestation and artifact hash verification implemented |
 | `loop_detector` | repeated action/step budget | demonstration event cap, policy action/runtime budget, future provisioning retry budget | partial implementation |
 | `system_pulse` | full fake action chain | fake Field planned -> provisioned -> Teach -> ready -> stop -> destroy | test written |
@@ -39,7 +39,7 @@
 | `jsonl_validator` | contract and ledger validation | episode/envelope schema integrity and future event migrations | Zod/encrypted envelope now; migration validator pending |
 | `evidence_source_guard` | prevents CI evidence inflation | separates pure tests, VM tests, Teach, Shadow, Pilot, owner acceptance | Field Test Plan and status doc |
 | `approval_gate` | local action approval | recording consent and host-created Field policy | consent/policy schemas now; live owner UI pending |
-| `audit_timeline` | action/workflow history | Field planning/provision/mode/fault/stop/destroy history | in-memory hash-linked audit implemented |
+| `audit_timeline` | action/workflow history | Field planning/provision/mode/fault/stop/destroy history | hash-linked audit survives validated snapshot restore |
 | `background_job_manager` | bounded workflow runtime exists | no hidden Field recording/provisioning autonomy | hidden background recording rejected |
 | `mcp_gateway` | narrow pilot tools | pilot cannot create policy, consent, VM authority, arbitrary path, or command | boundary/plan schemas; MCP deny tests future |
 

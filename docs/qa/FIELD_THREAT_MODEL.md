@@ -50,7 +50,7 @@
 |---|---|---|---|
 | Pilot grants itself VM or consent authority | `FieldAdminAuthority` blocks `pilot_model`; review cannot be satisfied by model | unit tests and static validator | local admin UI/transport acceptance |
 | Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration | TS/.NET tests and shared fixture | actual transport fault injection |
-| Replay or reordering | message ID, nonce, and strictly increasing sequence | replay tests in both languages | process restart and persistence behavior |
+| Replay or reordering | message ID, nonce, strictly increasing sequence, and bounded atomic replay state | replay/restart tests in both languages | protected-state operational validation and rotation |
 | Cross-generation action | every channel, heartbeat, command, scene, artifact, episode, and visual reference binds Field generation | unit tests | stale live process and rollback tests |
 | Stale desktop state | exact expected scene version required for action | command and scene tests | live focus/window race injection |
 | Arbitrary shell execution | no shell field in provisioning plan; guest routes exclude shell; scripts reject arbitrary evaluation | schemas, validator, script tests | command-line and process-monitor observation |
@@ -93,7 +93,7 @@
 ## Residual risks
 
 - HMAC attestation is local software binding, not hardware-rooted remote attestation.
-- Replay state is currently in-memory; process-restart sequence persistence is not implemented.
+- Replay state has a bounded atomic persistence implementation; protected-state operational validation and key rotation are not proven live.
 - Actual Hyper-V socket or private transport is not implemented.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.

@@ -45,6 +45,15 @@ function key(ref: FieldRef): string {
 export class FieldRegistry {
   readonly #records = new Map<string, FieldRecord>();
 
+  constructor(records: FieldRecord[] = []) {
+    for (const candidate of records) {
+      const record = fieldRecordSchema.parse(structuredClone(candidate));
+      const recordKey = key(record.identity);
+      if (this.#records.has(recordKey)) throw new Error("Stored field registry contains a duplicate field generation.");
+      this.#records.set(recordKey, record);
+    }
+  }
+
   register(input: { identity: FieldIdentity; gloveAgentId: string; now?: Date }): FieldRecord {
     const identity = fieldIdentitySchema.parse(input.identity);
     const record = fieldRecordSchema.parse({
