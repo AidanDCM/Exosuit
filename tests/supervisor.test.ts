@@ -79,11 +79,39 @@ describe("agent supervisor foundation", () => {
       }),
     );
     const result = registry.stopAll();
-    expect(result.stopped.map((item) => item.agentId)).toEqual(["agent-a"]);
-    expect(result.alreadyUnavailable).toEqual(["agent-b"]);
+    // Both agents are stopped. `agent-b` was offline, which means contact was lost, not
+    // that it halted, so it is stopped and reported as unconfirmed rather than skipped.
+    expect(result.stopped.map((item) => item.agentId).sort()).toEqual(["agent-a", "agent-b"]);
+    expect(result.unreachable).toEqual(["agent-b"]);
     expect(registry.get("agent-a")?.healthState).toBe("stopped");
+    expect(registry.get("agent-b")?.healthState).toBe("stopped");
     expect(() => registry.heartbeat({ agentId: "agent-a" })).toThrow(
       /must be restarted/,
     );
+  });
+
+  // Regression for the 2026-07-28 security review. `stopAll` previously skipped offline
+  // agents, leaving them `offline` rather than `stopped`. A partitioned agent that
+  // reconnected would heartbeat back to `online` and become selectable for new work,
+  // despite a global stop having been issued.
+  it("keeps a partitioned agent stopped after a global stop, even once it reconnects", () => {
+    const registry = new AgentRegistry();
+    registry.register(
+      agent({ lastHeartbeatAt: new Date(Date.now() - 60_000).toISOString() }),
+    );
+
+    // Contact is lost. The agent may still be running and driving a desktop.
+    registry.expireStale({ staleAfterMs: 30_000 });
+    expect(registry.get("agent-a")?.healthState).toBe("offline");
+
+    const result = registry.stopAll();
+    expect(result.unreachable).toEqual(["agent-a"]);
+    expect(registry.get("agent-a")?.healthState).toBe("stopped");
+
+    // The partition heals. The agent must not be able to rejoin on its own.
+    expect(() => registry.heartbeat({ agentId: "agent-a" })).toThrow(/must be restarted/);
+    expect(() =>
+      registry.select({ requiredCapabilities: ["motor"], contractVersion: 1 }),
+    ).toThrow(/No healthy compatible agent/);
   });
 });

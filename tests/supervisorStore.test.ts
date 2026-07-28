@@ -95,9 +95,12 @@ describe("durable supervisor registry", () => {
     });
     expect(expired.map((item) => item.agentId)).toEqual(["agent-a", "agent-b"]);
     const result = await durable.stopAll();
-    expect(result.alreadyUnavailable).toEqual(["agent-a", "agent-b"]);
+    expect(result.unreachable).toEqual(["agent-a", "agent-b"]);
 
+    // The stop must survive a supervisor restart. Persisting these as `offline` would let
+    // them heartbeat back to `online` after reopening, undoing the global stop.
     const reopened = await PersistentAgentRegistry.open(new FileAgentRegistryStore({ path }));
-    expect(reopened.registry.list().every((item) => item.healthState === "offline")).toBe(true);
+    expect(reopened.registry.list().every((item) => item.healthState === "stopped")).toBe(true);
+    expect(() => reopened.registry.heartbeat({ agentId: "agent-a" })).toThrow(/must be restarted/);
   });
 });

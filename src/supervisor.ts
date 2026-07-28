@@ -93,17 +93,27 @@ export class AgentRegistry {
     return structuredClone(stopped);
   }
 
-  stopAll(): { stopped: SupervisorAgent[]; alreadyUnavailable: string[] } {
+  /**
+   * Stop every agent that is not already stopped, and report which could not be confirmed.
+   *
+   * `offline` means Exosuit lost contact, **not** that the agent halted. A partitioned,
+   * suspended, or hung agent may still be driving a real desktop with physical input
+   * armed. Skipping it would leave a global stop that did not stop it: on reconnect its
+   * heartbeat would return it to `online` and it would become eligible for work again.
+   *
+   * So an offline agent is stopped here too, and reported in `unreachable` to record that
+   * the stop was issued but never acknowledged. Recording an agent as unreachable is a
+   * statement about confirmation, never a reason to leave it running.
+   */
+  stopAll(): { stopped: SupervisorAgent[]; unreachable: string[] } {
     const stopped: SupervisorAgent[] = [];
-    const alreadyUnavailable: string[] = [];
-    for (const agent of this.#agents.values()) {
-      if (agent.healthState === "offline" || agent.healthState === "stopped") {
-        alreadyUnavailable.push(agent.agentId);
-        continue;
-      }
+    const unreachable: string[] = [];
+    for (const agent of [...this.#agents.values()]) {
+      if (agent.healthState === "stopped") continue;
+      if (agent.healthState === "offline") unreachable.push(agent.agentId);
       stopped.push(this.stop(agent.agentId));
     }
-    return { stopped, alreadyUnavailable: alreadyUnavailable.sort() };
+    return { stopped, unreachable: unreachable.sort() };
   }
 
   select(input: {
