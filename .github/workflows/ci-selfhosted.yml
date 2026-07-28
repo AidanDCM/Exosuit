@@ -1,0 +1,115 @@
+# Fallback CI for the hosted-runner outage.
+#
+# ci.yml targets `ubuntu-latest` and `windows-latest`, which GitHub-hosted runners
+# provide. A self-hosted runner does NOT match those labels, so ci.yml cannot run on one
+# no matter how the runner is configured. This workflow mirrors the same five jobs
+# against the local runner instead.
+#
+# It is `workflow_dispatch` only on purpose. A push trigger would queue jobs forever
+# whenever the local runner is offline, which is most of the time. Run it deliberately,
+# or add a push trigger once the runner is installed as an always-on service.
+#
+# This is NOT a replacement for hosted CI. It runs on one machine, one OS, and one
+# toolchain version, so it cannot detect a Linux-only or version-specific failure, and it
+# is not independent of the developer environment. `github_validated` still requires
+# hosted CI. See docs/MASTER_SYSTEM_ROADMAP.md and README.md.
+#
+# Delete this workflow once hosted runners are restored.
+
+name: Exosuit CI (self-hosted fallback)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exosuit-ci-selfhosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    name: TypeScript contracts, gateway, and pulse (self-hosted)
+    runs-on: [self-hosted, exosuit-local]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and integration tests
+        run: npm test -- --reporter=verbose
+      - name: Build
+        run: npm run build
+      - name: Full-chain system pulse
+        run: npm run test:pulse -- --reporter=verbose
+
+  windows-agent:
+    name: Windows agent build and pure tests (self-hosted)
+    runs-on: [self-hosted, exosuit-local]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
+      - name: Build with warnings as errors
+        run: dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
+
+  repository-contract:
+    name: Required manuals and safety files (self-hosted)
+    runs-on: [self-hosted, exosuit-local]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify serious-repo contract
+        run: node scripts/validate-repository.mjs
+
+  npm-audit:
+    name: npm dependency vulnerability audit (self-hosted)
+    runs-on: [self-hosted, exosuit-local]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve dependency tree without scripts
+        run: npm install --ignore-scripts --fund=false
+      - name: Fail on high or critical advisories
+        run: npm audit --audit-level=high
+
+  nuget-audit:
+    name: NuGet dependency vulnerability audit (self-hosted)
+    runs-on: [self-hosted, exosuit-local]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore with NuGet audit enabled
+        run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj -p:NuGetAudit=true
+      - name: List vulnerable direct and transitive packages
+        shell: pwsh
+        run: |
+          $output = dotnet list apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj package --vulnerable --include-transitive
+          $exitCode = $LASTEXITCODE
+          $output
+          if ($exitCode -ne 0) { exit $exitCode }
+          if (($output -join "`n") -match 'has the following vulnerable packages') {
+            Write-Error 'NuGet reported one or more known vulnerable packages.'
+            exit 1
+          }
