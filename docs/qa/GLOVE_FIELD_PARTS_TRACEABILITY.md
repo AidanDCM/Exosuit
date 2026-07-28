@@ -27,7 +27,7 @@
 
 | Part | Glove decision | Field decision | Proof or planned proof |
 |---|---|---|---|
-| `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies bounded fake/live environments and scene state | existing Glove tests; Field scene/lifecycle tests written |
+| `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies bounded fake/live environments and read-only scene composition | existing Glove tests; Field scene/lifecycle/fresh-heartbeat adapter tests written |
 | `command-broker` | principles adapted; no arbitrary shell | typed `FieldProvisioner`, strict provisioning plan, no command field | fake manager and plan tests written |
 | `event_ledger` | tamper-evident Glove and coordinator ledgers | hash-linked Field Manager audit with separate actor/subsystem identity | bounded atomic snapshot, integrity and restart tests implemented; live transaction evidence pending |
 | `reconciliation` | expected result vs provider evidence | policy/attestation, scene, artifact bytes, retrieval abstention, and future provider results reconciled | attestation, artifact hash, and retrieval-only Shadow checks implemented |

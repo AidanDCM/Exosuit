@@ -45,7 +45,7 @@ Therefore:
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
 | demonstration processing and retrieval | `demonstrationProcessing.ts`, `encryptedProcessedDemonstrationStore.ts` | terminal/ambiguity/privacy/relevance/encryption/restart/deletion/held-out tests | deterministic pipeline and encrypted file store; no live adapter |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
-| scene graph | `fieldScene.ts` | version/focus/modal/readiness tests | no Windows producer |
+| scene graph and observation adapter | `fieldScene.ts`, `fieldSceneObservation.ts`, existing Windows UIA observer | version/focus/modal/readiness/freshness/text-redaction tests | transport/runtime wiring not live |
 | Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
 | Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
 | artifact broker | `fieldArtifactBroker.ts` | hash/size/direction/state tests | no cross-VM copy |
@@ -171,7 +171,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - base-image immutability proof across the required repeated matrix;
 - protected channel-key persistence and rotation evidence;
 - production-authenticated guest bootstrap/heartbeat evidence without development access;
-- live Windows scene producer;
+- live authenticated transport from the existing Windows UIA observer into the Field scene adapter;
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;

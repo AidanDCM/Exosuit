@@ -267,6 +267,8 @@ Failure injection:
 
 ## 11. Scene production
 
+The source adapter now composes the existing Windows UI Automation observation contract with a fresh exact-generation Field heartbeat, display contract, cursor state, and explicit modal state. It rejects screenshot bytes, redacts sensitive element identity/value/actions, defaults to structural-only metadata with all UI text removed, and advances scene versions only after successful validation. A separate `consented_ui_text` policy exists but is not enabled by runtime wiring. Authenticated guest-to-host scene transport and live Windows evidence remain open.
+
 - top-level windows and generations;
 - process identity;
 - active/focused window;

@@ -156,6 +156,9 @@ function validateScene(scene: FieldSceneSnapshot): FieldSceneSnapshot {
     if (elementIds.has(element.id)) throw new Error("Field scene element IDs must be unique.");
     elementIds.add(element.id);
     if (!windows.has(element.windowId)) throw new Error("Every Field scene element must belong to a listed window.");
+    if (element.isSensitive && (element.value !== undefined || element.automationId !== undefined || element.supportedActions.length > 0)) {
+      throw new Error("Sensitive Field scene elements cannot expose values, automation identity, or actions.");
+    }
   }
   if (scene.modal.present && !windows.has(scene.modal.windowId!)) {
     throw new Error("Modal window must exist in the Field scene window registry.");

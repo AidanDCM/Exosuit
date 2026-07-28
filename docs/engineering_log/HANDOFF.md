@@ -67,7 +67,7 @@ These percentages are planning estimates, not release claims:
 | Virtual-desktop coordination | 60% | 15% | 30% |
 | Supervisor, multi-agent, and Field management | 75% | 30% | 45% |
 | Browser companion | 40% | 10% | 20% |
-| Visual sensor and privacy pipeline | 15% | 0% | 5% |
+| Visual sensor and privacy pipeline | 25% | 5% | 10% |
 | Teach and demonstration foundations | 55% | 20% | 30% |
 | Processing, Shadow, Correction, and personal models | 42% | 15% | 22% |
 | Skills and Assisted Mode | 50% | 15% | 25% |
