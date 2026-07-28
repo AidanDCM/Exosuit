@@ -89,6 +89,8 @@ try {
     $logRoot = Join-Path $root 'Exosuit\Logs'
     $diagnosticsRoot = Join-Path $root 'Exosuit\Diagnostics'
     $taskPath = Join-Path $root 'Windows\System32\Tasks\ExosuitFieldGuest'
+    $taskEventLogPath = Join-Path $root 'Windows\System32\winevt\Logs\Microsoft-Windows-TaskScheduler%4Operational.evtx'
+    $setupCompleteLogPath = Join-Path $logRoot 'setup-complete.log'
 
     $result.agentFiles = @(
         Get-ChildItem -LiteralPath $agentRoot -File -Force -ErrorAction SilentlyContinue |
@@ -105,6 +107,32 @@ try {
             Sort-Object Name |
             ForEach-Object { [ordered]@{ name = $_.Name; length = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }
     )
+    $result.setupComplete = [ordered]@{ exists = Test-Path -LiteralPath $setupCompleteLogPath -PathType Leaf }
+    if ($result.setupComplete.exists) {
+        $setupCompleteItem = Get-Item -LiteralPath $setupCompleteLogPath
+        $result.setupComplete.length = $setupCompleteItem.Length
+        $result.setupComplete.sha256 = (Get-FileHash -LiteralPath $setupCompleteLogPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($setupCompleteItem.Length -eq 0) {
+            $result.setupComplete.classification = 'empty'
+        } else {
+            $setupCompleteText = Get-Content -LiteralPath $setupCompleteLogPath -Raw
+            $result.setupComplete.classification = if ($setupCompleteText -match '(?is)cannot convert.+SwitchParameter.+Confirm') {
+                'confirm_switch_binding'
+            } elseif ($setupCompleteText -match '(?is)(Access is denied|0x80070005)' -and
+                      $setupCompleteText -match '(?is)(Register-ScheduledTask|ExosuitFieldGuest)') {
+                'task_registration_access_denied'
+            } elseif ($setupCompleteText -match '(?is)(Register-ScheduledTask|Unable to register ExosuitFieldGuest)') {
+                'task_registration_error'
+            } elseif ($setupCompleteText -match '(?is)Start-ScheduledTask') {
+                'task_start_error'
+            } elseif ($setupCompleteText -match '(?is)(Initialize-ExosuitDevelopmentAccess|Development access)') {
+                'development_access_error'
+            } else {
+                'unclassified_nonempty'
+            }
+            $setupCompleteText = $null
+        }
+    }
     $bootstrapReportPath = Join-Path $diagnosticsRoot 'bootstrap-report.json'
     if (Test-Path -LiteralPath $bootstrapReportPath -PathType Leaf) {
         $bootstrapReport = Get-Content -LiteralPath $bootstrapReportPath -Raw | ConvertFrom-Json
@@ -136,6 +164,28 @@ try {
         $result.task.command = $taskXml.SelectSingleNode("//*[local-name()='Exec']/*[local-name()='Command']").InnerText
         $result.task.arguments = $taskXml.SelectSingleNode("//*[local-name()='Exec']/*[local-name()='Arguments']").InnerText
         $result.task.triggerTypes = @($taskXml.SelectNodes("//*[local-name()='Triggers']/*") | ForEach-Object LocalName)
+        $enabledNode = $taskXml.SelectSingleNode("//*[local-name()='Settings']/*[local-name()='Enabled']")
+        $startWhenAvailableNode = $taskXml.SelectSingleNode("//*[local-name()='Settings']/*[local-name()='StartWhenAvailable']")
+        $multipleInstancesNode = $taskXml.SelectSingleNode("//*[local-name()='Settings']/*[local-name()='MultipleInstancesPolicy']")
+        $result.task.enabled = $null -eq $enabledNode -or $enabledNode.InnerText -ceq 'true'
+        $result.task.startWhenAvailable = $null -ne $startWhenAvailableNode -and $startWhenAvailableNode.InnerText -ceq 'true'
+        $result.task.multipleInstancesPolicy = if ($null -eq $multipleInstancesNode) { $null } else { $multipleInstancesNode.InnerText }
+    }
+    $result.taskEvents = [ordered]@{ exists = Test-Path -LiteralPath $taskEventLogPath -PathType Leaf; events = @() }
+    if ($result.taskEvents.exists) {
+        $taskEvents = @(Get-WinEvent `
+            -Path $taskEventLogPath `
+            -FilterXPath "*[EventData[Data='\ExosuitFieldGuest']]" `
+            -MaxEvents 64 `
+            -ErrorAction SilentlyContinue)
+        $result.taskEvents.events = @($taskEvents | ForEach-Object {
+            [ordered]@{
+                id = [int]$_.Id
+                level = [int]$_.Level
+                recordId = [long]$_.RecordId
+                timeCreated = if ($null -eq $_.TimeCreated) { $null } else { $_.TimeCreated.ToUniversalTime().ToString('O') }
+            }
+        })
     }
     $result.success = $true
 } catch {

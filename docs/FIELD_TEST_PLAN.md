@@ -279,6 +279,10 @@ Offline guest diagnosis now has a canonical bounded inspector. It refuses a runn
 
 The inspector may project a bootstrap report only through a fixed metadata allowlist: report digest and timestamp plus check names, pass/fail booleans, observation timestamps, and derived failed-check names. It must not export check summaries, evidence objects, identity payloads, configuration contents, or log contents.
 
+Scheduled-task dispatch diagnosis is similarly allowlisted. The inspector may report task enabled/start-when-available/multiple-instance settings plus Task Scheduler event IDs, numeric levels, record IDs, and UTC timestamps filtered to the exact `\ExosuitFieldGuest` task. It must not export event messages, property values, user identities, command output, or unrelated events.
+
+The system-generated SetupComplete log may be reduced to a fixed category (`empty`, known confirmation-binding failure, task registration/access/start failure, development-access failure, or unclassified nonempty) plus its length and digest. Raw text, matched excerpts, paths, arguments, and error messages must not leave the mounted guest.
+
 Expired-first-use development recovery has a separate reviewed repair tool. It is not diagnostic-only: apply requires an exact off VM, exact owner confirmation, reviewed manifest/agent/initializer hashes, no existing enrollment, transactional rollback, and guaranteed dismount. Plan-only, wrong-state, wrong-hash, reparse, existing-enrollment, partial-swap, and dismount-failure cases require evidence before production use.
 
 - top-level windows and generations;
