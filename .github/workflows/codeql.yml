@@ -1,8 +1,11 @@
 name: Security Audit
 
+# See the trigger note in ci.yml. `push` covered `build/**` as well as `main`, so every
+# push to the canonical branch ran these audits twice for the same commit — once for the
+# push and once through PR #1.
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main]
     paths:
       - "src/**"
       - "tests/**"

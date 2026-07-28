@@ -1,8 +1,18 @@
 name: Exosuit CI
 
+# Triggers are deliberately non-overlapping. `push` covered `build/**` as well as `main`,
+# so every push to the canonical branch fired a push run AND a pull_request run for the
+# same commit through PR #1 — identical work, billed twice, on a private repo where
+# Windows minutes count double against the allowance.
+#
+# `push` now validates post-merge on main only; `pull_request` validates pre-merge. A
+# commit is therefore checked exactly once.
+#
+# Trade-off: a `build/**` branch with no open PR gets no automatic run. Open the PR (the
+# documented workflow here) or use workflow_dispatch.
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main]
     paths:
       - "src/**"
       - "tests/**"
