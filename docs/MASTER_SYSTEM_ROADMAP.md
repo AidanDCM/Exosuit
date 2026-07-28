@@ -805,7 +805,11 @@ These remain **measurements, not targets.** Setting service targets is an owner 
 
 That removed roughly a quarter of the cost at 100 steps and **did not change the complexity class.** The remaining dominant cost, still about half of self-time, is `#saveCheckpoint`: it clones the whole workflow and the store then re-parses and serializes it, once per step, which is O(n) per step by construction.
 
-**Still open, and an owner decision.** Making this linear requires either incremental or delta checkpointing, or dropping the defensive clone in `#saveCheckpoint` and requiring stores not to retain the record. Both change persistence behavior, so the change-control rule applies: decision-log entry, threat-model update, test-plan update, rollback plan, and owner review before implementation. Until then a maximum workflow length should be set as an explicit Phase 10 quota, because unbounded superlinear cost is a denial-of-service shape.
+**Still open, and an owner decision.** Making this linear requires either incremental or delta checkpointing, or dropping the defensive clone in `#saveCheckpoint` and requiring stores not to retain the record. Both change persistence behavior, so the change-control rule applies: decision-log entry, threat-model update, test-plan update, rollback plan, and owner review before implementation.
+
+**Bounded in the meantime (2026-07-28).** `maximumWorkflowSteps` was added to `DEFAULT_RESOURCE_QUOTA` and is enforced by `WorkflowRuntime.create`, which is the only point where refusing costs nothing. The default of **100** is derived from the baseline above rather than chosen for roundness: scheduler overhead alone is 9.7 ms at 10 steps, 172.3 ms at 50, and 847.7 ms at 100, so 100 keeps the worst case under about a second while leaving ample headroom for realistic multi-window workflows, which run to tens of steps. The schema previously permitted 1,000, which on that curve implies roughly a minute and a half of pure scheduling before any real work begins.
+
+This bounds the denial-of-service shape; it does not fix the complexity. Raising the limit should be a deliberate decision made with the curve in mind, and the honest fix for genuinely long workflows is linear scheduling, not a wider bound.
 
 ### Objectives
 

@@ -11,6 +11,7 @@ import {
   type WorkflowDefinition,
   type WorkspaceSnapshot,
 } from "./coordinator.js";
+import { DEFAULT_RESOURCE_QUOTA } from "./resourceGovernance.js";
 
 export const workflowStatusSchema = z.enum([
   "pending",
@@ -311,6 +312,7 @@ export class WorkflowRuntime {
   readonly #artifacts: WorkflowArtifactStore;
   readonly #checkpoints: WorkflowCheckpointStore;
   readonly #audit: CoordinatorAuditTimeline;
+  readonly #maximumWorkflowSteps: number;
   readonly #controllers = new Map<string, AbortController>();
 
   constructor(
@@ -320,6 +322,8 @@ export class WorkflowRuntime {
       artifacts?: WorkflowArtifactStore;
       checkpoints?: WorkflowCheckpointStore;
       audit?: CoordinatorAuditTimeline;
+      /** Overrides `DEFAULT_RESOURCE_QUOTA.maximumWorkflowSteps`. See that constant. */
+      maximumWorkflowSteps?: number;
     } = {},
   ) {
     this.#workspaceRegistry = options.workspaceRegistry ?? new WorkspaceRegistry();
@@ -327,6 +331,15 @@ export class WorkflowRuntime {
     this.#artifacts = options.artifacts ?? new WorkflowArtifactStore();
     this.#checkpoints = options.checkpoints ?? new InMemoryWorkflowCheckpointStore();
     this.#audit = options.audit ?? new CoordinatorAuditTimeline();
+    this.#maximumWorkflowSteps =
+      options.maximumWorkflowSteps ?? DEFAULT_RESOURCE_QUOTA.maximumWorkflowSteps;
+    if (
+      !Number.isInteger(this.#maximumWorkflowSteps) ||
+      this.#maximumWorkflowSteps < 1 ||
+      this.#maximumWorkflowSteps > 1_000
+    ) {
+      throw new Error("maximumWorkflowSteps must be between 1 and 1000.");
+    }
   }
 
   updateWorkspace(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
@@ -339,6 +352,13 @@ export class WorkflowRuntime {
 
   create(input: RuntimeWorkflowDefinition): RuntimeWorkflowRecord {
     const definition = runtimeWorkflowDefinitionSchema.parse(input);
+    // Refused at creation, which is the only point where refusing costs nothing. Scheduling
+    // is superlinear in step count, so an unbounded definition is a denial-of-service shape.
+    if (definition.steps.length > this.#maximumWorkflowSteps) {
+      throw new Error(
+        `Workflow exceeds the maximum of ${this.#maximumWorkflowSteps} steps (received ${definition.steps.length}).`,
+      );
+    }
     validateWorkflowGraph(definition as WorkflowDefinition);
     this.#validateStepMetadata(definition);
     if (this.#workflows.has(definition.workflowId)) {

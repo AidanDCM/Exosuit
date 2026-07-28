@@ -8,6 +8,15 @@ export const resourceQuotaSchema = z.object({
   maximumQueuedStepsPerSession: z.number().int().min(1).max(100_000),
   maximumConcurrentObservations: z.number().int().min(1).max(1_000),
   maximumAuditBytes: z.number().int().min(1_024).max(10 * 1024 * 1024 * 1024),
+  /**
+   * Steps permitted in a single workflow definition.
+   *
+   * Scheduling cost is superlinear in step count, so this is a denial-of-service bound
+   * rather than a stylistic limit: a pilot submitting one very long workflow can consume
+   * disproportionate scheduler time. See `maximumWorkflowSteps` in DEFAULT_RESOURCE_QUOTA
+   * for how the default was derived.
+   */
+  maximumWorkflowSteps: z.number().int().min(1).max(1_000),
 });
 export type ResourceQuota = z.infer<typeof resourceQuotaSchema>;
 
@@ -18,6 +27,20 @@ export const DEFAULT_RESOURCE_QUOTA: ResourceQuota = {
   maximumQueuedStepsPerSession: 1_000,
   maximumConcurrentObservations: 8,
   maximumAuditBytes: 512 * 1024 * 1024,
+  /**
+   * Derived from measurement, not chosen for roundness. `docs/qa/evidence/
+   * 2026-07-28-phase10-benchmark-baseline.md` records scheduler overhead alone, with a
+   * no-op executor: 9.7 ms at 10 steps, 172.3 ms at 50, and 847.7 ms at 100. Cost grows
+   * faster than step count, so the schema ceiling of 1,000 would imply roughly a minute
+   * and a half of pure scheduling before any real work happens.
+   *
+   * 100 keeps worst-case scheduler overhead under about a second while leaving ample room
+   * for realistic multi-window workflows, which run to tens of steps rather than hundreds.
+   *
+   * Raise it deliberately and with the curve in mind. The honest fix for long workflows is
+   * to make scheduling linear, not to widen this bound.
+   */
+  maximumWorkflowSteps: 100,
 };
 
 export type ResourceSnapshot = {

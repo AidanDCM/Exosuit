@@ -12,6 +12,7 @@ import {
   type RuntimeWorkflowDefinition,
 } from "../src/workflowRuntime.js";
 import type { WorkspaceSnapshot } from "../src/coordinator.js";
+import { DEFAULT_RESOURCE_QUOTA } from "../src/resourceGovernance.js";
 
 function workspace(
   currentVirtualDesktopId: string | null = "desktop-a",
@@ -180,6 +181,36 @@ describe("workflow runtime", () => {
     });
     expect(artifacts[1]?.integrityHash).toMatch(/^[a-f0-9]{64}$/);
     expect(runtime.verifyAudit()).toEqual({ valid: true });
+  });
+
+  // Phase 10 quota. Scheduler cost is superlinear in step count, so an unbounded workflow
+  // definition is a denial-of-service shape: one long submission consumes disproportionate
+  // scheduler time. The bound is enforced at creation, the only point where refusing is free.
+  it("refuses a workflow longer than the configured step quota", () => {
+    const runtime = new WorkflowRuntime({ maximumWorkflowSteps: 5 });
+    runtime.updateWorkspace(workspace());
+    const step = (index: number) => ({
+      ...definition().steps[0]!,
+      stepId: `step-${index}`,
+      dependsOn: index === 0 ? [] : [`step-${index - 1}`],
+      outputArtifactNames: [],
+      inputArtifactNames: [],
+    });
+    const build = (count: number) => ({
+      ...definition(),
+      workflowId: `quota-${count}`,
+      steps: Array.from({ length: count }, (_, index) => step(index)),
+    });
+
+    expect(runtime.create(build(5)).definition.steps).toHaveLength(5);
+    expect(() => runtime.create(build(6))).toThrow(/exceeds the maximum of 5 steps/);
+  });
+
+  it("defaults the step quota to the documented resource limit", () => {
+    // The default is derived from the benchmark baseline, not chosen for roundness.
+    expect(DEFAULT_RESOURCE_QUOTA.maximumWorkflowSteps).toBe(100);
+    expect(() => new WorkflowRuntime({ maximumWorkflowSteps: 0 })).toThrow(/between 1 and 1000/);
+    expect(() => new WorkflowRuntime({ maximumWorkflowSteps: 1_001 })).toThrow(/between 1 and 1000/);
   });
 
   it("rejects undeclared, duplicate, and nondependency artifacts", () => {

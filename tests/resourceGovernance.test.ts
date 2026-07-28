@@ -14,6 +14,7 @@ describe("resource governance", () => {
       maximumQueuedStepsPerSession: 2,
       maximumConcurrentObservations: 2,
       maximumAuditBytes: 2_048,
+      maximumWorkflowSteps: 2,
     });
     const base = {
       trackedWindows: 2,
