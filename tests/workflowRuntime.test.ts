@@ -273,6 +273,94 @@ describe("workflow runtime", () => {
     expect(result.steps["read-a"]?.error).toMatch(/passed verification/);
   });
 
+  // Master roadmap Phase 2 GitHub test: "failed verification blocks dependent steps",
+  // and Execution invariant 4: "Failed or partial verification halts dependent work."
+  // The test above runs a single step, so it proves a step fails without passed
+  // verification but never that its dependents are halted.
+  it("blocks dependent steps when an upstream step fails verification", async () => {
+    const runtime = new WorkflowRuntime();
+    runtime.updateWorkspace(workspace());
+    runtime.create({ ...definition(), workflowId: "verification-halts" });
+
+    const attempted: string[] = [];
+    const result = await runtime.runUntilBlocked("verification-halts", {
+      async execute(context) {
+        attempted.push(context.step.stepId);
+        if (context.step.stepId === "read-a") {
+          return {
+            status: "succeeded",
+            summary: "Read order 42.",
+            verificationStatus: "passed",
+            outputs: [{ name: "orderNumber", value: "42" }],
+          };
+        }
+        // calculate-b claims success but cannot prove it.
+        return {
+          status: "succeeded",
+          summary: "Claimed a total without evidence.",
+          verificationStatus: "partial",
+        };
+      },
+    });
+
+    // The unverified step must not be recorded as succeeded.
+    expect(result.steps["calculate-b"]?.status).toBe("failed");
+    expect(result.steps["calculate-b"]?.error).toMatch(/passed verification/);
+
+    // Its dependent must never run, and must be blocked rather than left pending.
+    expect(attempted).toEqual(["read-a", "calculate-b"]);
+    expect(attempted).not.toContain("write-a");
+    expect(result.steps["write-a"]?.status).toBe("blocked");
+
+    // The failed step produced no artifact, so nothing downstream can consume it.
+    expect(runtime.listArtifacts("verification-halts").map((a) => a.name)).toEqual([
+      "orderNumber",
+    ]);
+    expect(runtime.verifyAudit()).toEqual({ valid: true });
+  });
+
+  // Master roadmap Phase 2 GitHub test: "crash/restart resume from last verified
+  // checkpoint". The uncertain-external-effect path is covered above; this covers the
+  // clean case, where a verified checkpoint is resumed after a restart.
+  it("resumes from the last verified checkpoint after a restart", async () => {
+    const checkpoints = new InMemoryWorkflowCheckpointStore();
+    const first = new WorkflowRuntime({ checkpoints });
+    first.updateWorkspace(workspace());
+    first.create({ ...definition(), workflowId: "resume-clean" });
+
+    // Run only the first step, then stop as if the process were about to exit.
+    const afterFirstStep = await first.runNext("resume-clean", new FixtureExecutor());
+    expect(afterFirstStep.steps["read-a"]?.status).toBe("succeeded");
+    first.pause("resume-clean", "Simulated shutdown after a verified step.");
+
+    // A fresh runtime, as after a restart, sharing only the durable checkpoint store.
+    const restarted = new WorkflowRuntime({ checkpoints });
+    restarted.updateWorkspace(workspace());
+    const hydrated = await restarted.hydrate("resume-clean");
+
+    // The verified step stays done and is not re-executed; no step is uncertain.
+    expect(hydrated.steps["read-a"]?.status).toBe("succeeded");
+    expect(
+      Object.values(hydrated.steps).some((record) => record.status === "uncertain"),
+    ).toBe(false);
+    expect(restarted.listArtifacts("resume-clean").map((a) => a.name)).toEqual([
+      "orderNumber",
+    ]);
+
+    restarted.resume("resume-clean");
+    const executor = new FixtureExecutor();
+    const completed = await restarted.runUntilBlocked("resume-clean", executor);
+
+    // Only the remaining steps run, and the recovered artifact feeds them.
+    expect(executor.calls).toEqual(["calculate-b", "write-a"]);
+    expect(completed.status).toBe("completed");
+    expect(restarted.listArtifacts("resume-clean").map((a) => a.name)).toEqual([
+      "orderNumber",
+      "total",
+    ]);
+    expect(restarted.verifyAudit()).toEqual({ valid: true });
+  });
+
   it("hydrates an interrupted external-effect step as uncertain and requires reconciliation", async () => {
     const checkpoints = new InMemoryWorkflowCheckpointStore();
     const runtime = new WorkflowRuntime({ checkpoints });

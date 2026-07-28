@@ -403,6 +403,10 @@ All tests in `docs/CODEX_HANDOFF.md` pass on one exact commit. PR #1 remains dra
 
 This surface is **not exposed by default**. It requires `EXOSUIT_MCP_SURFACE=full`; the default `core` composition omits it so Phase 1 acceptance runs against the reviewed thirteen-tool surface. Coordinator acceptance is Phase 2 work with its own gate.
 
+**Gate coverage (2026-07-28):** the thirteen GitHub tests listed below are now all covered. Ten were already implemented; three gaps were audited and closed — failed verification blocking dependent steps, three windows observed concurrently, and crash/restart resume from a verified checkpoint. See `docs/engineering_log/2026-07-28-close-phase-two-github-gate-gaps.md`.
+
+This does **not** promote Phase 2. The GitHub half of the gate is complete, but it has never run on hosted CI, and the local Windows tests below — three interactive windows, focus switching, minimize/restore, user-initiated focus changes, an intervening dialog, and a target restart — remain entirely unexecuted. They need the same disposable environment as Phase 1.
+
 ### Objective
 
 Allow one pilot to perceive, reason across, and coordinate multiple windows in one Windows session without confusing identity, focus, data, or execution order.

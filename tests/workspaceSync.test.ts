@@ -69,6 +69,54 @@ describe("workspace synchronization", () => {
     expect(third.windows[0]?.windowGeneration).toBe(2);
   });
 
+  // Master roadmap Phase 2 GitHub test: "three fake windows observed concurrently".
+  // The other tests here use a single window, so nothing proved that several windows
+  // keep distinct identity, generation, and privacy within one snapshot.
+  it("observes three windows concurrently with distinct identity and no plain titles", async () => {
+    const orchestrator = new ObservationOrchestrator({ agent: {} as never });
+    const window = (id: string, processName: string, title: string, processId: number) => ({
+      id,
+      title,
+      processName,
+      processId,
+      isActive: id === "w1",
+      isMinimized: false,
+    });
+    const titles = ["Private customer title", "Confidential invoice 4471", "Patient record ABC"];
+    orchestrator.observation = {
+      ...orchestrator.observation,
+      activeWindow: window("w1", "notepad", titles[0]!, 1),
+      windows: [
+        window("w1", "notepad", titles[0]!, 1),
+        window("w2", "calculator", titles[1]!, 2),
+        window("w3", "browser", titles[2]!, 3),
+      ],
+    };
+
+    const snapshot = await orchestrator.observe().then(() =>
+      new WorkspaceSynchronizer({ orchestrator, runtime: new WorkflowRuntime() }).refresh(),
+    );
+
+    expect(snapshot.windows).toHaveLength(3);
+    expect(snapshot.windows.map((w) => w.windowId).sort()).toEqual(["w1", "w2", "w3"]);
+    expect(snapshot.windows.map((w) => w.processName).sort()).toEqual([
+      "browser",
+      "calculator",
+      "notepad",
+    ]);
+
+    // Identity must be per-window, not shared or reused across the snapshot.
+    expect(new Set(snapshot.windows.map((w) => w.fingerprint)).size).toBe(3);
+    for (const record of snapshot.windows) expect(record.windowGeneration).toBe(1);
+
+    // Exactly one window is active even though three are tracked concurrently.
+    expect(snapshot.windows.filter((w) => w.isActive).map((w) => w.windowId)).toEqual(["w1"]);
+
+    // No plain title may survive into the workspace model, for any of the three.
+    const serialized = JSON.stringify(snapshot);
+    for (const title of titles) expect(serialized).not.toContain(title);
+  });
+
   it("removes closed windows from the live snapshot", async () => {
     const orchestrator = new ObservationOrchestrator({
       agent: {} as never,
