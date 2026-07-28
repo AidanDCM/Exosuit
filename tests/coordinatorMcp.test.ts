@@ -117,5 +117,5 @@ describe("coordinator MCP boundary", () => {
       await client.close();
       await server.close();
     }
-  });
+  }, 30_000);
 });

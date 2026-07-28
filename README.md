@@ -1,45 +1,90 @@
 # Exosuit
 
-Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. The pilot supplies intent; the local runtime owns sensing, policy, approval, scheduling, execution, verification, audit, deadlines, persistence, and emergency stopping.
+Exosuit is a private, model-independent computer embodiment platform for authorized AI pilots such as ChatGPT or Claude.
 
-The goal is **human flexibility, machine precision, transparent operation, and local user authority**—not hidden automation.
+## Read the complete plan first
+
+The full product, architecture, learning program, implementation order, tests, audits, failure cases, evidence gates, rollback, and production requirements are written in:
+
+> **[`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — Exosuit Complete Master System Plan**
+
+That document is the single planning authority for the repository. It covers the complete program from exact-head validation through Hyper-V, Teach, Shadow, Correction, personal task/motor/typing/timing/language models, Assisted Mode, synthetic Pilot, ChatGPT acceptance, owner acceptance, packaging, security, privacy, and production operations.
+
+Do not treat a narrower architecture note, GitHub issue, PR description, or implementation-status file as a replacement for the master plan.
+
+For the practical execution sequence, use [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md). It groups the master roadmap's L0–L20 gates into eight build waves without replacing or weakening them.
+
+## One repository, two separate systems
+
+| System | Meaning | Responsibility |
+|---|---|---|
+| **Exosuit Glove** | body, hand, and nervous system | sensing, planning support, policy, semantic and physical execution, verification, workflow state, recovery, audit, and emergency stop |
+| **Exosuit Field** | controlled computer and teaching environment | isolated Windows session, stable display, applications, VM/storage lifecycle, task workspace, and owner-consented demonstration surface |
+
+> **The Glove is not the VM. The Field is not the agent.**
+
+They share one repository but retain separate identities, generations, lifecycles, policies, evidence, tests, manuals, failure states, and rollback paths.
+
+The pilot supplies intent. The Glove observes and acts within local policy. The Field supplies the Windows environment in which the owner teaches and the Glove later works.
+
+## Product goal
+
+The target is a transparent, owner-authorized desktop agent that can:
+
+- watch complete tasks performed inside the Field after explicit consent;
+- record what was visible, what changed, what the owner did, how it was done, and when;
+- learn task order, attention, reading, mouse, typing, timing, language, and correction patterns as separate versioned models;
+- predict behavior in Shadow Mode without input authority;
+- collect owner corrections;
+- perform validated substeps in Assisted Mode;
+- complete bounded workflows in Pilot Mode with fresh perception, verification, recovery, audit, and immediate local interruption.
+
+The system may become highly personalized. It must not claim that an AI-performed action proves the owner personally performed it.
+
+## Browser rule
+
+A browser is an ordinary Windows application inside the Field.
+
+The required product path does not depend on Playwright, DOM automation, an AI browser, or a browser extension as the main controller. Exosuit uses fresh Windows accessibility state, policy-bound visual state when needed, and ordinary guest-local mouse and keyboard input.
 
 ## Current status
 
-**Strong single-agent Windows core with bounded live acceptance; multi-window and later product foundations are in active development. Production use remains denied.**
+### Glove
 
-The current branch includes:
+The Glove has substantial implemented source and bounded Windows evidence for:
 
-- a tool-only MCP server suitable for a private ChatGPT app,
-- real MCP client/server protocol tests,
-- fake desktop provider for deterministic testing,
-- Windows UI Automation sensing and semantic actions,
-- standard Windows pointer, click, Unicode typing, and bounded hotkey motor code,
-- restart-only and allowlist-only physical-input activation,
-- proposal → deterministic policy → local approval → fresh recheck → execution → verification,
-- immutable approval fingerprints,
-- gateway/provider deadlines and local emergency stop,
-- sanitized versioned application maps,
-- dual tamper-evident audit ledgers,
-- prompt-injection and loop guards,
-- local approval/control panel,
-- multi-window workspace/window generation contracts,
-- workflow dependency graphs, step lifecycle, window locks, focus leases, and session queues,
-- structured cross-window artifacts with provenance and integrity hashes,
-- checkpoints, uncertain-effect recovery, idempotency keys, and coordinator audit timelines,
-- narrow MCP workflow create/read/run/pause/resume/cancel tools,
-- virtual-desktop identity, availability, transition, and local switch-intent foundations,
-- multi-agent health/capability registry and authenticated replay-resistant registration foundations,
-- transparent browser semantic companion contracts and mock provider,
-- disabled-by-default synthetic visual privacy/consent foundation,
-- signed bounded skill-manifest and permission-upgrade foundation,
-- quotas, queue backpressure, and latency percentile foundations.
+- MCP contracts;
+- fake desktop providers and protocol tests;
+- Windows UI Automation observation and semantic actions;
+- pointer movement, click, Unicode typing, and hotkeys;
+- local policy and approval;
+- multi-window workflow foundations;
+- checkpoints and no-blind-retry recovery;
+- tamper-evident audits;
+- emergency stop.
 
-### Evidence boundary
+### Field
 
-The single-agent Windows core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
+The Field line is now being consolidated with the Glove and contains executed pure/fake foundations for:
 
-The newer workflow, virtual-desktop, multi-agent, browser, visual-policy, skill, and resource-governance slices are GitHub-source implementations with focused local reconstruction tests. They are **not** yet approved as interactive Windows, connected ChatGPT, multi-window, virtual-desktop, multi-agent, browser-extension, visual-capture, or production evidence.
+- Field identity and monotonically increasing generation;
+- signed policy and attestation;
+- Hyper-V Generation 2 desired state;
+- immutable base image and disposable differencing OS overlay;
+- optional persistent personal state and separate task disk;
+- guarded Windows host, apply, rollback, bootstrap, destroy, and validation scripts;
+- authenticated replay-resistant host/guest channel contracts;
+- heartbeat and readiness contracts;
+- typed guest command authorization;
+- Teach recorder state and encrypted demonstration storage;
+- visual retention policy;
+- scene graph;
+- Shadow comparison metrics with execution disabled;
+- path and artifact boundaries;
+- recovery and privacy-safe diagnostics;
+- TypeScript/.NET wire fixtures;
+- synthetic acceptance application;
+- manuals, audits, threat model, failure matrix, and CI contracts.
 
 ### Hosted CI is blocked by account billing, not by this repository
 
@@ -59,37 +104,40 @@ npm run validate:typescript
 
 Re-run `runner-smoke.yml` from the Actions tab to check whether billing has been restored. It is the cheapest available probe; keep it.
 
-## Architecture
+### Not yet proven for production
 
-```text
-ChatGPT / Claude / another MCP host
-                 |
-          narrow MCP tools
-                 v
-       Exosuit Supervisor Gateway
-  - single-action orchestrator
-  - workflow DAG/runtime
-  - workspace and agent registries
-  - structured artifact/checkpoint stores
-  - prompt-injection and loop guards
-  - gateway deadlines and audit
-                 |
-       authenticated agent boundary
-                 v
-           .NET Windows agent
-  - fresh UI Automation state
-  - deterministic policy
-  - local approval fingerprints
-  - bounded provider operations
-  - verification and local audit
-  - emergency stop
-                 |
-      fake provider / Windows UIA
-                 |
-     optional locally gated motor
+The former Field head `e10e921` passed its complete local L0 validator on 2026-07-28. A disposable v13 development Field also recorded provisioning, authenticated KVP transport, bootstrap, heartbeat, and readiness evidence. Those results are bounded to their exact commits and development configuration; they are not production acceptance.
+
+Still unproven:
+
+- exact-head validation of the consolidated Glove/Field commit;
+- repeatable Hyper-V lifecycle, isolation, destruction, and failure-injection evidence;
+- production-authenticated host/guest transport, key storage, and rotation;
+- production guest bootstrap and heartbeat without development auto-login/unattended setup;
+- live scene production;
+- live consented Teach recording;
+- actual demonstration processing and retrieval;
+- actual Shadow predictor;
+- personal task, motor, typing, timing, language, and correction models;
+- live cross-VM artifact transport;
+- Pilot integration;
+- ChatGPT-to-Field acceptance;
+- real account or consequential website operation;
+- production readiness.
+
+## Current execution gate
+
+The next mandatory phase is L0 in the master plan and GitHub issue #12.
+
+On an authenticated Windows checkout of the exact branch head:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
-A single Windows session has one foreground focus and one physical mouse/keyboard stream. Exosuit may observe and plan across many windows, but physical actions are serialized through a focus lease. Genuine physical parallelism requires separate healthy agents inside separate Windows sessions or VMs.
+This runner is intended to preserve exact evidence for repository validation, the master-plan validator, Field validation, TypeScript, tests, builds, PowerShell parsing, .NET, and the read-only Hyper-V host check.
+
+Hosted GitHub jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no logs. That is an infrastructure block—not a repository pass or failure.
 
 ## Current MCP surface
 
@@ -120,7 +168,7 @@ The exposed surface is selected by `EXOSUIT_MCP_SURFACE`:
 
 The desktop core is thirteen tools. Both execution tools route through one authoritative execution path and one local policy path; the physical variant cannot supply an approval token.
 
-### Coordinator
+### Coordinator tools
 
 Requires `EXOSUIT_MCP_SURFACE=full`. Not exposed by default and not part of Phase 1 acceptance.
 
@@ -139,7 +187,55 @@ Requires `EXOSUIT_MCP_SURFACE=full`. Not exposed by default and not part of Phas
 - `desktop_get_workflow_audit`
 - `desktop_list_agents`
 
-Workflow tools do not approve their own work. Desktop steps still enter the ordinary proposal, local policy, approval, fresh observation, execution, and verification pipeline.
+## Architecture summary
+
+```text
+Owner / local administration
+         |
+         +-------------------------+
+         |                         |
+         v                         v
+Exosuit Glove Supervisor     Exosuit Field Manager
+         |                         |
+         +------ authenticated ----+
+                        |
+                        v
+              Exosuit Field VM
+     +--------------------------------------+
+     | Glove Agent inside Windows session   |
+     | - UI Automation and scene state      |
+     | - policy-bound vision                |
+     | - local reflex and motor             |
+     | - Teach recorder                     |
+     | - verification and emergency stop    |
+     +--------------------------------------+
+     | normal Windows desktop/applications  |
+     +--------------------------------------+
+```
+
+The host must not operate the guest by treating VMConnect or an RDP viewer as the guest desktop. One Glove agent runs inside every controlled Windows session.
+
+## Field modes
+
+### Teach
+
+The owner operates. Exosuit records only after explicit consent, with visible state and an independent stop. Teach never injects input.
+
+### Shadow
+
+The owner operates. Exosuit predicts the next intent, target, method, expected result, timing, and optional trajectory. Shadow cannot execute.
+
+### Correction
+
+The owner takes over when the system diverges. The difference becomes structured correction data.
+
+### Assisted
+
+Exosuit performs validated substeps while the owner remains the primary operator.
+
+### Pilot
+
+An authorized pilot operates a validated workflow through the Glove within a host-created, signed, bounded policy. Pilot does not administer the Field.
 
 ## Safety defaults
 
@@ -151,36 +247,28 @@ Workflow tools do not approve their own work. Desktop steps still enter the ordi
 | MCP surface | `core`; coordinator tools require explicit `EXOSUIT_MCP_SURFACE=full` |
 | bind address | `127.0.0.1` |
 | physical input | disabled |
-| full control | restart-only; cannot be enabled by MCP or the panel |
-| screenshots | disabled; no Windows capture implementation |
-| visual policy | disabled; synthetic foundation only |
-| browser companion | mock/contracts only; no installed extension |
-| remote agents | registry/auth contracts only; no production transport |
-| skills | signed registry foundation only; execution not enabled |
-| credentials and secret-bearing controls | hard denied |
-| destructive targets | hard denied |
-| real semantic actions | local review |
-| physical actions | critical risk + exact local typed confirmation |
+| Field provisioning | dry-run unless exact local confirmation |
+| host clipboard, broad drive mapping, host input | disabled |
+| base image | immutable parent only |
+| runtime OS state | disposable differencing overlay |
+| recording | disabled until consented live acceptance |
+| Shadow execution | structurally false |
+| Pilot autonomy | denied until phased validation |
+| model Field administration | blocked |
+| arbitrary shell through MCP | excluded |
+| credentials in demonstrations or model context | prohibited |
+| sensitive or untrusted ordinary export | blocked |
 
-## Validation
-
-Install dependencies with scripts disabled, then run:
-
-```bash
-npm install --ignore-scripts
-npm run validate:typescript
-```
-
-On Windows with .NET 8:
-
-```powershell
-npm run validate
-```
-
-The individual commands remain available:
+## Validation commands
 
 ```bash
+npm ci --ignore-scripts
+npm run validate:repository
+npm run validate:plan
+npm run validate:field-contract
 npm run typecheck
+npm run test:field -- --reporter=verbose
+npm run test:field-pulse -- --reporter=verbose
 npm test -- --reporter=verbose
 npm run build
 npm run test:pulse -- --reporter=verbose
@@ -188,7 +276,7 @@ npm run test:pulse -- --reporter=verbose
 
 ```powershell
 dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
-dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release -warnaserror
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
@@ -206,45 +294,43 @@ This cost two development sessions, which recorded ".NET tests: not run because 
 
 Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`.
 
-## Planning and evidence
+## Primary documents
 
-- [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Implemented architecture](docs/ARCHITECTURE.md)
+- [Complete Master System Plan](docs/MASTER_SYSTEM_ROADMAP.md)
+- [Glove/Field boundary](docs/GLOVE_FIELD_BOUNDARY.md)
+- [Field implementation status](docs/FIELD_IMPLEMENTATION_STATUS.md)
+- [Implemented Glove architecture](docs/ARCHITECTURE.md)
+- [Field architecture](docs/FIELD_ARCHITECTURE.md)
 - [Security model](docs/SECURITY_MODEL.md)
-- [Test plan](docs/TEST_PLAN.md)
-- [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
-- [Codex/local acceptance handoff](docs/CODEX_HANDOFF.md)
-- [Parts and donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
-- [GitHub-phase audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
-- [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
-- [Decision log](docs/logs/DECISION_LOG.md)
-
-`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` must describe only what exists.
+- [Shared/Glove test plan](docs/TEST_PLAN.md)
+- [Field test plan](docs/FIELD_TEST_PLAN.md)
+- [Windows and Hyper-V runbook](docs/FIELD_WINDOWS_RUNBOOK.md)
+- [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
+- [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
+- [Field threat model](docs/qa/FIELD_THREAT_MODEL.md)
+- [Field failure-injection matrix](docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md)
+- [Execution issue index](docs/qa/FIELD_EXECUTION_ISSUE_INDEX.md)
 
 ## Explicit exclusions
 
 Exosuit must not implement or claim:
 
-- stealth or undetectable automation,
-- anti-bot or anti-cheat evasion,
-- kernel or hardware impersonation for concealment,
-- credential harvesting,
-- privilege escalation,
-- arbitrary remote shell execution,
-- covert surveillance or recording,
-- bypassing application or platform security controls.
+- stealth or undetectable automation;
+- anti-bot or anti-cheat evasion;
+- kernel or hardware concealment;
+- credential harvesting;
+- privilege escalation;
+- arbitrary remote shell execution;
+- recording without owner consent;
+- covert surveillance;
+- bypassing platform security controls;
+- guaranteed indistinguishability from a person;
+- that behavioral imitation proves a human acted.
 
 ## Current holds
 
-- **PR state:** draft
-- **Merge to main:** hold
-- **Production use:** denied
-- **Real accounts or consequential targets:** denied
-- **Normal personal desktop use:** denied
-- **Connected ChatGPT acceptance:** pending
-- **Interactive three-window validation:** pending
-- **Native virtual-desktop validation:** pending
-- **Multi-agent/VM transport validation:** pending
-- **Browser extension and real browser execution:** pending
-- **Windows visual capture:** unimplemented and disabled
-- **Packaging, signing, updater, rollback, penetration testing, and release operations:** pending
+- PR #11 remains draft.
+- Merge to `build/exosuit-mvp` is held pending L0 executable validation and review.
+- Merge to `main` is denied.
+- Live recording, Shadow prediction, Pilot operation, real accounts, and consequential tasks are denied.
+- Packaging, signing, updater, privacy operations, penetration testing, and production support remain pending later master-plan phases.

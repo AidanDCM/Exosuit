@@ -43,7 +43,7 @@ jobs:
       - name: Verify TypeScript project surface
         run: test -f package.json
       - name: Resolve dependency tree without scripts
-        run: npm install --ignore-scripts --fund=false
+        run: npm ci --ignore-scripts --fund=false
       - name: Fail on high or critical advisories
         shell: bash
         run: |
