@@ -43,6 +43,7 @@ Therefore:
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
 | Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
+| demonstration processing and retrieval | `demonstrationProcessing.ts` | terminal/ambiguity/privacy/relevance/deletion/held-out tests | deterministic annotation pipeline and in-memory index only |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
 | scene graph | `fieldScene.ts` | version/focus/modal/readiness tests | no Windows producer |
 | Shadow metrics | `shadowLearning.ts` | no-execution/comparison tests | no predictor |
@@ -174,7 +175,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;
-- demonstration segmentation/retrieval or actual Shadow predictor;
+- automatic/learned segmentation, encrypted derived-index persistence, data-quality evaluation, or actual Shadow predictor;
 - personal task/motor/typing/language/timing models;
 - live artifact copy with reparse and TOCTOU protection;
 - credential broker;
@@ -203,6 +204,6 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 3. Prove destruction confinement, base-image immutability, protected key persistence, and rotation.
 4. Implement a live scene producer before any live action integration.
 5. Add live Teach hooks only after the required privacy review; prove consent, visible indication, no injection, and independent stop.
-6. Implement demonstration processing, retrieval, and Shadow; prove process-level no-input authority.
+6. Extend the deterministic processing/retrieval foundation with encrypted derived storage and quality evidence, then implement Shadow and prove process-level no-input authority.
 7. Implement correction and personal models behind independent disable paths and held-out evaluation.
 8. Integrate Assisted and Pilot one synthetic workflow at a time, with physical emergency stop and uncertain-effect reconciliation.

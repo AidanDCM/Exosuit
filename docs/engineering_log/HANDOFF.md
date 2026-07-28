@@ -69,7 +69,7 @@ These percentages are planning estimates, not release claims:
 | Browser companion | 40% | 10% | 20% |
 | Visual sensor and privacy pipeline | 15% | 0% | 5% |
 | Teach and demonstration foundations | 55% | 20% | 30% |
-| Processing, Shadow, Correction, and personal models | 20% | 5% | 10% |
+| Processing, Shadow, Correction, and personal models | 30% | 10% | 15% |
 | Skills and Assisted Mode | 50% | 15% | 25% |
 | Cockpit and owner controls | 15% | 5% | 10% |
 | Reliability and recovery | 73% | 32% | 48% |
@@ -109,7 +109,7 @@ Overall: approximately **65% implemented, 30% evidenced, and 20–25% production
 2. The identified authentication-ordering, visual-redaction, and browser-uncertainty residuals are closed with Level 4 addenda.
 3. Repeat the production-authentication Field lifecycle and negative-case matrix when an elevated disposable session is available.
 4. Scene producer, then separately reviewed Teach privacy/recording.
-5. Demonstration processing, Shadow, Correction, and held-out personal-model evaluation.
+5. Finish encrypted derived demonstration storage and quality evaluation, then Shadow, Correction, and personal-model evaluation; deterministic segmentation, retrieval, deletion, and held-out partitioning now exist.
 6. Assisted and synthetic Pilot with physical emergency stop and no-blind-retry reconciliation.
 7. ChatGPT acceptance, packaging/signing/update/rollback, security/privacy/penetration, reliability soak, operations, and owner acceptance.
 

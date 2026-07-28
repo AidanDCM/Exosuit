@@ -36,7 +36,7 @@
 | `check_runner` | PASS/REVIEW/FAIL release posture | Field implementation status and audit verdict by evidence class | manuals/audits implemented; reusable runner deferred |
 | `path_scope` | prerequisite before file tools | Windows-specific Inbox/Outbox scope with transfer direction and reparse requirement | adapted implementation and tests written |
 | `redaction_scan` | log/support-bundle redaction | demonstration payload redaction plus encrypted storage metadata restrictions | TS/.NET/store tests written |
-| `jsonl_validator` | contract and ledger validation | episode/envelope schema integrity and future event migrations | Zod/encrypted envelope now; migration validator pending |
+| `jsonl_validator` | contract and ledger validation | episode/envelope schema integrity and future event migrations | Zod/encrypted envelope plus deterministic derived-step validation; migration validator pending |
 | `evidence_source_guard` | prevents CI evidence inflation | separates pure tests, VM tests, Teach, Shadow, Pilot, owner acceptance | Field Test Plan and status doc |
 | `approval_gate` | local action approval | recording consent and host-created Field policy | consent/policy schemas now; live owner UI pending |
 | `audit_timeline` | action/workflow history | Field planning/provision/mode/fault/stop/destroy history | hash-linked audit survives validated snapshot restore |
@@ -115,6 +115,10 @@ The demonstration store adapts existing Exosuit/Parts durability principles:
 - no silent invalid-file acceptance.
 
 It adds AES-256-GCM because demonstration metadata can contain personal behavior evidence.
+
+### Demonstration retrieval preserves evidence lineage
+
+The deterministic processing foundation accepts only terminal episodes and explicit bounded semantic-step annotations. Each derived step records its exact source range and event IDs. Retrieval is restricted to the same hashed operator identity and exact layout fingerprint, omits failed and mistake behavior by default, propagates source deletion, and has no execution interface. Durable derived storage and real-data quality evidence remain deferred prerequisites.
 
 ## Glove-specific atomic units
 
