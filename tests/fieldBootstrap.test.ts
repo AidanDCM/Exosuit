@@ -4,6 +4,7 @@ import {
   FieldBootstrapEvaluator,
   REQUIRED_FIELD_DIRECTORIES,
   fieldBootstrapCheckNameSchema,
+  fieldBootstrapEnrollmentSchema,
   fieldBootstrapManifestSchema,
   fieldBootstrapReportSchema,
 } from "../src/fieldBootstrap.js";
@@ -60,6 +61,16 @@ function report(checks = fieldBootstrapCheckNameSchema.options.map((name) => ({
     manifestDigest: sha256Canonical(value),
     reportedAt: "2026-07-21T18:00:02.000Z",
     checks,
+  });
+}
+
+function enrollment() {
+  const value = manifest();
+  return fieldBootstrapEnrollmentSchema.parse({
+    contractVersion: 1,
+    manifestDigest: sha256Canonical(value),
+    identity,
+    enrolledAt: "2026-07-21T18:05:00.000Z",
   });
 }
 
@@ -122,6 +133,41 @@ describe("Field guest bootstrap", () => {
       ),
     ).toThrow(/reporting interval/);
     expect(() => evaluator.evaluate(report(), new Date("2026-07-21T18:10:00.000Z"))).toThrow(/expired/);
+  });
+
+  it("allows exact durable enrollment after expiry while rejecting forged or late enrollment", () => {
+    const value = manifest();
+    const digest = sha256Canonical(value);
+    const evaluator = new FieldBootstrapEvaluator({ manifest: value, manifestDigest: digest });
+    const rebootReport = fieldBootstrapReportSchema.parse({
+      ...report(),
+      enrollment: enrollment(),
+      reportedAt: "2026-07-21T18:20:02.000Z",
+      checks: fieldBootstrapCheckNameSchema.options.map((name) => ({
+        name,
+        passed: true,
+        observedAt: "2026-07-21T18:20:01.000Z",
+        summary: `${name} passed after reboot`,
+        evidence: {},
+      })),
+    });
+    expect(evaluator.evaluate(rebootReport, new Date("2026-07-21T18:20:03.000Z"))).toMatchObject({ status: "ready" });
+
+    expect(() => evaluator.evaluate({
+      ...rebootReport,
+      enrollment: { ...rebootReport.enrollment!, manifestDigest: "e".repeat(64) },
+    }, new Date("2026-07-21T18:20:03.000Z"))).toThrow(/enrollment manifest digest/);
+    expect(() => evaluator.evaluate({
+      ...rebootReport,
+      enrollment: {
+        ...rebootReport.enrollment!,
+        identity: { ...rebootReport.enrollment!.identity, agentId: "other-agent" },
+      },
+    }, new Date("2026-07-21T18:20:03.000Z"))).toThrow(/enrollment identity/);
+    expect(() => evaluator.evaluate({
+      ...rebootReport,
+      enrollment: { ...rebootReport.enrollment!, enrolledAt: value.expiresAt },
+    }, new Date("2026-07-21T18:20:03.000Z"))).toThrow(/authorization window/);
   });
 
   it("requires the exact approved directory layout", () => {

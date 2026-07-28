@@ -45,6 +45,8 @@ Exact-head L0 recorded 15/15 steps passed under `artifacts/field-validation/2026
 
 Evidence limits matter: v13 used development auto-login and unattended setup, is not a production-authentication result, and does not prove Teach, Shadow, Pilot, real accounts, or production. Hosted GitHub Actions remains blocked before checkout by account billing.
 
+On 2026-07-28, v13 was restarted and logged into successfully, but emitted no fresh KVP traffic. Its seed manifest had expired on 2026-07-27 and the guest had no durable enrollment marker, so the startup precheck failed closed. The source repair binds a durable enrollment marker to the exact manifest digest and Field identity while retaining expiry for first use. Do not describe v13 as reboot-repeatable until a replacement generation proves this path live.
+
 ## Corrected environment diagnosis
 
 Do not send the owner to BIOS based only on `VirtualizationFirmwareEnabled: False`. On this host:

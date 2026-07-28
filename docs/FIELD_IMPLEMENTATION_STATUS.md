@@ -11,6 +11,8 @@ The former Glove build branch and Field development branch are consolidated on `
 
 Live development evidence exists for a disposable v13 Hyper-V generation: provisioning, guest bootstrap, authenticated KVP channel, heartbeat, and readiness. That evidence used development auto-login and unattended setup, was not repeated as a production matrix, and does not promote Teach, Shadow, Pilot, or production. GitHub-hosted jobs remain blocked before checkout by account billing.
 
+A 2026-07-28 v13 reboot attempt exposed a lifecycle defect: the guest bootstrap manifest had expired and no durable enrollment record existed, so the startup task correctly failed closed before publishing a new heartbeat. The source now distinguishes short-lived first enrollment from exact digest-bound durable enrollment, but a replacement disposable generation has not yet repeated the live proof. The earlier v13 evidence remains valid only for its recorded boot; it is not reboot-repeatability evidence.
+
 Therefore:
 
 - source, pure/fake execution, local build/test, and selected development Hyper-V evidence exist;
@@ -39,7 +41,7 @@ Therefore:
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
 | authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests, shared fixture, v13 development KVP evidence | production key/rotation/repeatability pending |
 | guest heartbeat | `fieldHeartbeat.ts`, `.NET FieldKvpRuntime.cs` | unit tests plus v13 development observation | production and negative live matrix pending |
-| guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | unit/static tests plus v13 development readiness | production-authenticated repeatability pending |
+| guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | unit/static tests, digest-bound enrollment tests, plus one v13 development boot | durable-enrollment live reboot proof and production-authenticated repeatability pending |
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
 | Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |

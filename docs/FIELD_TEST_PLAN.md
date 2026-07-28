@@ -242,6 +242,9 @@ TypeScript and .NET must accept and reject identical fixtures.
 - boot identity;
 - agent identity and binary digest;
 - manifest integrity;
+- first enrollment occurs only inside the manifest authorization window;
+- durable enrollment binds the exact manifest digest and complete Field identity;
+- an enrolled generation can reboot after manifest expiry without weakening runtime checks;
 - required directory/volume layout;
 - fixed display enforcement;
 - session unlocked;
@@ -258,6 +261,9 @@ Failure injection:
 
 - missing/wrong agent;
 - wrong manifest/generation/display;
+- expired first-use manifest without enrollment;
+- enrollment with a wrong digest, identity, or out-of-window timestamp;
+- missing, corrupt, or replaced enrollment after reboot;
 - locked session;
 - Secure Desktop;
 - absent/stale heartbeat;

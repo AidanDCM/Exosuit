@@ -92,4 +92,39 @@ public sealed class FieldKvpRuntimeTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    [Fact]
+    public void BootstrapStatusPreservesDurableEnrollmentForHostEvaluation()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"exosuit-bootstrap-{Guid.NewGuid():N}.json");
+        try
+        {
+            var enrollment = new
+            {
+                contractVersion = 1,
+                manifestDigest = new string('a', 64),
+                identity = new { fieldId = Guid.NewGuid(), fieldGeneration = 1 },
+                enrolledAt = "2026-07-28T20:00:00.000Z",
+            };
+            File.WriteAllText(path, JsonSerializer.Serialize(new
+            {
+                contractVersion = 1,
+                identity = enrollment.identity,
+                manifestDigest = enrollment.manifestDigest,
+                enrollment,
+                reportedAt = "2026-07-28T20:01:00.000Z",
+                checks = Array.Empty<object>(),
+            }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+
+            var status = FieldKvpRuntime.ReadBootstrapStatus(path);
+            var report = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(status["report"]);
+            var preserved = Assert.IsType<JsonElement>(report["enrollment"]);
+            Assert.Equal(enrollment.manifestDigest, preserved.GetProperty("manifestDigest").GetString());
+            Assert.Equal(enrollment.enrolledAt, preserved.GetProperty("enrolledAt").GetString());
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
 }

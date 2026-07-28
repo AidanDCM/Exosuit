@@ -274,7 +274,7 @@ public static class FieldKvpRuntime
     /// </summary>
     internal readonly record struct FieldRuntimeAttestation(bool SecureDesktopActive, bool HeartbeatStarted);
 
-    private static IReadOnlyDictionary<string, object?> ReadBootstrapStatus(string path, FieldRuntimeAttestation? attestation = null)
+    internal static IReadOnlyDictionary<string, object?> ReadBootstrapStatus(string path, FieldRuntimeAttestation? attestation = null)
     {
         if (!File.Exists(path))
         {
@@ -340,6 +340,10 @@ public static class FieldKvpRuntime
             ["reportedAt"] = reportedAt,
             ["checks"] = checks,
         };
+        if (root.TryGetProperty("enrollment", out var enrollment))
+        {
+            report["enrollment"] = enrollment.Clone();
+        }
 
         var complete = MandatoryBootstrapChecks.All(reported.Contains);
         return new Dictionary<string, object?>

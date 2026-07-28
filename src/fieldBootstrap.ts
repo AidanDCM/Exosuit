@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   fieldDisplayContractSchema,
   fieldIdentitySchema,
+  sha256Canonical,
   sha256DigestSchema,
   type FieldDisplayContract,
   type FieldIdentity,
@@ -74,10 +75,19 @@ export const fieldBootstrapCheckSchema = z.object({
 });
 export type FieldBootstrapCheck = z.infer<typeof fieldBootstrapCheckSchema>;
 
+export const fieldBootstrapEnrollmentSchema = z.object({
+  contractVersion: z.literal(1),
+  manifestDigest: sha256DigestSchema,
+  identity: fieldIdentitySchema,
+  enrolledAt: z.string().datetime(),
+});
+export type FieldBootstrapEnrollment = z.infer<typeof fieldBootstrapEnrollmentSchema>;
+
 export const fieldBootstrapReportSchema = z.object({
   contractVersion: z.literal(1),
   identity: fieldIdentitySchema,
   manifestDigest: sha256DigestSchema,
+  enrollment: fieldBootstrapEnrollmentSchema.optional(),
   reportedAt: z.string().datetime(),
   checks: z.array(fieldBootstrapCheckSchema).max(100),
 });
@@ -111,7 +121,24 @@ export class FieldBootstrapEvaluator {
       throw new Error("Bootstrap report guest identity does not match the manifest.");
     }
     if (report.manifestDigest !== this.#manifestDigest) throw new Error("Bootstrap report manifest digest is invalid.");
-    if (now.getTime() >= new Date(this.#manifest.expiresAt).getTime()) throw new Error("Bootstrap manifest has expired.");
+    if (report.enrollment) {
+      if (report.enrollment.manifestDigest !== this.#manifestDigest) {
+        throw new Error("Bootstrap enrollment manifest digest is invalid.");
+      }
+      if (sha256Canonical(report.enrollment.identity) !== sha256Canonical(this.#manifest.identity)) {
+        throw new Error("Bootstrap enrollment identity does not match the manifest.");
+      }
+      const enrolledAt = new Date(report.enrollment.enrolledAt).getTime();
+      if (
+        enrolledAt < new Date(this.#manifest.createdAt).getTime() ||
+        enrolledAt >= new Date(this.#manifest.expiresAt).getTime()
+      ) {
+        throw new Error("Bootstrap enrollment was not created inside the manifest authorization window.");
+      }
+    }
+    if (now.getTime() >= new Date(this.#manifest.expiresAt).getTime() && !report.enrollment) {
+      throw new Error("Bootstrap manifest has expired without a valid durable enrollment.");
+    }
     if (new Date(report.reportedAt).getTime() < new Date(this.#manifest.createdAt).getTime()) {
       throw new Error("Bootstrap report predates its manifest.");
     }

@@ -89,6 +89,16 @@ describe("Windows Field administration scripts", () => {
     expect(guest).toContain("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
     expect(guest).toContain("sessionFlags");
     expect(guest).toContain("activeConsoleSessionId");
+    expect(guest).toContain("C:\\Exosuit\\Config\\bootstrap-enrollment.json");
+    expect(guest).toContain("Bootstrap enrollment manifest binding is invalid.");
+    expect(guest).toContain("Bootstrap enrollment Field identity is invalid.");
+    expect(guest).toContain("$enrollmentIdentity -cne $manifestIdentity");
+    expect(guest).toContain("Bootstrap enrollment was not created inside the manifest authorization window.");
+    expect(guest).toContain("Bootstrap manifest has expired without a valid durable enrollment.");
+    expect(guest).toContain("Record exact digest-bound Field bootstrap enrollment");
+    expect(guest).toContain("$durableEnrollmentChecks.Count -eq $durableEnrollmentCheckNames.Count");
+    expect(guest).toContain("Move-Item -LiteralPath $temporaryEnrollmentPath -Destination $resolvedEnrollmentPath");
+    expect(guest).not.toContain("enrolledAt = $manifestExpiresAt");
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");

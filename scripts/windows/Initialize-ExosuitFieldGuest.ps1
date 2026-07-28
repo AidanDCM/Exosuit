@@ -9,7 +9,10 @@ param(
     [string]$ManifestDigest,
 
     [Parameter()]
-    [string]$ReportPath = 'C:\Exosuit\Diagnostics\bootstrap-report.json'
+    [string]$ReportPath = 'C:\Exosuit\Diagnostics\bootstrap-report.json',
+
+    [Parameter()]
+    [string]$EnrollmentPath = 'C:\Exosuit\Config\bootstrap-enrollment.json'
 )
 
 Set-StrictMode -Version Latest
@@ -52,7 +55,36 @@ if ($manifest.contractVersion -ne 1) { throw 'Unsupported Field bootstrap manife
 if ($manifest.identity.subsystem -ne 'field') { throw 'Bootstrap manifest is not a Field identity.' }
 if ([string]::IsNullOrWhiteSpace($manifest.identity.fieldId)) { throw 'Bootstrap manifest Field ID is missing.' }
 if ([int]$manifest.identity.fieldGeneration -lt 1) { throw 'Bootstrap manifest Field generation is invalid.' }
-if ([DateTimeOffset]::UtcNow -ge [DateTimeOffset]::Parse([string]$manifest.expiresAt)) { throw 'Bootstrap manifest has expired.' }
+$manifestCreatedAt = [DateTimeOffset]::Parse([string]$manifest.createdAt)
+$manifestExpiresAt = [DateTimeOffset]::Parse([string]$manifest.expiresAt)
+$resolvedEnrollmentPath = [IO.Path]::GetFullPath($EnrollmentPath)
+$allowedEnrollmentRoot = [IO.Path]::GetFullPath('C:\Exosuit\Config').TrimEnd('\') + '\'
+if (-not $resolvedEnrollmentPath.StartsWith($allowedEnrollmentRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Bootstrap enrollment path escapes C:\Exosuit\Config: $resolvedEnrollmentPath"
+}
+
+function Read-BootstrapEnrollment {
+    if (-not (Test-Path -LiteralPath $resolvedEnrollmentPath -PathType Leaf)) { return $null }
+    $value = ConvertFrom-JsonDocument -Path $resolvedEnrollmentPath -Depth 20
+    if ($value.contractVersion -ne 1 -or [string]$value.manifestDigest -cne $ManifestDigest) {
+        throw 'Bootstrap enrollment manifest binding is invalid.'
+    }
+    $enrollmentIdentity = $value.identity | ConvertTo-Json -Depth 20 -Compress
+    $manifestIdentity = $manifest.identity | ConvertTo-Json -Depth 20 -Compress
+    if ($enrollmentIdentity -cne $manifestIdentity) {
+        throw 'Bootstrap enrollment Field identity is invalid.'
+    }
+    $enrolledAt = [DateTimeOffset]::Parse([string]$value.enrolledAt)
+    if ($enrolledAt -lt $manifestCreatedAt -or $enrolledAt -ge $manifestExpiresAt) {
+        throw 'Bootstrap enrollment was not created inside the manifest authorization window.'
+    }
+    return $value
+}
+
+$enrollment = Read-BootstrapEnrollment
+if ([DateTimeOffset]::UtcNow -ge $manifestExpiresAt -and $null -eq $enrollment) {
+    throw 'Bootstrap manifest has expired without a valid durable enrollment.'
+}
 if ($manifest.display.monitorCount -ne 1 -or $manifest.display.dynamicResolutionAllowed -ne $false) {
     throw 'Bootstrap manifest display contract is outside the supported fixed single-monitor configuration.'
 }
@@ -156,6 +188,40 @@ Add-Check -Name 'agent_binary' -Passed $agentDigestMatches -Summary 'Guest agent
 Add-Check -Name 'channel_key' -Passed (-not [string]::IsNullOrWhiteSpace($manifest.channelKeyId)) -Summary 'Channel key identity was checked without reading key material.'
 Add-Check -Name 'policy_binding' -Passed ($manifest.policyHash -match '^[a-f0-9]{64}$') -Summary 'Policy hash shape was checked.'
 
+$durableEnrollmentCheckNames = @(
+    'identity', 'base_image', 'personal_state', 'task_disk', 'directory_layout',
+    'display_contract', 'agent_binary', 'channel_key', 'policy_binding'
+)
+$durableEnrollmentChecks = @($checks | Where-Object { $_.name -in $durableEnrollmentCheckNames })
+$durableEnrollmentChecksPassed =
+    $durableEnrollmentChecks.Count -eq $durableEnrollmentCheckNames.Count -and
+    @($durableEnrollmentChecks | Where-Object { -not $_.passed }).Count -eq 0
+if ($null -eq $enrollment -and $durableEnrollmentChecksPassed) {
+    $enrolledAt = [DateTimeOffset]::UtcNow
+    if ($enrolledAt -ge $manifestExpiresAt) {
+        throw 'Bootstrap manifest expired before durable enrollment could be recorded.'
+    }
+    $candidateEnrollment = [ordered]@{
+        contractVersion = 1
+        manifestDigest = $ManifestDigest
+        identity = $manifest.identity
+        enrolledAt = $enrolledAt.ToUniversalTime().ToString(
+            "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
+            [Globalization.CultureInfo]::InvariantCulture)
+    }
+    if ($PSCmdlet.ShouldProcess($resolvedEnrollmentPath, 'Record exact digest-bound Field bootstrap enrollment')) {
+        $enrollmentDirectory = Split-Path -Parent $resolvedEnrollmentPath
+        New-Item -ItemType Directory -Path $enrollmentDirectory -Force | Out-Null
+        $temporaryEnrollmentPath = "$resolvedEnrollmentPath.$([Guid]::NewGuid().ToString('N')).tmp"
+        [IO.File]::WriteAllText(
+            $temporaryEnrollmentPath,
+            ($candidateEnrollment | ConvertTo-Json -Depth 20),
+            [Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath $temporaryEnrollmentPath -Destination $resolvedEnrollmentPath
+        $enrollment = Read-BootstrapEnrollment
+    }
+}
+
 $sessionLocked = $false
 $activeConsoleSessionId = $null
 try {
@@ -249,6 +315,7 @@ $report = [ordered]@{
     reportedAt = Get-FieldWireTimestamp
     checks = $checks
 }
+if ($null -ne $enrollment) { $report['enrollment'] = $enrollment }
 
 $reportDirectory = Split-Path -Parent $ReportPath
 if ($PSCmdlet.ShouldProcess($ReportPath, 'Write Field bootstrap report')) {
