@@ -110,7 +110,7 @@ The former Field head `e10e921` passed its complete local L0 validator on 2026-0
 
 Still unproven:
 
-- exact-head validation of the consolidated Glove/Field commit;
+- independent hosted CI attestation of the consolidated Glove/Field commit (local exact-head L0 and clean parity pass);
 - repeatable Hyper-V lifecycle, isolation, destruction, and failure-injection evidence;
 - production-authenticated host/guest transport, key storage, and rotation;
 - production guest bootstrap and heartbeat without development auto-login/unattended setup;
@@ -330,7 +330,7 @@ Exosuit must not implement or claim:
 ## Current holds
 
 - PR #11 remains draft.
-- Merge to `build/exosuit-mvp` is held pending L0 executable validation and review.
+- Draft PR #26 into `build/exosuit-mvp` is held for review and hosted/interactive evidence; exact-head L0 has passed locally.
 - Merge to `main` is denied.
 - Live recording, Shadow prediction, Pilot operation, real accounts, and consequential tasks are denied.
 - Packaging, signing, updater, privacy operations, penetration testing, and production support remain pending later master-plan phases.

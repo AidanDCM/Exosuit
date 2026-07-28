@@ -1,27 +1,31 @@
 {
   "contractVersion": 1,
-  "candidateCommit": "8d5732a7e5f686d2bb11f13cd81990ba1b073357",
+  "candidateCommit": "7a7c43578c603c981aad8f3cf844efb7b0b25242",
   "candidateVersion": null,
-  "generatedAt": "2026-07-27T16:20:00Z",
+  "generatedAt": "2026-07-28T19:17:27.396Z",
   "ownerApproved": false,
   "productionDecision": "denied",
   "developmentAccessEnabled": true,
   "developmentUnattendedSetupEnabled": true,
   "unresolvedBlockers": [
-    "Field gate acceptance criteria are undefined, so no gate can be judged pass",
     "All live Field evidence was gathered with development access and unattended disposable setup enabled, which is non-production by contract",
-    "No reproducible Node lockfile",
-    "Mutable personal-state disk identity contradiction",
+    "GitHub-hosted CI is blocked before checkout by account billing; local clean parity is not independent hosted attestation",
     "Live evidence is a single successful run per gate, with no repeatability, negative-case, or failure-injection coverage",
-    "No scene, Teach, artifact, Shadow, personal-model, Assisted, Pilot, ChatGPT, packaging, security, or operations evidence"
+    "No live scene, Teach, cross-VM artifact, Shadow, personal-model, Assisted, Pilot, ChatGPT, packaging, penetration-test, or operations acceptance evidence"
   ],
   "gates": [
-    { "gate": "source_validation", "status": "evidence_recorded", "evidence": [
-      "artifacts/field-validation/20260727T151606Z/summary.json",
-      "artifacts/field-validation/20260727T151606Z/environment.json"
+    { "gate": "source_validation", "status": "pass", "evidence": [
+      "artifacts/field-validation/20260728T191511Z/summary.json",
+      "artifacts/field-validation/20260728T191511Z/environment.json"
     ] },
-    { "gate": "dependency_reproducibility", "status": "blocked", "evidence": [] },
-    { "gate": "glove_windows_acceptance", "status": "not_run", "evidence": [] },
+    { "gate": "dependency_reproducibility", "status": "pass", "evidence": [
+      "package-lock.json",
+      "artifacts/field-validation/20260728T191511Z/summary.json"
+    ] },
+    { "gate": "glove_windows_acceptance", "status": "evidence_recorded", "evidence": [
+      "docs/qa/CODEX_WINDOWS_ACCEPTANCE.md",
+      "docs/qa/CODEX_WINDOWS_ACCEPTANCE_2026-07-19.md"
+    ] },
     { "gate": "glove_multiwindow_acceptance", "status": "not_run", "evidence": [] },
     { "gate": "field_hyperv_lifecycle", "status": "evidence_recorded", "evidence": [
       "artifacts/field-l4-base-build/v13/base-build-result.json",
@@ -46,10 +50,18 @@
     { "gate": "synthetic_pilot", "status": "not_run", "evidence": [] },
     { "gate": "chatgpt_mcp_acceptance", "status": "not_run", "evidence": [] },
     { "gate": "owner_acceptance", "status": "not_run", "evidence": [] },
-    { "gate": "reliability_and_performance", "status": "not_run", "evidence": [] },
+    { "gate": "reliability_and_performance", "status": "evidence_recorded", "evidence": [
+      "docs/qa/evidence/2026-07-28-phase10-benchmark-baseline.md",
+      "artifacts/field-validation/20260728T191511Z/summary.json"
+    ] },
     { "gate": "cockpit_and_human_factors", "status": "not_run", "evidence": [] },
     { "gate": "packaging_signing_update_rollback", "status": "not_run", "evidence": [] },
-    { "gate": "security_privacy_penetration", "status": "not_run", "evidence": [] },
+    { "gate": "security_privacy_penetration", "status": "evidence_recorded", "evidence": [
+      "docs/qa/2026-07-28-SECURITY-REVIEW-UNGATED-COMMITS.md",
+      "docs/qa/ATOMIC_AUDIT_2026-07-28_AGENT_AUTH_ORDERING.md",
+      "docs/qa/ATOMIC_AUDIT_2026-07-28_VISUAL_REDACTION_CONTAINMENT.md",
+      "docs/qa/ATOMIC_AUDIT_2026-07-28_BROWSER_UNCERTAIN_EFFECTS.md"
+    ] },
     { "gate": "operations_incident_response", "status": "not_run", "evidence": [] }
   ]
 }

@@ -37,9 +37,9 @@ Therefore:
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
-| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests and shared signed fixture | Hyper-V KVP emitter/verifier written; live guest proof pending |
-| guest heartbeat | `fieldHeartbeat.ts`, `.NET FieldKvpRuntime.cs` | identity/liveness and signed-emitter tests | live guest observation pending |
-| guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | evaluator, digest, strict-mode, and static script tests | sealed-base and live guest proof pending |
+| authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests, shared fixture, v13 development KVP evidence | production key/rotation/repeatability pending |
+| guest heartbeat | `fieldHeartbeat.ts`, `.NET FieldKvpRuntime.cs` | unit tests plus v13 development observation | production and negative live matrix pending |
+| guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | unit/static tests plus v13 development readiness | production-authenticated repeatability pending |
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
 | Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
@@ -158,7 +158,7 @@ See `docs/FIELD_WINDOWS_RUNBOOK.md`.
 
 ## Validation status
 
-The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. The consolidated working tree passed all repository, plan, Field, TypeScript, build, pulse, and .NET checks before its merge commit. Exact-head consolidated validation remains mandatory after committing.
+The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.
 
@@ -186,7 +186,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 | Capability | Posture |
 |---|---|
 | draft PR review | OPEN |
-| consolidation on review branch | IN PROGRESS; local validation passed, exact-head evidence pending |
+| consolidation on review branch | DRAFT PR #26; exact-head local validation passed, review/hosted CI still held |
 | merge to main | DENIED |
 | real Windows account use | DENIED |
 | real website tasks | DENIED |

@@ -23,19 +23,19 @@ The former canonical Glove branch `build/exosuit-mvp` at `4411568` and Field bra
 - Field validators, lockfile, guest runtime, VM scripts, tests, manuals, and evidence contracts were added;
 - CI uses `npm ci`, and the repository validator discovers every TypeScript source module rather than trusting a hand-written list.
 
-Working-tree validation before the merge commit passed:
+Working-tree validation before the merge commit passed, followed by exact-head validation on the hardened consolidated commit `7a7c435`:
 
 - repository safety validator: 71 required artifacts;
 - master plan validator: 22 program sections;
 - Field validator: 71 artifacts and 20 Field modules;
 - TypeScript typecheck and build;
-- 280/280 TypeScript tests;
+- 284/284 TypeScript tests at the hardened head;
 - Glove and Field system pulses;
 - .NET Release build with zero warnings;
 - 44/44 .NET tests;
 - locked npm install and audit with zero vulnerabilities.
 
-This is pre-commit evidence. The exact-head Field validator and clean parity matrix must be rerun after the integration commit.
+Exact-head L0 recorded 15/15 steps passed under `artifacts/field-validation/20260728T191511Z`. Clean-checkout parity passed 12/12 repeatedly, including every pre-push publication gate. This is strong local evidence, not independent hosted CI attestation.
 
 ## Evidence that already exists
 
@@ -105,14 +105,13 @@ Overall: approximately **65% implemented, 30% evidenced, and 20–25% production
 
 ## Next execution order
 
-1. Exact-head integration evidence.
-2. Security residual slices: agent authentication ordering and visual redaction containment are closed; browser uncertainty handling is in progress.
-3. Current readiness manifest and L4 audit refresh.
-4. Repeated production-authentication Field lifecycle and negative-case matrix when an elevated disposable session is available.
-5. Scene producer, then separately reviewed Teach privacy/recording.
-6. Demonstration processing, Shadow, Correction, and held-out personal-model evaluation.
-7. Assisted and synthetic Pilot with physical emergency stop and no-blind-retry reconciliation.
-8. ChatGPT acceptance, packaging/signing/update/rollback, security/privacy/penetration, reliability soak, operations, and owner acceptance.
+1. Keep the readiness manifest and handoff aligned with exact evidence while production remains denied.
+2. The identified authentication-ordering, visual-redaction, and browser-uncertainty residuals are closed with Level 4 addenda.
+3. Repeat the production-authentication Field lifecycle and negative-case matrix when an elevated disposable session is available.
+4. Scene producer, then separately reviewed Teach privacy/recording.
+5. Demonstration processing, Shadow, Correction, and held-out personal-model evaluation.
+6. Assisted and synthetic Pilot with physical emergency stop and no-blind-retry reconciliation.
+7. ChatGPT acceptance, packaging/signing/update/rollback, security/privacy/penetration, reliability soak, operations, and owner acceptance.
 
 ## Rollback
 

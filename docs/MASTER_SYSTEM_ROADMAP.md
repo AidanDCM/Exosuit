@@ -286,14 +286,14 @@ The preserved Field development line contains substantial source, fake/pure foun
 - unattended base-image sealing and generation provisioning;
 - a v13 development generation that produced authenticated handshake, bootstrap, and heartbeat evidence.
 
-Exact-head Field L0 validation passed on `e10e921` on 2026-07-28 before consolidation. That run does not validate the merged tree. The existing live evidence used development access and one generation, so it is evidence of feasibility, not production acceptance. Production-configured repeatability and negative cases remain outstanding.
+Exact-head Field L0 validation passed on `e10e921` before consolidation and again on the hardened consolidated commit `7a7c435` on 2026-07-28. The consolidated run recorded 15/15 runner steps passed, including locked install, validators, all tests/builds/pulses, dependency reports, and the read-only host capability check. The existing live evidence still used development access and one generation, so it is evidence of feasibility, not production acceptance. Production-configured repeatability and negative cases remain outstanding.
 
 ### 7.3 Current promotion posture
 
 | Capability | Current posture |
 |---|---|
 | source architecture | implemented extensively; Glove/Field consolidation in progress |
-| exact-head compilation and test execution | both parent lines passed separately; merged-head L0 pending |
+| exact-head compilation and test execution | consolidated `7a7c435` L0 passed; clean parity also passed 12/12 |
 | live Hyper-V Field | development evidence recorded; production acceptance denied |
 | live Teach recording | denied until L4-L5 |
 | live artifact transport | denied until L6 |
@@ -1355,7 +1355,7 @@ The following phases are mandatory and ordered. A later phase may be designed in
 ## Phase L0 — Exact-head source validation
 
 **Current tracking issue:** #12  
-**Current state:** blocked by unavailable executable runner evidence
+**Current state:** passed locally on exact hardened consolidated commit `7a7c435`; hosted CI attestation remains unavailable
 
 ### Objective
 
