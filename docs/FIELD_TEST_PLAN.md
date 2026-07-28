@@ -283,6 +283,8 @@ Scheduled-task dispatch diagnosis is similarly allowlisted. The inspector may re
 
 The system-generated SetupComplete log may be reduced to a fixed category (`empty`, known confirmation-binding failure, task registration/access/start failure, development-access failure, or unclassified nonempty) plus its length and digest. Raw text, matched excerpts, paths, arguments, and error messages must not leave the mounted guest.
 
+The runtime launcher uses an SCM-managed automatic LocalSystem service because two disposable generations retained structurally valid scheduled-task files without reaching fresh bootstrap. The service executable accepts only `--field-guest-service`, verifies LocalSystem, launches one fixed PowerShell path with fixed script/configuration arguments and no shell, kills the entire child tree on stop, and is configured for bounded delayed recovery. Installation removes the legacy task. Live acceptance requires the service contract, task absence, first bootstrap/enrollment, authenticated KVP readiness, graceful reboot, hard-stop recovery, and independent host emergency stop on a fresh generation.
+
 Expired-first-use development recovery has a separate reviewed repair tool. It is not diagnostic-only: apply requires an exact off VM, exact owner confirmation, reviewed manifest/agent/initializer hashes, no existing enrollment, transactional rollback, and guaranteed dismount. Plan-only, wrong-state, wrong-hash, reparse, existing-enrollment, partial-swap, and dismount-failure cases require evidence before production use.
 
 - top-level windows and generations;

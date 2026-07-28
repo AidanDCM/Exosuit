@@ -1,34 +1,88 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [string]$LaunchScriptPath = 'C:\Exosuit\Agent\Start-ExosuitFieldGuest.ps1'
+    [string]$AgentPath = 'C:\Exosuit\Agent\Exosuit.Agent.exe',
+
+    [Parameter()]
+    [string]$LaunchScriptPath = 'C:\Exosuit\Agent\Start-ExosuitFieldGuest.ps1',
+
+    [Parameter()]
+    [switch]$Start
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path -LiteralPath $LaunchScriptPath -PathType Leaf)) {
-    throw "Guest launch script is missing: $LaunchScriptPath"
+$allowedRoot = [IO.Path]::GetFullPath('C:\Exosuit\Agent').TrimEnd('\') + '\'
+$canonicalPaths = @(
+    [IO.Path]::GetFullPath('C:\Exosuit\Agent\Exosuit.Agent.exe'),
+    [IO.Path]::GetFullPath('C:\Exosuit\Agent\Start-ExosuitFieldGuest.ps1')
+)
+foreach ($path in @($AgentPath, $LaunchScriptPath)) {
+    $resolved = [IO.Path]::GetFullPath($path)
+    if (-not $resolved.StartsWith($allowedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Field guest service path escapes C:\Exosuit\Agent: $resolved"
+    }
+    if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+        throw "Required Field guest service file is missing: $resolved"
+    }
 }
-$taskName = 'ExosuitFieldGuest'
-$arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$LaunchScriptPath`""
-if ($PSCmdlet.ShouldProcess($taskName, 'Register SYSTEM startup and logon recovery task for the Field guest runtime')) {
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
-    $triggers = @(
-        New-ScheduledTaskTrigger -AtStartup
-        New-ScheduledTaskTrigger -AtLogOn
-    )
-    $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-    $settings = New-ScheduledTaskSettingsSet `
-        -StartWhenAvailable `
-        -MultipleInstances IgnoreNew `
-        -ExecutionTimeLimit ([TimeSpan]::Zero)
-    Register-ScheduledTask `
-        -TaskName $taskName `
-        -Action $action `
-        -Trigger $triggers `
-        -Principal $principal `
-        -Settings $settings `
-        -Force | Out-Null
-    Start-ScheduledTask -TaskName $taskName
+if ([IO.Path]::GetFullPath($AgentPath) -cne $canonicalPaths[0] -or
+    [IO.Path]::GetFullPath($LaunchScriptPath) -cne $canonicalPaths[1]) {
+    throw 'Field guest service installation requires the exact compiled launcher paths.'
+}
+
+$serviceName = 'ExosuitFieldGuest'
+$legacyTaskName = 'ExosuitFieldGuest'
+$binaryPath = "`"$([IO.Path]::GetFullPath($AgentPath))`" --field-guest-service"
+
+function Invoke-ServiceControl {
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $output = @(& sc.exe @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Service Control Manager command failed with exit code $LASTEXITCODE."
+    }
+    $output
+}
+
+if ($PSCmdlet.ShouldProcess($serviceName, 'Install the fixed LocalSystem automatic Field guest service and remove the legacy task')) {
+    $legacyTask = Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
+    if ($legacyTask) {
+        Stop-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
+        Unregister-ScheduledTask -TaskName $legacyTaskName -Confirm:$false
+    }
+    if (Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue) {
+        throw 'Legacy Field guest scheduled task removal did not complete.'
+    }
+
+    $existing = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction SilentlyContinue
+    if ($existing) {
+        if ([string]$existing.State -cne 'Stopped') {
+            Stop-Service -Name $serviceName -Force -ErrorAction Stop
+            (Get-Service -Name $serviceName -ErrorAction Stop).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
+        }
+        Invoke-ServiceControl -Arguments @(
+            'config', $serviceName, 'binPath=', $binaryPath,
+            'type=', 'own', 'start=', 'auto', 'obj=', 'LocalSystem') | Out-Null
+    } else {
+        Invoke-ServiceControl -Arguments @(
+            'create', $serviceName, 'binPath=', $binaryPath,
+            'type=', 'own', 'start=', 'auto', 'obj=', 'LocalSystem',
+            'DisplayName=', 'Exosuit Field Guest Runtime') | Out-Null
+    }
+    Invoke-ServiceControl -Arguments @('description', $serviceName, 'Exosuit fixed local Field guest launcher') | Out-Null
+    Invoke-ServiceControl -Arguments @('failure', $serviceName, 'reset=', '86400', 'actions=', 'restart/5000/restart/30000/restart/60000') | Out-Null
+    Invoke-ServiceControl -Arguments @('failureflag', $serviceName, '1') | Out-Null
+
+    $registered = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction Stop
+    if ([string]$registered.StartName -cne 'LocalSystem' -or
+        [string]$registered.StartMode -cne 'Auto' -or
+        [string]$registered.PathName -cne $binaryPath) {
+        throw 'Installed Field guest service does not match the reviewed LocalSystem execution contract.'
+    }
+
+    if ($Start) {
+        Start-Service -Name $serviceName -ErrorAction Stop
+        (Get-Service -Name $serviceName -ErrorAction Stop).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
+    }
 }

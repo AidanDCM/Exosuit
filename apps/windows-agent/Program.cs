@@ -6,6 +6,10 @@ public static class Program
     {
         try
         {
+            if (args.Length == 1 && string.Equals(args[0], "--field-guest-service", StringComparison.Ordinal))
+            {
+                return FieldGuestServiceHost.Run();
+            }
             if (args.Length == 2 && string.Equals(args[0], "--field-guest-kvp", StringComparison.Ordinal))
             {
                 await FieldKvpRuntime.RunGuestAsync(args[1], CancellationToken.None);

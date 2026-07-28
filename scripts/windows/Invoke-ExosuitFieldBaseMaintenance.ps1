@@ -171,6 +171,21 @@ if (-not (Test-Path -LiteralPath 'C:\Windows\Setup\Scripts\SetupComplete.cmd' -P
 }
 Set-MaintenanceStage 'components_verified'
 
+$runtimeServiceName = 'ExosuitFieldGuest'
+$runtimeInstallerPath = 'C:\Exosuit\Agent\Install-ExosuitFieldGuest.ps1'
+& $runtimeInstallerPath -Confirm:$false
+if (-not $?) { throw 'Field base maintenance could not install the Field guest runtime service.' }
+$runtimeService = Get-CimInstance Win32_Service -Filter "Name='$runtimeServiceName'" -ErrorAction Stop
+if ([string]$runtimeService.StartName -cne 'LocalSystem' -or
+    [string]$runtimeService.StartMode -cne 'Auto' -or
+    [string]$runtimeService.PathName -cne '"C:\Exosuit\Agent\Exosuit.Agent.exe" --field-guest-service') {
+    throw 'Field base maintenance runtime service does not match the reviewed LocalSystem contract.'
+}
+if (Get-ScheduledTask -TaskName $runtimeServiceName -ErrorAction SilentlyContinue) {
+    throw 'Field base maintenance found the legacy Field guest task after service migration.'
+}
+Set-MaintenanceStage 'runtime_service_installed'
+
 # The one-use dispatch mechanism is whichever route actually reached SYSTEM:
 # the native auditSystem pass leaves nothing behind, while the auditUser
 # fallback leaves a task or a service. Any residue that exists must match the
@@ -231,6 +246,12 @@ $receipt = [ordered]@{
     bootstrapUnattendSha256 = $bootstrapUnattendDigest
     bootstrapUnattendConsumed = $true
     maintenanceTaskConsumed = $true
+    runtimeService = [ordered]@{
+        name = $runtimeServiceName
+        principal = 'SYSTEM'
+        startMode = 'Automatic'
+        command = 'Exosuit.Agent.exe --field-guest-service'
+    }
     componentDigests = $componentDigests
     sysprep = '/generalize /oobe /shutdown /quiet'
 }

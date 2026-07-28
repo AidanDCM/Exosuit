@@ -69,32 +69,28 @@ if (Test-Path -LiteralPath $ConfigRoot) {
 
 $installerPath = Join-Path $AgentRoot 'Install-ExosuitFieldGuest.ps1'
 $launchPath = Join-Path $AgentRoot 'Start-ExosuitFieldGuest.ps1'
-$taskName = 'ExosuitFieldGuest'
+$serviceName = 'ExosuitFieldGuest'
 $sysprepPath = Join-Path $env:WINDIR 'System32\Sysprep\Sysprep.exe'
 if (-not (Test-Path -LiteralPath $sysprepPath -PathType Leaf)) {
     throw "Windows Sysprep is missing: $sysprepPath"
 }
 
-if (-not $PSCmdlet.ShouldProcess($env:COMPUTERNAME, 'Install and verify the Field guest task, generalize the image, and shut down')) {
+if (-not $PSCmdlet.ShouldProcess($env:COMPUTERNAME, 'Install and verify the Field guest service, generalize the image, and shut down')) {
     return
 }
 
 & $installerPath -LaunchScriptPath $launchPath -Confirm:$false
-if (-not $?) { throw 'Field guest task installation failed.' }
+if (-not $?) { throw 'Field guest service installation failed.' }
 
-$task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
-if ($task.State -eq 'Disabled' -or
-    $task.Principal.UserId -notin @('SYSTEM', 'S-1-5-18') -or
-    $task.Principal.LogonType -ne 'ServiceAccount' -or
-    $task.Principal.RunLevel -ne 'Highest' -or
-    @($task.Actions).Count -ne 1 -or
-    [string]$task.Actions[0].Execute -cne 'powershell.exe' -or
-    [string]$task.Actions[0].Arguments -notlike "*`"$launchPath`"*") {
-    throw 'Installed Field guest task does not match the reviewed SYSTEM execution contract.'
+if (Get-ScheduledTask -TaskName $serviceName -ErrorAction SilentlyContinue) {
+    throw 'Legacy Field guest scheduled task remains after service installation.'
 }
-$triggerClasses = @($task.Triggers | ForEach-Object { $_.CimClass.CimClassName })
-if ('MSFT_TaskBootTrigger' -notin $triggerClasses -or 'MSFT_TaskLogonTrigger' -notin $triggerClasses) {
-    throw 'Installed Field guest task is missing its startup or logon recovery trigger.'
+$service = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction Stop
+$expectedBinaryPath = "`"$(Join-Path $AgentRoot 'Exosuit.Agent.exe')`" --field-guest-service"
+if ([string]$service.StartName -cne 'LocalSystem' -or
+    [string]$service.StartMode -cne 'Auto' -or
+    [string]$service.PathName -cne $expectedBinaryPath) {
+    throw 'Installed Field guest service does not match the reviewed LocalSystem execution contract.'
 }
 
 $componentDigests = [ordered]@{}
@@ -111,12 +107,11 @@ $receipt = [ordered]@{
     auditModeAdministrator = $true
     perGenerationConfigurationAbsent = $true
     nonBuiltInLocalAccountsAbsent = $true
-    task = [ordered]@{
-        name = $taskName
+    service = [ordered]@{
+        name = $serviceName
         principal = 'SYSTEM'
-        runLevel = 'Highest'
-        startupTrigger = $true
-        logonTrigger = $true
+        startMode = 'Automatic'
+        recovery = 'restart/5000,restart/30000,restart/60000'
         launchScript = $launchPath
     }
     componentDigests = $componentDigests

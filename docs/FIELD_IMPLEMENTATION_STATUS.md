@@ -11,7 +11,7 @@ The former Glove build branch and Field development branch are consolidated on `
 
 Live development evidence exists for a disposable v13 Hyper-V generation: provisioning, guest bootstrap, authenticated KVP channel, heartbeat, and readiness. That evidence used development auto-login and unattended setup, was not repeated as a production matrix, and does not promote Teach, Shadow, Pilot, or production. GitHub-hosted jobs remain blocked before checkout by account billing.
 
-A 2026-07-28 v13 reboot attempt exposed a lifecycle defect: the guest bootstrap manifest had expired and no durable enrollment record existed, so the startup task correctly failed closed before publishing a new heartbeat. The source now distinguishes short-lived first enrollment from exact digest-bound durable enrollment, but a replacement disposable generation has not yet repeated the live proof. The earlier v13 evidence remains valid only for its recorded boot; it is not reboot-repeatability evidence.
+A 2026-07-28 v13 reboot attempt exposed a lifecycle defect: the guest bootstrap manifest had expired and no durable enrollment record existed, so the launcher correctly failed closed before publishing a new heartbeat. After an exact manifest repair, v13 still produced no fresh bootstrap report. A separate v14 generation likewise contained an enabled LocalSystem boot/logon task but no bootstrap report. The source now distinguishes short-lived first enrollment from exact digest-bound durable enrollment and replaces the unreliable runtime task with a fixed LocalSystem Windows service host. A replacement disposable generation has not yet repeated the live proof, so the earlier v13 evidence remains valid only for its recorded boot.
 
 Therefore:
 
@@ -153,7 +153,7 @@ Shell routes are denied. Teach and Shadow cannot execute. Shutdown is local-admi
 - `Show-ExosuitFieldProvisioningPlan.ps1` — non-mutating plan resolver;
 - `Invoke-ExosuitFieldProvisioning.ps1` — dry-run by default, exact confirmation for apply, bounded rollback;
 - `Initialize-ExosuitFieldGuest.ps1` — fixed-root bootstrap precheck;
-- `Install-ExosuitFieldGuest.ps1` / `Start-ExosuitFieldGuest.ps1` — SYSTEM startup registration and signed KVP guest runtime;
+- `Install-ExosuitFieldGuest.ps1` / `.NET FieldGuestServiceHost.cs` / `Start-ExosuitFieldGuest.ps1` — fixed LocalSystem service registration, fail-closed bootstrap, and signed KVP guest runtime;
 - `Read-ExosuitFieldGuestKvp.ps1` — host-side KVP retrieval and authenticated replay-guard verification;
 - `Remove-ExosuitFieldGeneration.ps1` — exact-generation destruction;
 - `Invoke-ExosuitFieldValidation.ps1` — one-command evidence capture.

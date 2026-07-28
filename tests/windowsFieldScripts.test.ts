@@ -172,10 +172,16 @@ describe("Windows Field administration scripts", () => {
     expect(start).toContain("if (-not $?)");
     expect(start).toContain("guest-runtime-error.log");
     expect(start).not.toContain("Guest bootstrap failed with exit code");
-    expect(install).toContain("New-ScheduledTaskTrigger -AtStartup");
-    expect(install).toContain("New-ScheduledTaskTrigger -AtLogOn");
-    expect(install).toContain("New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest");
-    expect(install).toContain("-MultipleInstances IgnoreNew");
+    expect(install).toContain("$serviceName = 'ExosuitFieldGuest'");
+    expect(install).toContain("--field-guest-service");
+    expect(install).toContain("Field guest service installation requires the exact compiled launcher paths.");
+    expect(install).toContain("'start=', 'auto', 'obj=', 'LocalSystem'");
+    expect(install).toContain("'restart/5000/restart/30000/restart/60000'");
+    expect(install).toContain("Unregister-ScheduledTask -TaskName $legacyTaskName -Confirm:$false");
+    expect(install).toContain("Legacy Field guest scheduled task removal did not complete.");
+    expect(install).toContain("[switch]$Start");
+    expect(install).toContain("Start-Service -Name $serviceName");
+    expect(install).not.toContain("New-ScheduledTaskTrigger");
     expect(start).toContain("DesktopReadyTimeoutSeconds");
     expect(start).toContain("session_unlocked");
     expect(start).toContain("Interactive desktop did not become ready");
@@ -198,6 +204,7 @@ describe("Windows Field administration scripts", () => {
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");
     expect(setupComplete).toContain("-Confirm:$false");
+    expect(setupComplete).toContain("-Start -Confirm:$false");
     expect(setupComplete).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
     // New-LocalUser caps Description at 48 characters. A 61 character value
     // failed validation in the guest, so ExosuitDev was never created and the
@@ -214,9 +221,11 @@ describe("Windows Field administration scripts", () => {
     expect(sealBase).toContain("Base sealing must run as the built-in Windows Audit Mode administrator.");
     expect(sealBase).toContain("Base sealing refuses an image containing per-generation configuration or secrets.");
     expect(sealBase).toContain("Base sealing refuses an image containing a non-built-in local account.");
-    expect(sealBase).toContain("Get-ScheduledTask -TaskName $taskName");
-    expect(sealBase).toContain("MSFT_TaskBootTrigger");
-    expect(sealBase).toContain("MSFT_TaskLogonTrigger");
+    expect(sealBase).toContain("Get-CimInstance Win32_Service -Filter \"Name='$serviceName'\"");
+    expect(sealBase).toContain("StartName -cne 'LocalSystem'");
+    expect(sealBase).toContain("StartMode -cne 'Auto'");
+    expect(sealBase).toContain("--field-guest-service");
+    expect(sealBase).toContain("Legacy Field guest scheduled task remains after service installation.");
     expect(sealBase).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(sealBaseLauncher).toContain('-Apply -TypedConfirmation "SEAL EXOSUIT FIELD BASE"');
     expect(sealBaseLauncher).not.toMatch(/password|secret|token/i);
@@ -260,6 +269,8 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("sc.exe delete $maintenanceDispatchName");
     expect(systemBaseMaintenance).toContain("Field base maintenance did not consume its one-use service.");
     expect(systemBaseMaintenance).toContain("maintenanceTaskConsumed = $true");
+    expect(systemBaseMaintenance).toContain("runtime_service_installed");
+    expect(systemBaseMaintenance).toContain("Field base maintenance runtime service does not match the reviewed LocalSystem contract.");
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
