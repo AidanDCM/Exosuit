@@ -177,7 +177,7 @@ Screenshots are disabled by default and not implemented in the initial Windows p
 
 - capture only when explicitly requested and locally enabled,
 - be ephemeral by default,
-- support region redaction,
+- require every redaction region to be wholly contained in the captured frame before bytes are copied or counted,
 - never log or persist raw image bytes in application maps,
 - expose a visible capture indicator,
 - prevent password and protected surfaces from leaving the machine,

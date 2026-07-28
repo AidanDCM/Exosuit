@@ -296,7 +296,7 @@ Required evidence:
 - persistent capture indicator;
 - independent local stop;
 - window/region scope;
-- sensitive-region redaction before persistence;
+- sensitive-region redaction before persistence, with every redaction wholly contained in the captured frame;
 - protected/blank surface behavior;
 - frame, byte, time, and queue budgets;
 - no raw image bytes in normal audit or application maps;

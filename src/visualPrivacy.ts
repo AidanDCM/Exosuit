@@ -147,8 +147,14 @@ export class EphemeralVisualFrame {
     if (input.rgbaBytes.byteLength !== expectedBytes) {
       throw new Error(`RGBA frame requires exactly ${expectedBytes} bytes.`);
     }
-    this.#bytes = new Uint8Array(input.rgbaBytes);
     const redactions = (input.redactions ?? []).map((item) => visualRegionSchema.parse(item));
+    const frameBounds = { x: 0, y: 0, width: input.width, height: input.height };
+    for (const redaction of redactions) {
+      if (!contains(frameBounds, redaction)) {
+        throw new Error("Visual redaction lies outside the captured frame.");
+      }
+    }
+    this.#bytes = new Uint8Array(input.rgbaBytes);
     for (const redaction of redactions) redact(this.#bytes, input.width, input.height, redaction);
     this.metadata = visualFrameMetadataSchema.parse({
       frameId: randomUUID(),

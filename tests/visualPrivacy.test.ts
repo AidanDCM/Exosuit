@@ -150,6 +150,39 @@ describe("visual privacy foundation", () => {
     expect(() => frame.read()).toThrow(/disposed/);
   });
 
+  it("rejects partially or wholly out-of-frame redactions instead of counting a no-op", () => {
+    const policy = new VisualCapturePolicy({ enabled: true });
+    const consent = policy.issueConsent({
+      taskId: "task-a",
+      windowId: "window-a",
+      region: { x: 10, y: 20, width: 2, height: 2 },
+      purpose: "Synthetic redaction containment test.",
+      durationMs: 5_000,
+      maxFrames: 2,
+      localApproved: true,
+      indicatorVisible: true,
+    });
+    const create = (redaction: { x: number; y: number; width: number; height: number }) =>
+      new EphemeralVisualFrame({
+        consent,
+        region: consent.region,
+        width: 2,
+        height: 2,
+        rgbaBytes: new Uint8Array(16).fill(100),
+        redactions: [redaction],
+      });
+
+    expect(() => create({ x: 1, y: 1, width: 2, height: 1 })).toThrow(
+      /redaction lies outside the captured frame/,
+    );
+    expect(() => create({ x: 3, y: 3, width: 1, height: 1 })).toThrow(
+      /redaction lies outside the captured frame/,
+    );
+    const contained = create({ x: 1, y: 1, width: 1, height: 1 });
+    expect(contained.metadata.redactedRegionCount).toBe(1);
+    expect([...contained.read().slice(12, 16)]).toEqual([0, 0, 0, 255]);
+  });
+
   it("accepts only in-frame grounding above the configured confidence threshold", () => {
     const policy = new VisualCapturePolicy({ enabled: true });
     const consent = policy.issueConsent({

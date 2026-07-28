@@ -113,6 +113,8 @@ Residual, not a finding: random 96-bit IVs are safe to roughly 2^32 messages per
 
 Capture is off by default and, when disabled, throws. When enabled it additionally requires explicit local task approval, a visible indicator, an unexpired consent lease, a region within approved bounds, matching task and window scope, and a non-exhausted frame budget. Correctly gated, and consistent with the roadmap keeping Phase 6 at `proposed`.
 
+**Containment residual closed on the consolidated branch.** Redaction coordinates are frame-local. The frame constructor now rejects every partially or wholly out-of-frame redaction before copying image bytes. This prevents a clamped no-op from increasing `redactedRegionCount` and being misrepresented as privacy protection.
+
 ### `src/supervisor.ts` and `src/agentRegistration.ts`
 
 Aside from Finding 1:
