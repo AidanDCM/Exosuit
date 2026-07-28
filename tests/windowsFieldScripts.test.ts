@@ -94,6 +94,19 @@ describe("Windows Field administration scripts", () => {
     expect(guest).not.toContain("Invoke-Expression");
   });
 
+  it("keeps offline guest inspection bounded, private-content-free, and read-only", async () => {
+    const inspector = await script("Inspect-ExosuitFieldGuestOffline.ps1");
+    expect(inspector).toContain("Offline inspection refuses a running VM");
+    expect(inspector).toContain("Mount-DiskImage -ImagePath $Path -Access ReadOnly");
+    expect(inspector).toContain("Dismount-DiskImage -ImagePath $Path");
+    expect(inspector).toContain("Invoke-Bounded -Name 'Get-VM'");
+    expect(inspector).toContain("Windows\\System32\\Tasks\\ExosuitFieldGuest");
+    expect(inspector).toContain("Get-FileHash");
+    expect(inspector).not.toMatch(/\bStart-VM\b|\bStop-VM\b|\bRemove-VM\b|\bMount-VHD\b/);
+    expect(inspector).not.toContain("Get-Content -LiteralPath $log");
+    expect(inspector).not.toContain("Invoke-Expression");
+  });
+
   it("keeps live guest readiness on authenticated Hyper-V KVP without a network listener", async () => {
     const start = await script("Start-ExosuitFieldGuest.ps1");
     const install = await script("Install-ExosuitFieldGuest.ps1");

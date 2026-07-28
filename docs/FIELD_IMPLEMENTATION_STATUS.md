@@ -53,7 +53,7 @@ Therefore:
 | deterministic recovery | `fieldRecovery.ts` | no-blind-retry and generation tests | not wired to host/guest |
 | privacy-safe diagnostics | `fieldSupportBundle.ts` | leakage/integrity tests | no automatic collector |
 | fake full-system pulse | `fieldSystemPulse.test.ts` | executed locally on Field and merged trees | fake integration only |
-| Windows host tooling | `scripts/windows/*.ps1` | static tests plus selected v13 development execution | selected paths only |
+| Windows host tooling | `scripts/windows/*.ps1` | static tests, selected v13 development execution, and bounded v14 offline inspection | selected paths only; elevation remains local |
 | local evidence runner | `Invoke-ExosuitFieldValidation.ps1` | exact-head Field run passed at `e10e921` | L0 only |
 
 ## Critical architecture decisions now encoded

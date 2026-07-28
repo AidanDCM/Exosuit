@@ -33,6 +33,7 @@ const pairs = [
 
 const windowsScripts = [
   "scripts/windows/Test-ExosuitFieldHost.ps1",
+  "scripts/windows/Inspect-ExosuitFieldGuestOffline.ps1",
   "scripts/windows/Show-ExosuitFieldProvisioningPlan.ps1",
   "scripts/windows/Invoke-ExosuitFieldProvisioning.ps1",
   "scripts/windows/Remove-ExosuitFieldGeneration.ps1",

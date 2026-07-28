@@ -269,6 +269,8 @@ Failure injection:
 
 The source adapter now composes the existing Windows UI Automation observation contract with a fresh exact-generation Field heartbeat, display contract, cursor state, and explicit modal state. It rejects screenshot bytes, redacts sensitive element identity/value/actions, defaults to structural-only metadata with all UI text removed, and advances scene versions only after successful validation. A separate `consented_ui_text` policy exists but is not enabled by runtime wiring. Authenticated guest-to-host scene transport and live Windows evidence remain open.
 
+Offline guest diagnosis now has a canonical bounded inspector. It refuses a running VM, mounts only the exact disposable overlay read-only, records file names/sizes/digests and scheduled-task metadata without copying configuration or log contents, and always attempts a bounded dismount. A live 2026-07-28 v14 run proved the agent/config files and LocalSystem boot/logon task were present, narrowing that regression to runtime startup before KVP publication.
+
 - top-level windows and generations;
 - process identity;
 - active/focused window;
