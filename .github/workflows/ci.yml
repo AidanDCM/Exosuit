@@ -1,8 +1,18 @@
 name: Exosuit CI
 
+# Triggers are deliberately non-overlapping. `push` covered `build/**` as well as `main`,
+# so every push to the canonical branch fired a push run AND a pull_request run for the
+# same commit through PR #1 — identical work, billed twice, on a private repo where
+# Windows minutes count double against the allowance.
+#
+# `push` now validates post-merge on main only; `pull_request` validates pre-merge. A
+# commit is therefore checked exactly once.
+#
+# Trade-off: a `build/**` branch with no open PR gets no automatic run. Open the PR (the
+# documented workflow here) or use workflow_dispatch.
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main]
     paths:
       - "src/**"
       - "tests/**"
@@ -45,24 +55,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  detect:
-    name: Detect project surfaces
-    runs-on: ubuntu-latest
-    outputs:
-      has_typescript: ${{ steps.files.outputs.has_typescript }}
-      has_dotnet: ${{ steps.files.outputs.has_dotnet }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: files
-        shell: bash
-        run: |
-          test -f package.json && echo 'has_typescript=true' >> "$GITHUB_OUTPUT" || echo 'has_typescript=false' >> "$GITHUB_OUTPUT"
-          test -f apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj && echo 'has_dotnet=true' >> "$GITHUB_OUTPUT" || echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
-
   typescript:
     name: TypeScript contracts, gateway, and pulse
-    needs: detect
-    if: needs.detect.outputs.has_typescript == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -70,8 +64,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify TypeScript project surface
+        shell: bash
+        run: test -f package.json && test -f tsconfig.json
       - name: Install dependencies
-        run: npm install --ignore-scripts
+        run: npm install --ignore-scripts --fund=false
       - name: Typecheck
         shell: bash
         run: |
@@ -97,8 +94,6 @@ jobs:
 
   windows-agent:
     name: Windows agent build and pure tests
-    needs: detect
-    if: needs.detect.outputs.has_dotnet == 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -106,6 +101,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Verify .NET project surface
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj')) {
+            throw 'Windows agent test project is missing.'
+          }
       - name: Restore
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
       - name: Build with warnings as errors
@@ -136,8 +137,6 @@ jobs:
 
   repository-contract:
     name: Required manuals and safety files
-    needs: detect
-    if: needs.detect.outputs.has_typescript == 'true' || needs.detect.outputs.has_dotnet == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,6 +150,7 @@ jobs:
               AGENTS.md
               OWNER_MANUAL.md
               DEVELOPER_OPERATING_SYSTEM.md
+              docs/MASTER_SYSTEM_ROADMAP.md
               docs/ARCHITECTURE.md
               docs/SECURITY_MODEL.md
               docs/TEST_PLAN.md

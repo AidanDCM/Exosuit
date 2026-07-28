@@ -1,0 +1,67 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-07-18T21:04:11-04:00",
+    "evidenceClass":  "local Windows startup denial acceptance",
+    "physicalInputExecuted":  false,
+    "screenshotsEnabled":  false,
+    "cases":  [
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "physical_input_fake_provider"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "physical_input_without_full_control"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "physical_input_without_ack"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "physical_input_without_allowlist"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "full_control_while_physical_false"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "misspelled_full_control_ack"
+                  },
+                  {
+                      "exitCode":  1,
+                      "result":  "denied",
+                      "name":  "windows_provider_without_uia_ack"
+                  }
+              ],
+    "controlPanel":  {
+                         "result":  "denied",
+                         "httpStatus":  400,
+                         "modeAfter":  "sandbox",
+                         "requestedMode":  "full_control",
+                         "modeBefore":  "sandbox"
+                     },
+    "operationalFix":  {
+                           "behaviorBefore":  "Unhandled startup InvalidOperationException entered Windows crash handling and did not return a clean exit promptly.",
+                           "behaviorAfter":  "Expected startup InvalidOperationException returns exit code 1 with one sanitized error line."
+                       },
+    "invalidHarnessAttempts":  [
+                                   "ProcessStartInfo did not inherit modified environment in this sandbox; no denial claim derived.",
+                                   "Apphost crash handling caused timeout after correct exception; no exit-code claim derived."
+                               ],
+    "automatedChecks":  {
+                            "build":  "passed",
+                            "typecheck":  "passed",
+                            "systemPulse":  "passed",
+                            "typescriptTests":  "34 passed",
+                            "dotnetTests":  "27 passed",
+                            "nugetVulnerabilityMetadata":  "NU1900 offline warning; no clean audit claimed"
+                        }
+}

@@ -1,0 +1,91 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-07-18T23:16:08.3822838+00:00",
+    "evidenceClass":  "Windows Sandbox physical-input acceptance",
+    "environment":  {
+                        "disposable":  "Windows Sandbox",
+                        "networking":  "disabled",
+                        "clipboardRedirection":  "disabled",
+                        "screenshots":  "disabled",
+                        "provider":  "windows-ui-automation+windows-sendinput",
+                        "mode":  "full_control"
+                    },
+    "target":  {
+                   "title":  "Exosuit Disposable Acceptance Fixture",
+                   "processName":  "Exosuit.AcceptanceFixture",
+                   "processId":  7096,
+                   "automationId":  "AcceptanceText",
+                   "focused":  true
+               },
+    "actions":  {
+                    "movePointer":  {
+                                        "proposalId":  "proposal-56e768a5-8c16-43b5-a3e3-3f30a8bc34af",
+                                        "actionId":  "sandbox-move",
+                                        "status":  "succeeded",
+                                        "verificationStatus":  "passed",
+                                        "summary":  "Provider evidence matched.",
+                                        "evidence":  {
+                                                         "key":  "actionType",
+                                                         "actual":  "move_pointer"
+                                                     },
+                                        "warnings":  [
+
+                                                     ]
+                                    },
+                    "clickPointer":  {
+                                         "proposalId":  "proposal-5fa63f65-2f08-4a5c-a181-259b26127ebb",
+                                         "actionId":  "sandbox-click",
+                                         "status":  "succeeded",
+                                         "verificationStatus":  "passed",
+                                         "summary":  "Provider evidence matched.",
+                                         "evidence":  {
+                                                          "key":  "actionType",
+                                                          "actual":  "click_pointer"
+                                                      },
+                                         "warnings":  [
+
+                                                      ]
+                                     },
+                    "typeText":  {
+                                     "proposalId":  "proposal-a5f0da7e-a86e-4716-968b-d819033d0f37",
+                                     "actionId":  "sandbox-type",
+                                     "status":  "succeeded",
+                                     "verificationStatus":  "passed",
+                                     "summary":  "Expected element value is present.",
+                                     "evidence":  {
+                                                      "actual":  "Exosuit physical validation successful",
+                                                      "expected":  "Exosuit physical validation successful"
+                                                  },
+                                     "warnings":  [
+
+                                                  ]
+                                 },
+                    "hotkey":  {
+                                   "proposalId":  "proposal-53f8d2a8-d98f-4d7f-8bdc-1cb164d9b6da",
+                                   "actionId":  "sandbox-hotkey",
+                                   "status":  "succeeded",
+                                   "verificationStatus":  "passed",
+                                   "summary":  "Provider evidence matched.",
+                                   "evidence":  {
+                                                    "key":  "actionType",
+                                                    "actual":  "hotkey"
+                                                },
+                                   "warnings":  [
+
+                                                ]
+                               }
+                },
+    "localApproval":  "Each action received a distinct local typed confirmation; runner could not approve proposals.",
+    "auditLedger":  {
+                        "exported":  false,
+                        "reason":  "Acceptance runner captured proposals and results but did not export the guest audit.jsonl before teardown."
+                    },
+    "automatedChecks":  {
+                            "typecheck":  "passed",
+                            "build":  "passed",
+                            "typescriptTests":  "34 passed",
+                            "systemPulse":  "passed",
+                            "dotnetTests":  "28 passed",
+                            "nugetVulnerabilityMetadata":  "NU1900 offline warning; no clean audit claimed"
+                        }
+}

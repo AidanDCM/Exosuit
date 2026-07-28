@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# Runs the full CI-parity matrix against a clean checkout of HEAD before every push.
+#
+# Why clean rather than the working tree: a push publishes committed content, so that is
+# what should be validated. A working-tree run can pass on a file you never committed.
+#
+# This is the substitute gate while hosted CI is unavailable. It is NOT hosted CI: one
+# machine, one OS, one toolchain, not independent of this working environment. It cannot
+# detect a Linux-only or version-specific failure, and nothing it prints may be cited as
+# hosted evidence. See docs/MASTER_SYSTEM_ROADMAP.md.
+#
+# Bypass, in order of preference:
+#   git push --no-verify          one-off, git's own escape hatch
+#   EXOSUIT_SKIP_PREPUSH=1 git push   same, but explicit in shell history
+#
+# Bypassing is a legitimate choice — pushing a work-in-progress branch, or a docs-only
+# change you have already validated. It is recorded here so that skipping is a decision
+# rather than a discovery.
+
+set -u
+
+if [ "${EXOSUIT_SKIP_PREPUSH:-}" = "1" ]; then
+  echo "pre-push: skipped (EXOSUIT_SKIP_PREPUSH=1)"
+  exit 0
+fi
+
+# git feeds "<local-ref> <local-sha> <remote-ref> <remote-sha>" per ref on stdin.
+# An all-zero local sha means the ref is being deleted; there is nothing to validate.
+zero="0000000000000000000000000000000000000000"
+has_content=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ -z "${local_sha:-}" ] && continue
+  [ "$local_sha" = "$zero" ] && continue
+  has_content=1
+done
+
+if [ "$has_content" -eq 0 ]; then
+  echo "pre-push: nothing to validate (deletion or empty push)"
+  exit 0
+fi
+
+echo "pre-push: running clean-checkout CI parity against HEAD"
+echo "pre-push: this takes roughly two minutes; 'git push --no-verify' skips it"
+echo
+
+if node scripts/ci-parity.mjs --clean; then
+  echo
+  echo "pre-push: parity passed, continuing with push"
+  exit 0
+fi
+
+echo
+echo "pre-push: BLOCKED — CI parity failed against a clean checkout of HEAD."
+echo "pre-push: fix the failures above, or push with --no-verify if this is deliberate."
+exit 1

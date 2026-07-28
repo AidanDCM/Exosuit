@@ -1,8 +1,11 @@
 name: Security Audit
 
+# See the trigger note in ci.yml. `push` covered `build/**` as well as `main`, so every
+# push to the canonical branch ran these audits twice for the same commit — once for the
+# push and once through PR #1.
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main]
     paths:
       - "src/**"
       - "tests/**"
@@ -28,24 +31,8 @@ permissions:
   security-events: write
 
 jobs:
-  detect:
-    name: Detect project surfaces
-    runs-on: ubuntu-latest
-    outputs:
-      has_typescript: ${{ steps.files.outputs.has_typescript }}
-      has_dotnet: ${{ steps.files.outputs.has_dotnet }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: files
-        shell: bash
-        run: |
-          test -f package.json && echo 'has_typescript=true' >> "$GITHUB_OUTPUT" || echo 'has_typescript=false' >> "$GITHUB_OUTPUT"
-          test -f apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj && echo 'has_dotnet=true' >> "$GITHUB_OUTPUT" || echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
-
   npm-audit:
     name: npm dependency vulnerability audit
-    needs: detect
-    if: needs.detect.outputs.has_typescript == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -53,6 +40,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify TypeScript project surface
+        run: test -f package.json
       - name: Resolve dependency tree without scripts
         run: npm install --ignore-scripts --fund=false
       - name: Fail on high or critical advisories
@@ -74,8 +63,6 @@ jobs:
 
   nuget-audit:
     name: NuGet dependency vulnerability audit
-    needs: detect
-    if: needs.detect.outputs.has_dotnet == 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -83,6 +70,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Verify .NET project surface
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj')) {
+            throw 'Windows agent test project is missing.'
+          }
       - name: Restore with NuGet audit enabled
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj -p:NuGetAudit=true
       - name: List vulnerable direct and transitive packages
@@ -107,8 +100,7 @@ jobs:
 
   codeql-javascript-typescript:
     name: CodeQL JavaScript/TypeScript (public repositories only)
-    needs: detect
-    if: needs.detect.outputs.has_typescript == 'true' && github.event.repository.private == false
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -121,8 +113,7 @@ jobs:
 
   codeql-csharp:
     name: CodeQL C# (public repositories only)
-    needs: detect
-    if: needs.detect.outputs.has_dotnet == 'true' && github.event.repository.private == false
+    if: github.event.repository.private == false
     runs-on: windows-latest
     timeout-minutes: 30
     steps:

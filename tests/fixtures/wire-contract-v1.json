@@ -1,0 +1,104 @@
+{
+  "status": {
+    "version": "0.1.0-fixture",
+    "provider": "fake-sandbox",
+    "mode": "sandbox",
+    "emergencyStopped": false,
+    "physicalInputEnabled": false,
+    "screenshotCaptureEnabled": false,
+    "pendingProposalCount": 1,
+    "startedAt": "2026-07-17T20:00:00.000Z"
+  },
+  "observation": {
+    "observationId": "obs-fixture-1",
+    "capturedAt": "2026-07-17T20:01:00.000Z",
+    "mode": "sandbox",
+    "provider": "fake-sandbox",
+    "activeWindow": {
+      "id": "win-notepad",
+      "title": "Exosuit Test Notepad",
+      "processName": "exosuit-fake-notepad",
+      "processId": 101,
+      "isActive": true,
+      "isMinimized": false,
+      "bounds": { "x": 100, "y": 100, "width": 800, "height": 600 }
+    },
+    "windows": [
+      {
+        "id": "win-notepad",
+        "title": "Exosuit Test Notepad",
+        "processName": "exosuit-fake-notepad",
+        "processId": 101,
+        "isActive": true,
+        "isMinimized": false,
+        "bounds": { "x": 100, "y": 100, "width": 800, "height": 600 }
+      }
+    ],
+    "elements": [
+      {
+        "id": "el-editor",
+        "windowId": "win-notepad",
+        "name": "Document text",
+        "controlType": "Edit",
+        "automationId": "editor",
+        "value": "hello",
+        "enabled": true,
+        "focused": true,
+        "offscreen": false,
+        "isSensitive": false,
+        "bounds": { "x": 120, "y": 160, "width": 740, "height": 450 },
+        "source": "fake",
+        "supportedActions": ["set_element_value"]
+      }
+    ],
+    "warnings": []
+  },
+  "proposal": {
+    "proposalId": "proposal-fixture-1",
+    "createdAt": "2026-07-17T20:02:00.000Z",
+    "expiresAt": "2026-07-17T20:07:00.000Z",
+    "action": {
+      "id": "action-fixture-1",
+      "actionType": "set_element_value",
+      "route": "os_accessibility",
+      "targetWindowId": "win-notepad",
+      "targetElementId": "el-editor",
+      "text": "hello",
+      "rationale": "Validate the shared wire contract.",
+      "expected": {
+        "kind": "element_value",
+        "elementId": "el-editor",
+        "equals": "hello"
+      },
+      "requestedBy": "test"
+    },
+    "decision": {
+      "status": "allow",
+      "riskLevel": "medium",
+      "approvalType": "none",
+      "reason": "Bounded semantic action is allowed in the sandbox.",
+      "policyRule": "sandbox-semantic-action"
+    },
+    "activeWindowId": "win-notepad",
+    "status": "allowed"
+  },
+  "result": {
+    "proposalId": "proposal-fixture-1",
+    "actionId": "action-fixture-1",
+    "status": "succeeded",
+    "verificationStatus": "passed",
+    "summary": "Expected element value is present.",
+    "evidence": { "actual": "hello", "expected": "hello" },
+    "warnings": []
+  },
+  "auditEvent": {
+    "sequence": 0,
+    "eventId": "event-fixture-1",
+    "eventType": "action_executed",
+    "createdAt": "2026-07-17T20:03:00.000Z",
+    "actor": "test",
+    "payload": { "proposalId": "proposal-fixture-1" },
+    "previousHash": "GENESIS",
+    "hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+}

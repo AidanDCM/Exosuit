@@ -1,0 +1,58 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-07-18T23:46:08.0707831+00:00",
+    "evidenceClass":  "Windows Sandbox real emergency-stop interruption",
+    "environment":  {
+                        "provider":  "windows-ui-automation+windows-sendinput",
+                        "mode":  "full_control",
+                        "screenshots":  false,
+                        "networking":  "disabled",
+                        "clipboardRedirection":  "disabled"
+                    },
+    "action":  {
+                   "type":  "type_text",
+                   "boundedUtf16Length":  2000,
+                   "proposalId":  "proposal-edcbd81d-279c-4052-b93d-346e167db697",
+                   "resultStatus":  "cancelled",
+                   "verificationStatus":  "not_checked"
+               },
+    "emergencyStop":  {
+                          "actor":  "local-control-panel",
+                          "emergencyStopped":  true,
+                          "providerCancellationTimedOut":  false,
+                          "reactionAndDetectionMilliseconds":  9982.4634,
+                          "stopToCancellationAuditMilliseconds":  2.4010000000000002
+                      },
+    "postStop":  {
+                     "proposalStatus":  "blocked",
+                     "policyRule":  "emergency-stop-lock",
+                     "restartRequired":  true
+                 },
+    "audit":  {
+                  "valid":  true,
+                  "checked":  11,
+                  "eventTypes":  [
+                                     "agent_started",
+                                     "desktop_observed",
+                                     "action_proposed",
+                                     "proposal_approved",
+                                     "desktop_observed",
+                                     "desktop_observed",
+                                     "desktop_observed",
+                                     "desktop_observed",
+                                     "emergency_stop",
+                                     "action_cancelled",
+                                     "action_proposed"
+                                 ],
+                  "rawLedgerCapturedOnHost":  true
+              },
+    "limitations":  [
+                        "Reaction-and-detection time includes the human response interval and polling; it is not internal stop latency.",
+                        "The real provider cancellation-timeout branch was not forced; a hanging fake-provider regression covers that branch.",
+                        "The raw audit ledger remains local temporary evidence and is not committed because action payloads may contain UI text in non-fixture runs."
+                    ],
+    "automatedChecks":  {
+                            "dotnetTests":  "29 passed",
+                            "nugetVulnerabilityMetadata":  "NU1900 offline warning; no clean audit claimed"
+                        }
+}

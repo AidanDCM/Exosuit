@@ -1,0 +1,49 @@
+{
+    "schemaVersion":  1,
+    "capturedAt":  "2026-07-18T21:08:02.1088567+00:00",
+    "evidenceClass":  "local fake-provider emergency-stop acceptance",
+    "provider":  "fake-sandbox",
+    "mode":  "sandbox",
+    "physicalInputEnabled":  false,
+    "screenshotCaptureEnabled":  false,
+    "stop":  {
+                 "providerCancellationTimedOut":  false,
+                 "stopped":  true,
+                 "latencyMilliseconds":  8.06
+             },
+    "preparedProposal":  {
+                             "verificationStatus":  "not_checked",
+                             "statusBeforeStop":  "allowed",
+                             "proposalId":  "proposal-000e030f-5205-4ac9-bb67-38dbce2b4b4b",
+                             "executionStatus":  "blocked"
+                         },
+    "laterProposal":  {
+                          "decisionStatus":  "block",
+                          "status":  "blocked",
+                          "policyRule":  "emergency-stop-lock",
+                          "proposalId":  "proposal-0f8614ce-001b-4bf2-976e-f1ba8311d154"
+                      },
+    "audit":  {
+                  "blockedExecutionEvent":  {
+                                                "proposalStatus":  "Denied",
+                                                "emergencyStopped":  true,
+                                                "sequence":  4,
+                                                "eventType":  "action_blocked_before_execution"
+                                            },
+                  "valid":  true
+              },
+    "automatedChecks":  {
+                            "build":  "passed",
+                            "typecheck":  "passed",
+                            "systemPulse":  "passed",
+                            "typescriptTests":  "34 passed",
+                            "dotnetTests":  "27 passed",
+                            "nugetVulnerabilityMetadata":  "NU1900 offline warning; no clean audit claimed"
+                        },
+    "unvalidated":  [
+                        "real motor interruption",
+                        "provider cancellation timeout",
+                        "emergency-stop latency during real movement",
+                        "emergency-stop latency during real typing"
+                    ]
+}

@@ -1,0 +1,44 @@
+# Keep this workflow. It is the diagnostic control for hosted-runner availability.
+#
+# Its jobs deliberately contain a single echo step and no checkout, dependencies,
+# cache, or job dependencies. If these jobs fail, the cause cannot be workflow
+# configuration, so the failure is account-level.
+#
+# It already proved its worth: on 2026-07-27 both jobs failed with
+# "The job was not started because recent account payments have failed or your
+# spending limit needs to be increased", which identified an account billing block
+# after several commits had tried to fix hosted CI by editing workflow YAML.
+#
+# Run it from the Actions tab (workflow_dispatch) to check whether billing has been
+# restored, before assuming any other CI change worked. See README.md and
+# docs/qa/ATOMIC_AUDIT_2026-07-21_GITHUB_EXPANSION.md.
+
+name: Runner Smoke Test
+
+on:
+  push:
+    branches: ["build/**"]
+    paths:
+      - ".github/workflows/runner-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Allocate ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm Linux runner
+        run: echo "ubuntu-latest runner allocated"
+
+  windows:
+    name: Allocate windows-latest
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm Windows runner
+        shell: pwsh
+        run: Write-Output "windows-latest runner allocated"
