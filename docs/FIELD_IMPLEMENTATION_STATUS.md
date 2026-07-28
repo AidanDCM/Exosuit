@@ -43,7 +43,7 @@ Therefore:
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
 | Teach recorder state machine | `teachRecorder.ts`, `demonstration.ts` | consent/no-input/fault tests | no input/UIA hooks |
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
-| demonstration processing and retrieval | `demonstrationProcessing.ts` | terminal/ambiguity/privacy/relevance/deletion/held-out tests | deterministic annotation pipeline and in-memory index only |
+| demonstration processing and retrieval | `demonstrationProcessing.ts`, `encryptedProcessedDemonstrationStore.ts` | terminal/ambiguity/privacy/relevance/encryption/restart/deletion/held-out tests | deterministic pipeline and encrypted file store; no live adapter |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
 | scene graph | `fieldScene.ts` | version/focus/modal/readiness tests | no Windows producer |
 | Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
@@ -175,7 +175,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;
-- automatic/learned segmentation, encrypted derived-index persistence, real-data quality/calibration evaluation, or learned personal predictor;
+- automatic/learned segmentation, real-data quality/calibration evaluation, or learned personal predictor;
 - personal task/motor/typing/language/timing models;
 - live artifact copy with reparse and TOCTOU protection;
 - credential broker;

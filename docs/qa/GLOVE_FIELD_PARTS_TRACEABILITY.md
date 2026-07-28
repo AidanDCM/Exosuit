@@ -118,7 +118,7 @@ It adds AES-256-GCM because demonstration metadata can contain personal behavior
 
 ### Demonstration retrieval preserves evidence lineage
 
-The deterministic processing foundation accepts only terminal episodes and explicit bounded semantic-step annotations. Each derived step records its exact source range and event IDs. Retrieval is restricted to the same hashed operator identity and exact layout fingerprint, omits failed and mistake behavior by default, propagates source deletion, and has no execution interface. Durable derived storage and real-data quality evidence remain deferred prerequisites.
+The deterministic processing foundation accepts only terminal episodes and explicit bounded semantic-step annotations. Each derived step records its exact source range and event IDs. Retrieval is restricted to the same hashed operator identity and exact layout fingerprint, omits failed and mistake behavior by default, propagates source deletion, and has no execution interface. Derived records use bounded AES-256-GCM storage and restart hydration; Windows key protection and real-data quality evidence remain deferred prerequisites.
 
 The retrieval-backed Shadow baseline is a separate predict-or-abstain component. Both prediction and abstention contracts hard-code no execution, unsafe scene states abstain before lookup, low-confidence or irrelevant examples do not guess, and every prediction retains source episode provenance. Its confidence is heuristic and has no live promotion claim.
 

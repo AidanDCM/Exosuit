@@ -341,7 +341,7 @@ No mutation may use stale scene or window generation.
 
 ## 13. Demonstration processing and retrieval
 
-The source foundation has a deterministic `semantic_step` annotation processor, exact event lineage, strict non-overlapping ranges, mistake/correction labels, operator/layout-scoped similarity retrieval, source deletion, and deterministic held-out partitioning. It is intentionally in-memory. Automatic grounding, encrypted derived persistence, migration, and real-data quality evidence remain open.
+The source foundation has a deterministic `semantic_step` annotation processor, exact event lineage, strict non-overlapping ranges, mistake/correction labels, operator/layout-scoped similarity retrieval, source deletion, and deterministic held-out partitioning. Derived records now have a bounded AES-256-GCM file store, authenticated source/Field/pipeline identity, atomic private writes, restart hydration, and a corpus wrapper that deletes derived behavior before raw source. Automatic grounding, migration, Windows key protection, and real-data quality evidence remain open.
 
 - integrity/privacy validation;
 - event synchronization;
