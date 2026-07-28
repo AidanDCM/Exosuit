@@ -795,6 +795,12 @@ After uncertainty, Exosuit observes and reconciles before retrying. It never ass
 
 **Implementation note (2026-07-27):** Quotas, backpressure, and latency percentiles implemented in `src/performance.ts` and `src/resourceGovernance.ts`. **No benchmark numbers have been established**; this phase requires targets derived from local benchmarks rather than invented in advance.
 
+**Benchmark harness added (2026-07-28):** `scripts/benchmark.mjs`, run with `npm run benchmark`. First baseline recorded in `docs/qa/evidence/2026-07-28-phase10-benchmark-baseline.md`. It covers observation, proposal, execute-and-verify, emergency-stop, and audit-append latency with p50/p95/p99, plus scheduler scaling, memory per tracked window, and audit growth. Focus-switch latency, motor start latency, CPU while observing, and maximum agents are reported as **not covered**, because a fake-provider number for them would be misleading.
+
+These remain **measurements, not targets.** Setting service targets is an owner decision and needs real-desktop numbers as well.
+
+**Finding — the workflow scheduler is superlinear in step count.** With a no-op executor, median total time was 0.2 ms at 1 step, 9.7 ms at 10, 172.3 ms at 50, and 1023.6 ms at 100. Ten times the steps cost roughly a hundred times the time, and per-step cost degraded from 0.24 ms to 10.24 ms. Short workflows are unaffected; long ones degrade badly. The responsible code has not been profiled and no fix is claimed. This must be resolved, or a maximum workflow length must be set as an explicit quota, before this phase can define a scheduler-overhead target.
+
 ### Objectives
 
 Define measurable responsiveness and resource limits instead of relying on subjective fluidity.

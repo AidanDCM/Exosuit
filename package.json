@@ -13,6 +13,8 @@
     "test": "vitest run",
     "test:pulse": "vitest run tests/systemPulse.test.ts",
     "validate:repository": "node scripts/validate-repository.mjs",
+    "validate:ci-parity": "node scripts/ci-parity.mjs",
+    "benchmark": "node --expose-gc scripts/benchmark.mjs",
     "validate:typescript": "npm run validate:repository && npm run typecheck && npm test -- --reporter=verbose && npm run build && npm run test:pulse -- --reporter=verbose",
     "validate": "npm run validate:typescript && npm run agent:test",
     "dev:mcp": "tsx src/index.ts",

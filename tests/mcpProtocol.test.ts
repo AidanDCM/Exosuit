@@ -164,5 +164,10 @@ describe("MCP protocol boundary", () => {
       await client.close();
       await server.close();
     }
-  });
+    // Integration test, not a unit test: a real client/server handshake plus roughly ten
+    // tool invocations including an application-map build and match. It normally finishes
+    // in well under a second, but it exceeded the 10s global timeout once on a loaded
+    // machine. The wider budget here is for scheduling contention on a shared CI runner;
+    // the global 10s still applies to every unit test.
+  }, 30_000);
 });
