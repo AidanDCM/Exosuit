@@ -393,6 +393,8 @@ Metrics:
 
 ## 15. Correction and personal models
 
+The source foundation now records one correction per exact Shadow prediction, binds replacement behavior to the same Field generation and observation, distinguishes system error from changed mind, exploration, and cancellation, preserves uncertain external-effect state, and structurally disables execution. It does not yet stop a live motor path, persist encrypted corrections, replay them in a fresh Field, or prove owner-data improvement.
+
 - owner takeover and correction capture;
 - distinction between mistake, exploration, changed mind, and preferred alternative;
 - task/attention model evaluation;

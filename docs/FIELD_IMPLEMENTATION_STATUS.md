@@ -47,6 +47,7 @@ Therefore:
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
 | scene graph and observation adapter | `fieldScene.ts`, `fieldSceneObservation.ts`, existing Windows UIA observer | version/focus/modal/readiness/freshness/text-redaction tests | transport/runtime wiring not live |
 | Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
+| Correction dataset foundation | `correctionMode.ts` | replacement/cancellation/effect-uncertainty/label-conflict/lineage tests | in-memory source component; no live takeover control or encrypted persistence |
 | Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
 | artifact broker | `fieldArtifactBroker.ts` | hash/size/direction/state tests | no cross-VM copy |
 | deterministic recovery | `fieldRecovery.ts` | no-blind-retry and generation tests | not wired to host/guest |
