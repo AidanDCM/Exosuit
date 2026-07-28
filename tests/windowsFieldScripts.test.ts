@@ -117,6 +117,26 @@ describe("Windows Field administration scripts", () => {
     expect(inspector).not.toContain("Invoke-Expression");
   });
 
+  it("repairs only an off disposable guest through exact reviewed hashes and owner confirmation", async () => {
+    const repair = await script("Repair-ExosuitFieldGuestEnrollment.ps1");
+    expect(repair).toContain("REPAIR FIELD $fieldIdText GENERATION $FieldGeneration BOOTSTRAP ENROLLMENT");
+    expect(repair).toContain("Exact local typed confirmation is required for guest enrollment repair.");
+    expect(repair).toContain("Guest enrollment repair refuses a running VM");
+    expect(repair).toContain("$vmState = [string]$vmState");
+    expect(repair).toContain("ExpectedPreviousManifestSha256");
+    expect(repair).toContain("ExpectedAgentSha256");
+    expect(repair).toContain("ExpectedInitializeScriptSha256");
+    expect(repair).toContain("Repair refuses a guest that already has a bootstrap enrollment record.");
+    expect(repair).toContain("Repair is limited to an expired first-use manifest.");
+    expect(repair).toContain("Mount-DiskImage -ImagePath $Path -Access ReadWrite");
+    expect(repair).toContain("Dismount-DiskImage -ImagePath $Path");
+    expect(repair).toContain("$completedSwaps.Count - 1");
+    expect(repair).toContain("Repair refuses a reparse point");
+    expect(repair).not.toMatch(/\bStart-VM\b|\bStop-VM\b|\bRemove-VM\b/);
+    expect(repair).not.toContain("Get-Content -LiteralPath (Join-Path $resolvedSeedDirectory 'channel-secret.txt')");
+    expect(repair).not.toContain("Invoke-Expression");
+  });
+
   it("keeps live guest readiness on authenticated Hyper-V KVP without a network listener", async () => {
     const start = await script("Start-ExosuitFieldGuest.ps1");
     const install = await script("Install-ExosuitFieldGuest.ps1");

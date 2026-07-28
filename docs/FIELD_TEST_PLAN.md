@@ -277,6 +277,8 @@ The source adapter now composes the existing Windows UI Automation observation c
 
 Offline guest diagnosis now has a canonical bounded inspector. It refuses a running VM, mounts only the exact disposable overlay read-only, records file names/sizes/digests and scheduled-task metadata without copying configuration or log contents, and always attempts a bounded dismount. A live 2026-07-28 v14 run proved the agent/config files and LocalSystem boot/logon task were present, narrowing that regression to runtime startup before KVP publication.
 
+Expired-first-use development recovery has a separate reviewed repair tool. It is not diagnostic-only: apply requires an exact off VM, exact owner confirmation, reviewed manifest/agent/initializer hashes, no existing enrollment, transactional rollback, and guaranteed dismount. Plan-only, wrong-state, wrong-hash, reparse, existing-enrollment, partial-swap, and dismount-failure cases require evidence before production use.
+
 - top-level windows and generations;
 - process identity;
 - active/focused window;
