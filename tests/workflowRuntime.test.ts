@@ -319,6 +319,51 @@ describe("workflow runtime", () => {
     expect(runtime.verifyAudit()).toEqual({ valid: true });
   });
 
+  // Regression guard for the 2026-07-28 scheduler optimization. Internal scheduling now
+  // reads the live workflow record instead of cloning it every step. Public accessors
+  // must still hand out copies: a caller that mutated a returned record and corrupted
+  // runtime state would be a far worse defect than the slowness this replaced.
+  it("returns copies callers cannot use to mutate internal state", async () => {
+    const runtime = new WorkflowRuntime();
+    runtime.updateWorkspace(workspace());
+    runtime.create({ ...definition(), workflowId: "isolation" });
+
+    const returned = await runtime.runUntilBlocked("isolation", new FixtureExecutor());
+    expect(returned.status).toBe("completed");
+
+    // Mutate every level of the returned record: top, step map, nested definition.
+    returned.status = "cancelled";
+    returned.steps["read-a"]!.status = "failed";
+    returned.steps["read-a"]!.error = "injected by test";
+    returned.definition.steps[0]!.actionIntent = "injected intent";
+
+    const fresh = runtime.get("isolation");
+    expect(fresh.status).toBe("completed");
+    expect(fresh.steps["read-a"]?.status).toBe("succeeded");
+    expect(fresh.steps["read-a"]?.error).toBeUndefined();
+    expect(fresh.definition.steps[0]?.actionIntent).toBe("Read order number.");
+
+    // `get` itself must also return a copy. Mutating what it returned and reading again
+    // is the only way to catch `get` handing out the live record.
+    fresh.status = "cancelled";
+    fresh.steps["read-a"]!.status = "failed";
+    fresh.definition.steps[0]!.actionIntent = "injected through get";
+    const afterGetMutation = runtime.get("isolation");
+    expect(afterGetMutation.status).toBe("completed");
+    expect(afterGetMutation.steps["read-a"]?.status).toBe("succeeded");
+    expect(afterGetMutation.definition.steps[0]?.actionIntent).toBe("Read order number.");
+
+    // The same must hold for runNext and for listed records.
+    const listed = runtime.list().find((record) => record.definition.workflowId === "isolation");
+    listed!.steps["write-a"]!.status = "blocked";
+    expect(runtime.get("isolation").steps["write-a"]?.status).toBe("succeeded");
+
+    // Artifacts are handed out by value too.
+    const artifacts = runtime.listArtifacts("isolation");
+    artifacts[0]!.value = "tampered";
+    expect(runtime.listArtifacts("isolation")[0]?.value).toBe("42");
+  });
+
   // Master roadmap Phase 2 GitHub test: "crash/restart resume from last verified
   // checkpoint". The uncertain-external-effect path is covered above; this covers the
   // clean case, where a verified checkpoint is resumed after a restart.

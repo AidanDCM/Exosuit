@@ -375,9 +375,31 @@ export class WorkflowRuntime {
   }
 
   get(workflowId: string): RuntimeWorkflowRecord {
+    return structuredClone(this.#live(workflowId));
+  }
+
+  /**
+   * The live internal record, not a copy.
+   *
+   * For internal callers only. Never return this from a public method: a caller that
+   * mutated it would corrupt runtime state, which is exactly what the defensive clone in
+   * `get` exists to prevent. Internal loops use it to avoid cloning the whole workflow
+   * once per step, which made scheduling superlinear in step count.
+   */
+  #live(workflowId: string): RuntimeWorkflowRecord {
     const workflow = this.#workflows.get(workflowId);
     if (!workflow) throw new Error(`Workflow ${workflowId} was not found.`);
-    return structuredClone(workflow);
+    return workflow;
+  }
+
+  /** Ready-step count without cloning each ready step, for internal scheduling checks. */
+  #readyCount(workflow: RuntimeWorkflowRecord): number {
+    this.#refreshDependencyStates(workflow);
+    let count = 0;
+    for (const record of Object.values(workflow.steps)) {
+      if (record.status === "ready") count += 1;
+    }
+    return count;
   }
 
   list(): RuntimeWorkflowRecord[] {
@@ -497,10 +519,23 @@ export class WorkflowRuntime {
     workflowId: string,
     executor: WorkflowStepExecutor,
   ): Promise<RuntimeWorkflowRecord> {
-    const workflow = this.#workflows.get(workflowId);
-    if (!workflow) throw new Error(`Workflow ${workflowId} was not found.`);
+    return structuredClone(await this.#runNextInternal(workflowId, executor));
+  }
+
+  /**
+   * One scheduling step against the live record.
+   *
+   * Identical to `runNext` except that it returns the live record instead of a copy, so
+   * `runUntilBlocked` can iterate without cloning the entire workflow on every step.
+   * Callers must not leak the return value outside the class.
+   */
+  async #runNextInternal(
+    workflowId: string,
+    executor: WorkflowStepExecutor,
+  ): Promise<RuntimeWorkflowRecord> {
+    const workflow = this.#live(workflowId);
     if (["completed", "failed", "cancelled"].includes(workflow.status)) {
-      return structuredClone(workflow);
+      return workflow;
     }
     if (["paused", "blocked", "recovery_required"].includes(workflow.status)) {
       throw new Error(`Workflow ${workflowId} cannot run while ${workflow.status}.`);
@@ -511,13 +546,13 @@ export class WorkflowRuntime {
     if (!next) {
       this.#finalizeWorkflowStatus(workflow);
       await this.#saveCheckpoint(workflow);
-      return structuredClone(workflow);
+      return workflow;
     }
     await this.#executeRecord(workflow, next, executor);
     this.#refreshDependencyStates(workflow);
     this.#finalizeWorkflowStatus(workflow);
     await this.#saveCheckpoint(workflow);
-    return structuredClone(workflow);
+    return workflow;
   }
 
   async runUntilBlocked(
@@ -530,12 +565,19 @@ export class WorkflowRuntime {
     }
     let previousTerminalCount = -1;
     for (let index = 0; index < maxSteps; index += 1) {
-      const before = this.get(workflowId);
-      const terminalCount = Object.values(before.steps).filter((record) =>
-        ["succeeded", "failed", "blocked", "cancelled", "uncertain"].includes(
-          record.status,
-        ),
-      ).length;
+      // Read the live record rather than `get`, which deep-clones every step on every
+      // iteration. The clone is reinstated at each return so callers still receive a copy.
+      const before = this.#live(workflowId);
+      let terminalCount = 0;
+      for (const record of Object.values(before.steps)) {
+        if (
+          ["succeeded", "failed", "blocked", "cancelled", "uncertain"].includes(
+            record.status,
+          )
+        ) {
+          terminalCount += 1;
+        }
+      }
       if (
         [
           "completed",
@@ -546,16 +588,13 @@ export class WorkflowRuntime {
           "recovery_required",
         ].includes(before.status)
       ) {
-        return before;
+        return structuredClone(before);
       }
-      if (
-        terminalCount === previousTerminalCount &&
-        this.readySteps(workflowId).length === 0
-      ) {
-        return before;
+      if (terminalCount === previousTerminalCount && this.#readyCount(before) === 0) {
+        return structuredClone(before);
       }
       previousTerminalCount = terminalCount;
-      await this.runNext(workflowId, executor);
+      await this.#runNextInternal(workflowId, executor);
     }
     return this.pause(workflowId, "step_budget_exhausted");
   }

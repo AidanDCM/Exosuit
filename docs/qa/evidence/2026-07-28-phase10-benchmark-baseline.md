@@ -1,7 +1,7 @@
 # Phase 10 Benchmark Baseline
 
-**Generated:** 2026-07-28T15:14:33.227Z
-**Iterations:** 200 (plus 20 warmup)
+**Generated:** 2026-07-28T15:40:45.829Z
+**Iterations:** 100 (plus 10 warmup)
 **Node:** v22.14.0 · **Platform:** win32 x64
 
 > These are **measurements, not targets.** The roadmap requires Phase 10 service
@@ -14,12 +14,12 @@
 
 | Measurement | n | min | p50 | p95 | p99 | max | unit |
 |---|--:|--:|--:|--:|--:|--:|---|
-| observation latency | 200 | 0.081 | 0.101 | 0.312 | 0.883 | 1.341 | ms |
-| semantic-action proposal latency | 200 | 0.050 | 0.057 | 0.383 | 0.931 | 1.485 | ms |
-| execute + verify latency | 200 | 0.029 | 0.064 | 0.121 | 0.228 | 0.479 | ms |
-| emergency-stop latency | 100 | 0.033 | 0.036 | 0.076 | 0.103 | 0.165 | ms |
-| audit append latency | 200 | 0.014 | 0.014 | 0.016 | 0.034 | 0.962 | ms |
-| workflow scheduler overhead (10 steps, per step) | 50 | 7.620 | 9.529 | 12.068 | 13.968 | 13.968 | ms/step |
+| observation latency | 100 | 0.167 | 0.220 | 1.038 | 1.350 | 2.883 | ms |
+| semantic-action proposal latency | 100 | 0.108 | 0.332 | 1.276 | 3.973 | 4.550 | ms |
+| execute + verify latency | 100 | 0.064 | 0.200 | 0.616 | 0.860 | 0.935 | ms |
+| emergency-stop latency | 100 | 0.062 | 0.133 | 0.431 | 0.722 | 0.734 | ms |
+| audit append latency | 100 | 0.026 | 0.036 | 0.074 | 0.092 | 0.126 | ms |
+| workflow scheduler overhead (10 steps, per step) | 50 | 10.638 | 13.381 | 18.470 | 26.633 | 26.633 | ms/step |
 
 ## Workflow scheduler scaling
 
@@ -27,12 +27,12 @@ Median of 5 runs per size, no-op executor, so this is scheduler overhead alone.
 
 | Steps | Total | Per step |
 |--:|--:|--:|
-| 1 | 0.2 ms | 0.24 ms |
-| 5 | 3.0 ms | 0.60 ms |
-| 10 | 9.7 ms | 0.97 ms |
-| 25 | 45.9 ms | 1.84 ms |
-| 50 | 172.3 ms | 3.45 ms |
-| 100 | 1023.6 ms | 10.24 ms |
+| 1 | 0.4 ms | 0.38 ms |
+| 5 | 3.0 ms | 0.61 ms |
+| 10 | 9.6 ms | 0.96 ms |
+| 25 | 53.3 ms | 2.13 ms |
+| 50 | 189.1 ms | 3.78 ms |
+| 100 | 847.7 ms | 8.48 ms |
 
 **Per-step cost is not constant — it grows with workflow length.** Total time rises
 faster than step count, which is the signature of per-step work that is linear in the

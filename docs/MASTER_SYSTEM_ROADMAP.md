@@ -799,7 +799,13 @@ After uncertainty, Exosuit observes and reconciles before retrying. It never ass
 
 These remain **measurements, not targets.** Setting service targets is an owner decision and needs real-desktop numbers as well.
 
-**Finding — the workflow scheduler is superlinear in step count.** With a no-op executor, median total time was 0.2 ms at 1 step, 9.7 ms at 10, 172.3 ms at 50, and 1023.6 ms at 100. Ten times the steps cost roughly a hundred times the time, and per-step cost degraded from 0.24 ms to 10.24 ms. Short workflows are unaffected; long ones degrade badly. The responsible code has not been profiled and no fix is claimed. This must be resolved, or a maximum workflow length must be set as an explicit quota, before this phase can define a scheduler-overhead target.
+**Finding — the workflow scheduler is superlinear in step count.** With a no-op executor, median total time was 0.2 ms at 1 step, 9.7 ms at 10, 172.3 ms at 50, and 1023.6 ms at 100. Ten times the steps cost roughly a hundred times the time, and per-step cost degraded from 0.24 ms to 10.24 ms.
+
+**Profiled and partially addressed (2026-07-28).** CPU profiling attributed 64.6% of self-time to `structuredClone`. `runUntilBlocked` deep-copied the entire workflow record on every iteration through `get`, cloned every ready step through `readySteps`, and discarded another full copy returned by `runNext`. Internal scheduling now reads the live record; public accessors still return copies, guarded by a mutation-verified isolation test.
+
+That removed roughly a quarter of the cost at 100 steps and **did not change the complexity class.** The remaining dominant cost, still about half of self-time, is `#saveCheckpoint`: it clones the whole workflow and the store then re-parses and serializes it, once per step, which is O(n) per step by construction.
+
+**Still open, and an owner decision.** Making this linear requires either incremental or delta checkpointing, or dropping the defensive clone in `#saveCheckpoint` and requiring stores not to retain the record. Both change persistence behavior, so the change-control rule applies: decision-log entry, threat-model update, test-plan update, rollback plan, and owner review before implementation. Until then a maximum workflow length should be set as an explicit Phase 10 quota, because unbounded superlinear cost is a denial-of-service shape.
 
 ### Objectives
 
