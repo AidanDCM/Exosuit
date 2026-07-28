@@ -20,7 +20,10 @@
     "dev:mcp": "tsx src/index.ts",
     "start:mcp": "node dist/src/index.js",
     "agent:build": "dotnet build apps/windows-agent/Exosuit.Agent.csproj",
-    "agent:test": "dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj"
+    "agent:test": "dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:uninstall": "git config --unset core.hooksPath",
+    "validate:ci-parity:clean": "node scripts/ci-parity.mjs --clean"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

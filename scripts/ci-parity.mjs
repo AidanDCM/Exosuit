@@ -15,10 +15,63 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, copyFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = resolve(process.cwd());
 const reportIndex = process.argv.indexOf("--report");
-const reportPath = reportIndex > -1 ? process.argv[reportIndex + 1] : undefined;
+const rawReportPath = reportIndex > -1 ? process.argv[reportIndex + 1] : undefined;
+// Resolved against the original working directory, because --clean runs the checks from a
+// throwaway worktree and a relative path would land inside it and be deleted.
+const reportPath = rawReportPath ? resolve(root, rawReportPath) : undefined;
+
+/**
+ * `--clean` runs every check against a pristine checkout of HEAD instead of the working
+ * tree.
+ *
+ * A working-tree run can pass on things that would fail for anyone else: a file that was
+ * never committed, or a stale `node_modules` that differs from what a fresh resolve
+ * produces. That second case is not hypothetical — a local audit once reported one high
+ * and two moderate advisories that a clean resolve did not have, because the installed
+ * tree was older than the declared ranges allowed.
+ *
+ * A git worktree gives exactly the committed content and nothing else.
+ *
+ * The child runs *this* script — the working-tree copy — against the worktree's contents.
+ * The subject under test is the committed code; the harness is whatever you are editing.
+ * Running the worktree's own copy would be marginally purer, but it makes a change to the
+ * harness untestable until committed, which is a bad trade for a tool you iterate on.
+ */
+if (process.argv.includes("--clean") && !process.env.EXOSUIT_PARITY_WORKTREE) {
+  const worktree = mkdtempSync(join(tmpdir(), "exosuit-clean-"));
+  const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false });
+
+  const head = git(["rev-parse", "--short", "HEAD"]).stdout?.trim() ?? "unknown";
+  process.stdout.write(`Clean-checkout parity: exporting HEAD (${head}) to a temporary worktree\n\n`);
+
+  const added = git(["worktree", "add", "--detach", "--quiet", worktree, "HEAD"]);
+  if (added.status !== 0) {
+    process.stderr.write(`Could not create a clean worktree.\n${added.stderr ?? ""}\n`);
+    rmSync(worktree, { recursive: true, force: true });
+    process.exit(1);
+  }
+
+  try {
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(import.meta.url), ...(reportPath ? ["--report", reportPath] : [])],
+      {
+        cwd: worktree,
+        stdio: "inherit",
+        env: { ...process.env, EXOSUIT_PARITY_WORKTREE: "1" },
+      },
+    );
+    process.exitCode = child.status ?? 1;
+  } finally {
+    git(["worktree", "remove", "--force", worktree]);
+    rmSync(worktree, { recursive: true, force: true });
+  }
+  process.exit(process.exitCode ?? 1);
+}
 
 /**
  * `dotnet` on PATH may be a hostfxr-only install with no SDK, while a usable SDK sits
@@ -81,6 +134,9 @@ run("repository-contract: required files and secret-shape scan", npm, [
 ]);
 
 // Job: typescript — "TypeScript contracts, gateway, and pulse"
+// CI installs before it runs anything, and a clean worktree has no node_modules at all.
+// Mirroring that step keeps both modes faithful; in a working tree it is close to a no-op.
+run("typescript: install dependencies", npm, ["install", "--ignore-scripts", "--fund=false", "--silent"]);
 run("typescript: typecheck", npm, ["run", "typecheck", "--silent"]);
 run("typescript: unit and integration tests", npm, ["test", "--silent"], {
   detail: (out) => (out.match(/Tests\s+\d+ passed[^\n]*/) ?? [])[0],
