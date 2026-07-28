@@ -53,7 +53,7 @@ export type BrowserAction = z.infer<typeof browserActionSchema>;
 
 export const browserActionResultSchema = z.object({
   actionId: z.string().min(1),
-  status: z.enum(["succeeded", "blocked", "failed", "disconnected"]),
+  status: z.enum(["succeeded", "blocked", "failed", "disconnected", "uncertain"]),
   verificationStatus: z.enum(["passed", "failed", "not_checked"]),
   summary: z.string(),
   snapshot: browserSnapshotSchema.optional(),
@@ -197,21 +197,29 @@ export class BrowserSemanticGateway {
     } catch (error) {
       return browserActionResultSchema.parse({
         actionId: action.actionId,
-        status: "disconnected",
+        status: "uncertain",
         verificationStatus: "not_checked",
-        summary: error instanceof Error ? error.message : String(error),
+        summary: `Browser action may have taken effect, but the provider result is unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       });
     }
     if (result.status === "succeeded" && result.verificationStatus !== "passed") {
       return browserActionResultSchema.parse({
         actionId: action.actionId,
-        status: "failed",
-        verificationStatus: result.verificationStatus,
-        summary: "Browser companion reported success without passed verification.",
+        status: "uncertain",
+        verificationStatus: "not_checked",
+        summary: "Browser companion may have acted, but success was not independently verified.",
         ...(result.snapshot ? { snapshot: sanitizeSnapshot(result.snapshot) } : {}),
       });
     }
-    if (result.snapshot) this.#registry.update(result.snapshot);
+    if (
+      result.snapshot &&
+      result.status === "succeeded" &&
+      result.verificationStatus === "passed"
+    ) {
+      this.#registry.update(result.snapshot);
+    }
     return {
       ...result,
       ...(result.snapshot ? { snapshot: sanitizeSnapshot(result.snapshot) } : {}),

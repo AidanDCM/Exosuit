@@ -285,6 +285,8 @@ Required tests:
 
 Any optional semantic browser companion remains disabled until separately reviewed and may never replace fresh desktop verification.
 
+Browser-companion action tests must classify timeout, unavailable results, unverified success, and mid-action tab-generation change as `uncertain`. They must prove that only an exact-generation result with passed verification can report success.
+
 ## 12. Visual observation tests
 
 Visual observation remains blocked until its privacy phase passes.

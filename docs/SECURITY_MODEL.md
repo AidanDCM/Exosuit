@@ -173,6 +173,8 @@ Controls:
 
 ## Screenshot policy
 
+For the optional semantic browser companion, any timeout, unavailable action result, unverified success, or changed tab generation after dispatch is an uncertain external effect. The workflow must observe and reconcile before retrying; it may not reinterpret those outcomes as ordinary failure.
+
 Screenshots are disabled by default and not implemented in the initial Windows provider. A future implementation must:
 
 - capture only when explicitly requested and locally enabled,

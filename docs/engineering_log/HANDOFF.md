@@ -106,7 +106,7 @@ Overall: approximately **65% implemented, 30% evidenced, and 20–25% production
 ## Next execution order
 
 1. Exact-head integration evidence.
-2. Security residual slice: authenticate before semantic or time oracles; redaction containment; uncertain browser timeouts/generation changes.
+2. Security residual slices: agent authentication ordering and visual redaction containment are closed; browser uncertainty handling is in progress.
 3. Current readiness manifest and L4 audit refresh.
 4. Repeated production-authentication Field lifecycle and negative-case matrix when an elevated disposable session is available.
 5. Scene producer, then separately reviewed Teach privacy/recording.
@@ -119,4 +119,3 @@ Overall: approximately **65% implemented, 30% evidenced, and 20–25% production
 - Integration rollback: return to `build/exosuit-mvp` at `4411568`; the Field line is preserved remotely at `origin/codex/issue-20-personal-disk-identity` (`e10e921`).
 - Runtime rollback: keep the MCP surface at `core`, fake provider default, Windows observe mode, physical input disabled, recording disabled, and Pilot denied.
 - Field rollback: stop the exact generation, preserve sanitized evidence, destroy only disposable generation state, increment generation, and retain base/personal state unless separately owner-authorized.
-
