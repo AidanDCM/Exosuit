@@ -45,6 +45,11 @@ if (process.argv.includes("--clean") && !process.env.EXOSUIT_PARITY_WORKTREE) {
   const worktree = mkdtempSync(join(tmpdir(), "exosuit-clean-"));
   const git = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false });
 
+  // Clear metadata a previous run could not delete. On Windows the .git directory is
+  // occasionally held briefly by a sync client or scanner, so removal is best-effort at the
+  // end and swept here at the start rather than left to accumulate.
+  git(["worktree", "prune"]);
+
   const head = git(["rev-parse", "--short", "HEAD"]).stdout?.trim() ?? "unknown";
   process.stdout.write(`Clean-checkout parity: exporting HEAD (${head}) to a temporary worktree\n\n`);
 
@@ -67,8 +72,17 @@ if (process.argv.includes("--clean") && !process.env.EXOSUIT_PARITY_WORKTREE) {
     );
     process.exitCode = child.status ?? 1;
   } finally {
+    // Best-effort: a locked .git must never turn a passing run into a failing one, and must
+    // never block a push through the pre-push hook. Anything left behind is swept by the
+    // prune at the start of the next run.
     git(["worktree", "remove", "--force", worktree]);
     rmSync(worktree, { recursive: true, force: true });
+    const pruned = git(["worktree", "prune"]);
+    if (pruned.status !== 0) {
+      process.stdout.write(
+        "note: temporary worktree metadata could not be removed yet; it will be pruned on the next run.\n",
+      );
+    }
   }
   process.exit(process.exitCode ?? 1);
 }
