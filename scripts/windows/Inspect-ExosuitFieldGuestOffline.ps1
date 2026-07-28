@@ -87,6 +87,7 @@ try {
     $agentRoot = Join-Path $root 'Exosuit\Agent'
     $configRoot = Join-Path $root 'Exosuit\Config'
     $logRoot = Join-Path $root 'Exosuit\Logs'
+    $diagnosticsRoot = Join-Path $root 'Exosuit\Diagnostics'
     $taskPath = Join-Path $root 'Windows\System32\Tasks\ExosuitFieldGuest'
 
     $result.agentFiles = @(
@@ -104,6 +105,28 @@ try {
             Sort-Object Name |
             ForEach-Object { [ordered]@{ name = $_.Name; length = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } }
     )
+    $bootstrapReportPath = Join-Path $diagnosticsRoot 'bootstrap-report.json'
+    if (Test-Path -LiteralPath $bootstrapReportPath -PathType Leaf) {
+        $bootstrapReport = Get-Content -LiteralPath $bootstrapReportPath -Raw | ConvertFrom-Json
+        $checkResults = @($bootstrapReport.checks | ForEach-Object {
+            [ordered]@{
+                name = [string]$_.name
+                passed = [bool]$_.passed
+                observedAt = [string]$_.observedAt
+            }
+        })
+        $result['bootstrapReport'] = [ordered]@{
+            exists = $true
+            length = (Get-Item -LiteralPath $bootstrapReportPath).Length
+            sha256 = (Get-FileHash -LiteralPath $bootstrapReportPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            manifestDigest = [string]$bootstrapReport.manifestDigest
+            reportedAt = [string]$bootstrapReport.reportedAt
+            checks = $checkResults
+            failedChecks = @($checkResults | Where-Object { -not $_.passed } | ForEach-Object { $_.name })
+        }
+    } else {
+        $result['bootstrapReport'] = [ordered]@{ exists = $false }
+    }
     $result.task = [ordered]@{ exists = Test-Path -LiteralPath $taskPath -PathType Leaf }
     if ($result.task.exists) {
         [xml]$taskXml = Get-Content -LiteralPath $taskPath -Raw -ErrorAction Stop

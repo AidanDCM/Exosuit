@@ -112,6 +112,11 @@ describe("Windows Field administration scripts", () => {
     expect(inspector).toContain("Invoke-Bounded -Name 'Get-VM'");
     expect(inspector).toContain("Windows\\System32\\Tasks\\ExosuitFieldGuest");
     expect(inspector).toContain("Get-FileHash");
+    expect(inspector).toContain("$diagnosticsRoot = Join-Path $root 'Exosuit\\Diagnostics'");
+    expect(inspector).toContain("failedChecks = @($checkResults");
+    expect(inspector).toContain("manifestDigest = [string]$bootstrapReport.manifestDigest");
+    expect(inspector).not.toContain("summary = [string]$_.summary");
+    expect(inspector).not.toContain("evidence = $_.evidence");
     expect(inspector).not.toMatch(/\bStart-VM\b|\bStop-VM\b|\bRemove-VM\b|\bMount-VHD\b/);
     expect(inspector).not.toContain("Get-Content -LiteralPath $log");
     expect(inspector).not.toContain("Invoke-Expression");
