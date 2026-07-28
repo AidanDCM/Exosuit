@@ -124,7 +124,11 @@ Aside from Finding 1:
 - `select` returns only `online` agents inside their contract range holding every required capability.
 - `expireStale` bounds its window to 1 s–1 h.
 
-Residual, not fixed: `heartbeat` accepts a `capabilities` array and replaces the stored list, and unlike registration it is not signature-verified. If a heartbeat endpoint is ever exposed on a real transport, an agent could enlarge its own capability set and change `select` routing. There is no such transport today. This should be settled when Phase 4 gains a real channel, either by signing heartbeats or by treating capabilities as immutable between registrations.
+**Residual now closed (2026-07-28).** `heartbeat` accepted a `capabilities` array and replaced the stored list without signature verification, so any caller able to reach a future heartbeat endpoint could have enlarged an agent's capability set and redirected `select` routing to it.
+
+Heartbeats are now signed and verified on the same path as registration: `signHeartbeat` / `verifyHeartbeat`, sharing one `#verifySigned` implementation so clock-skew bounds and replay protection cannot drift apart between the two message types. The signed payload carries `machineId` and `windowsSessionId`, and `AuthenticatedAgentRegistrar.heartbeat` refuses any heartbeat whose identity does not match what the agent registered under.
+
+Adding a second signed message type under the same secret introduced a cross-protocol reuse risk that the original review did not name. Both message types now carry an explicit domain tag in the HMAC input, and the replay cache is keyed per domain.
 
 ### `src/browserCompanionGuard.ts`
 
