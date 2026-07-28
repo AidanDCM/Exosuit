@@ -5,6 +5,24 @@ import { z } from "zod";
 
 const healthStateSchema = z.enum(["healthy", "degraded", "offline", "stopped"]);
 
+/**
+ * Identifier-shaped values: metric names, state names, error codes, and record keys.
+ *
+ * Support bundles are the one artifact designed to leave the machine, so fields that are
+ * meant to carry enumerated identifiers must be unable to carry free text. A denylist
+ * cannot do this: it can catch credential shapes, but not a file path containing a user
+ * name, a window title containing a patient name, or a URL containing an email address.
+ * An allowlist pattern can, because none of those survive it.
+ *
+ * Rejecting spaces is what does the work here. Prose needs them; identifiers do not.
+ */
+const identifierSchema = z
+  .string()
+  .regex(
+    /^[A-Za-z0-9_.-]{1,64}$/,
+    "must be an identifier of at most 64 characters using letters, digits, underscore, dot, or hyphen",
+  );
+
 export const supportBundleInputSchema = z.object({
   generatedAt: z.string().datetime(),
   exosuitVersion: z.string().min(1).max(100),
@@ -27,22 +45,22 @@ export const supportBundleInputSchema = z.object({
     capabilities: z.array(z.string().min(1).max(100)).max(100),
     softwareVersion: z.string().min(1).max(100),
   }).strict()).max(10_000),
-  workflowStates: z.record(z.string(), z.number().int().nonnegative()),
+  workflowStates: z.record(identifierSchema, z.number().int().nonnegative()),
   auditSummary: z.object({
     eventCount: z.number().int().nonnegative(),
-    eventTypes: z.record(z.string(), z.number().int().nonnegative()),
+    eventTypes: z.record(identifierSchema, z.number().int().nonnegative()),
     chainValid: z.boolean(),
   }).strict(),
   performanceSummary: z.array(z.object({
-    metric: z.string().min(1).max(200),
+    metric: identifierSchema,
     count: z.number().int().nonnegative(),
     p50: z.number().finite().nonnegative(),
     p95: z.number().finite().nonnegative(),
     p99: z.number().finite().nonnegative(),
     maximum: z.number().finite().nonnegative(),
   }).strict()).max(1_000),
-  recentErrorCodes: z.array(z.string().min(1).max(200)).max(1_000),
-  configurationFlags: z.record(z.string(), z.boolean()),
+  recentErrorCodes: z.array(identifierSchema).max(1_000),
+  configurationFlags: z.record(identifierSchema, z.boolean()),
 }).strict();
 export type SupportBundleInput = z.infer<typeof supportBundleInputSchema>;
 

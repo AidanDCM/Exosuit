@@ -62,15 +62,63 @@ describe("privacy-safe support bundles", () => {
   });
 
   it("rejects secret-shaped values and forbidden content-bearing fields", () => {
+    // `platform` is still free text, so it exercises the value denylist. This assertion
+    // used to target recentErrorCodes, which now rejects the same string earlier at schema
+    // parse because identifiers cannot contain spaces. The denylist still guards every
+    // field that legitimately carries prose, so it is tested against one of those.
+    expect(() =>
+      createSupportBundle(input({ platform: "win32 Bearer abcdefghijklmnopqrstuvwxyz" })),
+    ).toThrow(/forbidden sensitive value/);
+    // The same string in an identifier field is rejected too, one layer earlier.
     expect(() =>
       createSupportBundle(input({ recentErrorCodes: ["Bearer abcdefghijklmnopqrstuvwxyz"] })),
-    ).toThrow(/forbidden sensitive value/);
+    ).toThrow();
     expect(() =>
       createSupportBundle({
         ...input(),
         configurationFlags: { screenshotsEnabled: false },
         screenshotBytes: "not allowed",
       } as SupportBundleInput),
+    ).toThrow();
+  });
+
+  // Regression for the 2026-07-28 security review. `recentErrorCodes` was typed as free
+  // text up to 200 characters, so raw exception messages carrying file paths, window
+  // titles, or URLs passed every check and reached a bundle intended to leave the
+  // machine. A denylist cannot catch these; only an identifier allowlist can. Each string
+  // below was verified to be accepted before the fix.
+  it.each([
+    String.raw`Failed to open C:\Users\Aidan\Documents\2025 Tax Return - SSN 123-45-6789.pdf`,
+    "UIA element 'Patient: Jane Doe, DOB 1984-03-02' absent from window 'Epic - Chart Review'",
+    "Timeout contacting https://internal.acme.example/api?employee=aidan.miller@acme.example",
+  ])("rejects free text in recentErrorCodes: %j", (leaked) => {
+    expect(() => createSupportBundle(input({ recentErrorCodes: [leaked] }))).toThrow();
+  });
+
+  it("still accepts genuine identifier-shaped diagnostics", () => {
+    const bundle = createSupportBundle(
+      input({ recentErrorCodes: ["virtual_desktop_unavailable", "provider.timeout", "raw-input-denied"] }),
+    );
+    expect(bundle.data.recentErrorCodes).toHaveLength(3);
+  });
+
+  it("constrains identifier-shaped keys and metric names, not just error codes", () => {
+    // Record keys and metric names are the same class of field: an identifier is expected,
+    // so free text there would be an equivalent leak.
+    expect(() =>
+      createSupportBundle(input({ workflowStates: { "paused on C:\\Users\\Aidan\\secret.txt": 1 } })),
+    ).toThrow();
+    expect(() =>
+      createSupportBundle(input({ configurationFlags: { "flag for user aidan@acme.example": false } })),
+    ).toThrow();
+    expect(() =>
+      createSupportBundle(
+        input({
+          performanceSummary: [
+            { metric: "latency while reading Q4 Payroll.xlsx", count: 1, p50: 1, p95: 1, p99: 1, maximum: 1 },
+          ],
+        }),
+      ),
     ).toThrow();
   });
 
