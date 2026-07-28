@@ -100,7 +100,7 @@ Residual, not a finding: random 96-bit IVs are safe to roughly 2^32 messages per
 - Replay nonces retained for a period that must cover the skew window, enforced in the constructor.
 - The nonce is recorded only after the signature verifies, so an unauthenticated caller cannot poison the cache.
 
-Residual, not a finding: the skew and contract-range checks run before signature verification, so an attacker can distinguish "bad timestamp" from "bad signature". Low value to an attacker.
+**Residual closed on the consolidated branch.** Signature verification now precedes clock-skew and message-specific semantic diagnostics, and replay state is updated only after every authenticated validation passes. Negative tests pin both properties: a tampered stale/range-invalid packet reports only invalid signature, and an authenticated invalid range does not consume its nonce.
 
 ### `src/skills.ts`
 

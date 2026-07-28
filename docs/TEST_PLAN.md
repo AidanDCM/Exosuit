@@ -376,6 +376,7 @@ Report p50, p95, p99, maximum, sample count, environment, and regression thresho
 - configuration and storage migration;
 - update blocked during active workflow;
 - signature and integrity failure behavior.
+- authentication before timestamp or semantic diagnostics, with no replay-state mutation on any rejected packet.
 
 ## 18. Security, privacy, and abuse tests
 
