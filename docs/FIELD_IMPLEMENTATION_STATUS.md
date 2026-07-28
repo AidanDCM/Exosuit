@@ -46,7 +46,7 @@ Therefore:
 | demonstration processing and retrieval | `demonstrationProcessing.ts` | terminal/ambiguity/privacy/relevance/deletion/held-out tests | deterministic annotation pipeline and in-memory index only |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
 | scene graph | `fieldScene.ts` | version/focus/modal/readiness tests | no Windows producer |
-| Shadow metrics | `shadowLearning.ts` | no-execution/comparison tests | no predictor |
+| Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
 | Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
 | artifact broker | `fieldArtifactBroker.ts` | hash/size/direction/state tests | no cross-VM copy |
 | deterministic recovery | `fieldRecovery.ts` | no-blind-retry and generation tests | not wired to host/guest |
@@ -175,7 +175,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;
-- automatic/learned segmentation, encrypted derived-index persistence, data-quality evaluation, or actual Shadow predictor;
+- automatic/learned segmentation, encrypted derived-index persistence, real-data quality/calibration evaluation, or learned personal predictor;
 - personal task/motor/typing/language/timing models;
 - live artifact copy with reparse and TOCTOU protection;
 - credential broker;

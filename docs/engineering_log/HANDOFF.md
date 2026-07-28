@@ -69,7 +69,7 @@ These percentages are planning estimates, not release claims:
 | Browser companion | 40% | 10% | 20% |
 | Visual sensor and privacy pipeline | 15% | 0% | 5% |
 | Teach and demonstration foundations | 55% | 20% | 30% |
-| Processing, Shadow, Correction, and personal models | 30% | 10% | 15% |
+| Processing, Shadow, Correction, and personal models | 38% | 12% | 18% |
 | Skills and Assisted Mode | 50% | 15% | 25% |
 | Cockpit and owner controls | 15% | 5% | 10% |
 | Reliability and recovery | 73% | 32% | 48% |

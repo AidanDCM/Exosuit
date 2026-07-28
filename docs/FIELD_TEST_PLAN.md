@@ -368,6 +368,8 @@ Failure cases:
 
 ## 14. Shadow Mode
 
+The source foundation now includes a synchronous retrieval-only baseline. It binds the exact Field/observation/layout, predicts from same-operator successful preferred/correction examples, records source episodes, and abstains for unsafe desktop state, unexpected modal state, no match, or low heuristic confidence. Both result variants structurally hard-code `executionAllowed: false`. This is not calibrated on owner data and is not process-level live isolation evidence.
+
 - process-level proof of no semantic or physical input authority;
 - exact scene/generation binding;
 - intent, target, method, timing, expected result, confidence, and optional trajectory prediction;

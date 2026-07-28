@@ -30,7 +30,7 @@
 | `desktop_control_harness` | adapted into provider/action/verification pipeline | Field supplies bounded fake/live environments and scene state | existing Glove tests; Field scene/lifecycle tests written |
 | `command-broker` | principles adapted; no arbitrary shell | typed `FieldProvisioner`, strict provisioning plan, no command field | fake manager and plan tests written |
 | `event_ledger` | tamper-evident Glove and coordinator ledgers | hash-linked Field Manager audit with separate actor/subsystem identity | bounded atomic snapshot, integrity and restart tests implemented; live transaction evidence pending |
-| `reconciliation` | expected result vs provider evidence | policy/attestation, scene, artifact bytes, and future provider results reconciled | attestation and artifact hash verification implemented |
+| `reconciliation` | expected result vs provider evidence | policy/attestation, scene, artifact bytes, retrieval abstention, and future provider results reconciled | attestation, artifact hash, and retrieval-only Shadow checks implemented |
 | `loop_detector` | repeated action/step budget | demonstration event cap, policy action/runtime budget, future provisioning retry budget | partial implementation |
 | `system_pulse` | full fake action chain | fake Field planned -> provisioned -> Teach -> ready -> stop -> destroy | test written |
 | `check_runner` | PASS/REVIEW/FAIL release posture | Field implementation status and audit verdict by evidence class | manuals/audits implemented; reusable runner deferred |
@@ -119,6 +119,8 @@ It adds AES-256-GCM because demonstration metadata can contain personal behavior
 ### Demonstration retrieval preserves evidence lineage
 
 The deterministic processing foundation accepts only terminal episodes and explicit bounded semantic-step annotations. Each derived step records its exact source range and event IDs. Retrieval is restricted to the same hashed operator identity and exact layout fingerprint, omits failed and mistake behavior by default, propagates source deletion, and has no execution interface. Durable derived storage and real-data quality evidence remain deferred prerequisites.
+
+The retrieval-backed Shadow baseline is a separate predict-or-abstain component. Both prediction and abstention contracts hard-code no execution, unsafe scene states abstain before lookup, low-confidence or irrelevant examples do not guess, and every prediction retains source episode provenance. Its confidence is heuristic and has no live promotion claim.
 
 ## Glove-specific atomic units
 
