@@ -28,7 +28,7 @@ The new split preserves:
 2. The built-in Audit administrator owns Sysprep.
 3. The host owns orchestration and supplies a one-use credential over PowerShell Direct.
 4. The seal requires the exact automatic Audit UI process and terminates no other process shape.
-5. The final receipt is bound to the SYSTEM receipt digest.
+5. The final receipt is bound to the SYSTEM receipt digest and the exact audit-seal script digest.
 6. The canonical command remains `/generalize /oobe /shutdown /quiet`.
 
 ## Deny-by-default properties

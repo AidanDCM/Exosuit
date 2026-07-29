@@ -27,7 +27,7 @@ The maintenance bootstrap now stops after SYSTEM maintenance and receipt validat
 - waits for exactly one automatic Audit-mode Sysprep process;
 - accepts only the canonical system binary with the exact `/REBOOT` UI command line;
 - terminates that UI and requires all Sysprep processes to exit;
-- writes a receipt bound to the SYSTEM maintenance receipt;
+- writes a receipt bound to the SYSTEM maintenance receipt and the exact audit-seal script digest;
 - launches only `/generalize /oobe /shutdown /quiet`.
 
 The host-side v19 builder will invoke maintenance and sealing as separate PowerShell Direct operations after Windows Setup audit passes have returned. That live builder is local evidence tooling and is not claimed by this source slice.

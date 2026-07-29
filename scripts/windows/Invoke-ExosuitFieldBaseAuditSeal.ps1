@@ -71,12 +71,14 @@ try {
     if ($remainingSysprep.Count -ne 0) { throw 'Automatic Audit Mode Sysprep UI did not terminate.' }
 
     $systemReceiptSha256 = (Get-FileHash -LiteralPath $receiptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $auditSealScriptSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $auditReceipt = [ordered]@{
         contractVersion = 1
         requestedAt = [DateTimeOffset]::UtcNow.ToString('O')
         sourceCommit = [string]$receipt.sourceCommit
         targetImageId = [string]$receipt.targetImageId
         systemMaintenanceReceiptSha256 = $systemReceiptSha256
+        auditSealScriptSha256 = $auditSealScriptSha256
         principal = 'built_in_audit_administrator'
         automaticAuditUiTerminated = $true
         sysprep = '/generalize /oobe /shutdown /quiet'

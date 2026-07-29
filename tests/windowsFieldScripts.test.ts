@@ -340,6 +340,8 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).not.toContain("Start-Process -FilePath $sysprepPath");
     expect(auditSeal).toContain("Field base sealing requires the built-in Audit Mode administrator.");
     expect(auditSeal).toContain("systemMaintenanceReceiptSha256");
+    expect(auditSeal).toContain("auditSealScriptSha256");
+    expect(auditSeal).toContain("Get-FileHash -LiteralPath $PSCommandPath");
     expect(auditSeal).toContain("$expectedMaintenanceSha256");
     expect(auditSeal).toContain("$receipt.runtimeService.principal -cne 'SYSTEM'");
     expect(auditSeal).toContain("$receipt.perGenerationConfigurationAbsent -ne $true");
