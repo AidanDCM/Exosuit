@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 
 $authorizationPath = 'C:\Exosuit\Base\maintenance-authorization.json'
 $receiptPath = 'C:\Exosuit\Base\maintenance-receipt.json'
+$auditSysprepReceiptPath = 'C:\Exosuit\Base\audit-sysprep-receipt.json'
 $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $timeZonePath = 'C:\Exosuit\Base\host-timezone.txt'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
@@ -126,8 +127,73 @@ $script:startText = $startOutput -join ' '
 if ($LASTEXITCODE -notin @(0, 1053)) {
     throw "Field base maintenance SYSTEM service start failed with exit code $($LASTEXITCODE): $($startOutput -join ' ')"
 }
-Start-Sleep -Seconds 45
-Write-BootstrapStatus -Route 'auditUser_service'
+$maintenanceDeadline = [DateTimeOffset]::UtcNow.AddMinutes(15)
+do {
+    Start-Sleep -Seconds 5
+} while (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf) -and [DateTimeOffset]::UtcNow -lt $maintenanceDeadline)
+if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) {
+    throw 'Field base SYSTEM maintenance did not produce its receipt within 15 minutes.'
+}
+
+$receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+$expectedMaintenanceSha256 = (Get-FileHash -LiteralPath $maintenancePath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($receipt.contractVersion -ne 1 -or
+    $receipt.operation -cne 'clean_and_seal_field_base' -or
+    [string]$receipt.sourceCommit -cnotmatch '^[0-9a-f]{40}$' -or
+    [string]$receipt.targetImageId -cnotmatch '^exosuit-field-base-v[0-9]+$' -or
+    $receipt.systemIdentity -ne $true -or
+    $receipt.networkDetached -ne $true -or
+    $receipt.perGenerationConfigurationAbsent -ne $true -or
+    $receipt.authorizationConsumed -ne $true -or
+    $receipt.bootstrapUnattendConsumed -ne $true -or
+    $receipt.maintenanceTaskConsumed -ne $true -or
+    $receipt.nonBuiltInLocalAccountsAbsent -ne $true -or
+    [string]$receipt.maintenanceScriptSha256 -cne $expectedMaintenanceSha256 -or
+    $receipt.runtimeService.name -cne 'ExosuitFieldGuest' -or
+    $receipt.runtimeService.principal -cne 'SYSTEM' -or
+    $receipt.runtimeService.startMode -cne 'Automatic' -or
+    $receipt.sysprep -cne 'pending_audit_administrator') {
+    throw 'Field base SYSTEM maintenance receipt is incomplete or invalid for Audit administrator Sysprep.'
+}
+if (Test-Path -LiteralPath $authorizationPath -PathType Leaf) {
+    throw 'Field base SYSTEM maintenance did not consume its authorization before Sysprep.'
+}
+
+$serviceExitDeadline = [DateTimeOffset]::UtcNow.AddMinutes(1)
+do {
+    $remainingService = Get-CimInstance Win32_Service -Filter "Name='$dispatchName'" -ErrorAction SilentlyContinue
+    if (-not $remainingService) { break }
+    Start-Sleep -Seconds 2
+} while ([DateTimeOffset]::UtcNow -lt $serviceExitDeadline)
+if ($remainingService) {
+    throw 'Field base SYSTEM maintenance service did not exit before Audit administrator Sysprep.'
+}
+
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = [Security.Principal.WindowsPrincipal]::new($identity)
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) -or $identity.User.Value -notmatch '-500$') {
+    throw 'Field base Sysprep requires the built-in Audit Mode administrator.'
+}
+if (Test-Path -LiteralPath $auditSysprepReceiptPath -PathType Leaf) {
+    throw 'Field base Audit administrator Sysprep receipt already exists.'
+}
+
+$systemReceiptSha256 = (Get-FileHash -LiteralPath $receiptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$auditReceipt = [ordered]@{
+    contractVersion = 1
+    requestedAt = [DateTimeOffset]::UtcNow.ToString('O')
+    sourceCommit = [string]$receipt.sourceCommit
+    targetImageId = [string]$receipt.targetImageId
+    systemMaintenanceReceiptSha256 = $systemReceiptSha256
+    principal = 'built_in_audit_administrator'
+    sysprep = '/generalize /oobe /shutdown /quiet'
+}
+[IO.File]::WriteAllText($auditSysprepReceiptPath, ($auditReceipt | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+Write-BootstrapStatus -Route 'auditUser_sysprep_requested'
+
+$sysprepPath = Join-Path $env:WINDIR 'System32\Sysprep\Sysprep.exe'
+$process = Start-Process -FilePath $sysprepPath -ArgumentList '/generalize', '/oobe', '/shutdown', '/quiet' -PassThru -Wait
+if ($process.ExitCode -ne 0) { throw "Sysprep failed with exit code $($process.ExitCode)." }
 return
 } catch {
     Write-BootstrapStatus -Route 'dispatch_failed' -ErrorText $_.Exception.Message

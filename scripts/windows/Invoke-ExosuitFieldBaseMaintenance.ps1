@@ -258,13 +258,9 @@ $receipt = [ordered]@{
         command = 'Exosuit.Agent.exe --field-guest-service'
     }
     componentDigests = $componentDigests
-    sysprep = '/generalize /oobe /shutdown /quiet'
+    sysprep = 'pending_audit_administrator'
 }
 [IO.File]::WriteAllText($ReceiptPath, ($receipt | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 Remove-Item -LiteralPath $AuthorizationPath -Force
 Set-MaintenanceStage 'receipt_written_and_authorization_consumed'
-
-$sysprepPath = Join-Path $env:WINDIR 'System32\Sysprep\Sysprep.exe'
-Set-MaintenanceStage 'sysprep_started'
-$process = Start-Process -FilePath $sysprepPath -ArgumentList '/generalize', '/oobe', '/shutdown', '/quiet' -PassThru -Wait
-if ($process.ExitCode -ne 0) { throw "Sysprep failed with exit code $($process.ExitCode)." }
+Set-MaintenanceStage 'system_maintenance_complete_sysprep_pending'

@@ -282,7 +282,7 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain('"$runtimeAgentPath --field-guest-service"');
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
-    expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
+    expect(baseMaintenanceBootstrap).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     expect(baseMaintenanceBootstrap).toContain("built-in Audit Mode administrator");
     expect(baseMaintenanceBootstrap).toContain("ExosuitFieldBaseMaintenance");
     // Audit Mode leaves scheduled tasks Queued for the whole session, so dispatch
@@ -333,7 +333,17 @@ describe("Windows Field administration scripts", () => {
     const agentChecks = [...(agentCheckBlock?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((match) => match[1]);
     expect(agentChecks).toEqual([...fieldBootstrapCheckNameSchema.options]);
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
-    expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'sysprep_started'");
+    expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_maintenance_complete_sysprep_pending'");
+    expect(systemBaseMaintenance).toContain("sysprep = 'pending_audit_administrator'");
+    expect(systemBaseMaintenance).not.toContain("Start-Process -FilePath $sysprepPath");
+    expect(baseMaintenanceBootstrap).toContain("Field base Sysprep requires the built-in Audit Mode administrator.");
+    expect(baseMaintenanceBootstrap).toContain("systemMaintenanceReceiptSha256");
+    expect(baseMaintenanceBootstrap).toContain("$expectedMaintenanceSha256");
+    expect(baseMaintenanceBootstrap).toContain("$receipt.runtimeService.principal -cne 'SYSTEM'");
+    expect(baseMaintenanceBootstrap).toContain("$receipt.perGenerationConfigurationAbsent -ne $true");
+    expect(baseMaintenanceBootstrap).toContain("principal = 'built_in_audit_administrator'");
+    expect(baseMaintenanceBootstrap).toContain("Start-Process -FilePath $sysprepPath");
+    expect(baseMaintenanceBootstrap).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
