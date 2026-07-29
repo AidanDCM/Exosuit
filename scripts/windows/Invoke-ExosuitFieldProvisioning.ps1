@@ -195,12 +195,11 @@ function Add-GuestSeedToOverlay {
       <OOBE>
         <HideEULAPage>true</HideEULAPage>
         <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
         <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
         <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
         <NetworkLocation>Work</NetworkLocation>
         <ProtectYourPC>3</ProtectYourPC>
-        <SkipMachineOOBE>true</SkipMachineOOBE>
-        <SkipUserOOBE>true</SkipUserOOBE>
       </OOBE>
     </component>
   </settings>
@@ -208,6 +207,9 @@ function Add-GuestSeedToOverlay {
 '@
             if ($unattend -match '(?i)<Password>|development-password|channel-secret') {
                 throw 'Development unattended setup must not contain a credential or channel secret.'
+            }
+            if ($unattend -match '(?i)SkipMachineOOBE|SkipUserOOBE') {
+                throw 'Development unattended setup must use supported OOBE page configuration, not skip flags.'
             }
             [IO.File]::WriteAllText($unattendPath, $unattend, [Text.UTF8Encoding]::new($false))
         }

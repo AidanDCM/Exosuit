@@ -28,7 +28,10 @@ describe("Windows Field administration scripts", () => {
     expect(content).toContain("Development access requires both the signed provisioning plan field and the explicit host apply switch.");
     expect(content).toContain("Development unattended setup must not contain a credential or channel secret.");
     expect(content).toContain("Initialize-ExosuitDevelopmentAccess.ps1");
-    expect(content).toContain("SkipMachineOOBE");
+    expect(content).toContain("HideOEMRegistrationScreen");
+    expect(content).toContain("Development unattended setup must use supported OOBE page configuration, not skip flags.");
+    const generatedUnattend = content.match(/\$unattend = @'([\s\S]*?)'@/)?.[1] ?? "";
+    expect(generatedUnattend).not.toMatch(/SkipMachineOOBE|SkipUserOOBE/);
     expect(content).toContain("Enable-VMIntegrationService -VMName $vmName -Name 'Time Synchronization'");
     expect(content).toContain("*S-1-5-18:(OI)(CI)F");
     expect(content).toContain("Set-VMVideo");
