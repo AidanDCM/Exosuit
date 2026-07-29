@@ -34,7 +34,15 @@ if ([IO.Path]::GetFullPath($AgentPath) -cne $canonicalPaths[0] -or
 
 $serviceName = 'ExosuitFieldGuest'
 $legacyTaskName = 'ExosuitFieldGuest'
-$binaryPath = "`"$([IO.Path]::GetFullPath($AgentPath))`" --field-guest-service"
+$resolvedAgentPath = [IO.Path]::GetFullPath($AgentPath)
+$binaryPath = "`"$resolvedAgentPath`" --field-guest-service"
+# SCM removes redundant quotes when an executable path has no spaces. Both
+# strings below resolve to the same exact executable and fixed argument; no
+# other service command serialization is accepted.
+$allowedRegisteredBinaryPaths = @(
+    $binaryPath,
+    "$resolvedAgentPath --field-guest-service"
+)
 
 function Invoke-ServiceControl {
     param([Parameter(Mandatory)][string[]]$Arguments)
@@ -77,7 +85,7 @@ if ($PSCmdlet.ShouldProcess($serviceName, 'Install the fixed LocalSystem automat
     $registered = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction Stop
     if ([string]$registered.StartName -cne 'LocalSystem' -or
         [string]$registered.StartMode -cne 'Auto' -or
-        [string]$registered.PathName -cne $binaryPath) {
+        $allowedRegisteredBinaryPaths -cnotcontains [string]$registered.PathName) {
         throw 'Installed Field guest service does not match the reviewed LocalSystem execution contract.'
     }
 

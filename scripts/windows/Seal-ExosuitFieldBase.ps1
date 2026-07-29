@@ -86,10 +86,14 @@ if (Get-ScheduledTask -TaskName $serviceName -ErrorAction SilentlyContinue) {
     throw 'Legacy Field guest scheduled task remains after service installation.'
 }
 $service = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction Stop
-$expectedBinaryPath = "`"$(Join-Path $AgentRoot 'Exosuit.Agent.exe')`" --field-guest-service"
+$resolvedAgentPath = [IO.Path]::GetFullPath((Join-Path $AgentRoot 'Exosuit.Agent.exe'))
+$allowedRegisteredBinaryPaths = @(
+    "`"$resolvedAgentPath`" --field-guest-service",
+    "$resolvedAgentPath --field-guest-service"
+)
 if ([string]$service.StartName -cne 'LocalSystem' -or
     [string]$service.StartMode -cne 'Auto' -or
-    [string]$service.PathName -cne $expectedBinaryPath) {
+    $allowedRegisteredBinaryPaths -cnotcontains [string]$service.PathName) {
     throw 'Installed Field guest service does not match the reviewed LocalSystem execution contract.'
 }
 

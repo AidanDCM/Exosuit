@@ -176,9 +176,14 @@ $runtimeInstallerPath = 'C:\Exosuit\Agent\Install-ExosuitFieldGuest.ps1'
 & $runtimeInstallerPath -Confirm:$false
 if (-not $?) { throw 'Field base maintenance could not install the Field guest runtime service.' }
 $runtimeService = Get-CimInstance Win32_Service -Filter "Name='$runtimeServiceName'" -ErrorAction Stop
+$runtimeAgentPath = 'C:\Exosuit\Agent\Exosuit.Agent.exe'
+$allowedRuntimeBinaryPaths = @(
+    "`"$runtimeAgentPath`" --field-guest-service",
+    "$runtimeAgentPath --field-guest-service"
+)
 if ([string]$runtimeService.StartName -cne 'LocalSystem' -or
     [string]$runtimeService.StartMode -cne 'Auto' -or
-    [string]$runtimeService.PathName -cne '"C:\Exosuit\Agent\Exosuit.Agent.exe" --field-guest-service') {
+    $allowedRuntimeBinaryPaths -cnotcontains [string]$runtimeService.PathName) {
     throw 'Field base maintenance runtime service does not match the reviewed LocalSystem contract.'
 }
 if (Get-ScheduledTask -TaskName $runtimeServiceName -ErrorAction SilentlyContinue) {

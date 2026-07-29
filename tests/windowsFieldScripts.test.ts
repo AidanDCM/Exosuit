@@ -177,6 +177,9 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("Field guest service installation requires the exact compiled launcher paths.");
     expect(install).toContain("'start=', 'auto', 'obj=', 'LocalSystem'");
     expect(install).toContain("'restart/5000/restart/30000/restart/60000'");
+    expect(install).toContain('$allowedRegisteredBinaryPaths -cnotcontains [string]$registered.PathName');
+    expect(install).toContain('$binaryPath,');
+    expect(install).toContain('"$resolvedAgentPath --field-guest-service"');
     expect(install).toContain("Unregister-ScheduledTask -TaskName $legacyTaskName -Confirm:$false");
     expect(install).toContain("Legacy Field guest scheduled task removal did not complete.");
     expect(install).toContain("[switch]$Start");
@@ -224,6 +227,7 @@ describe("Windows Field administration scripts", () => {
     expect(sealBase).toContain("Get-CimInstance Win32_Service -Filter \"Name='$serviceName'\"");
     expect(sealBase).toContain("StartName -cne 'LocalSystem'");
     expect(sealBase).toContain("StartMode -cne 'Auto'");
+    expect(sealBase).toContain('$allowedRegisteredBinaryPaths -cnotcontains [string]$service.PathName');
     expect(sealBase).toContain("--field-guest-service");
     expect(sealBase).toContain("Legacy Field guest scheduled task remains after service installation.");
     expect(sealBase).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
@@ -271,6 +275,8 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("maintenanceTaskConsumed = $true");
     expect(systemBaseMaintenance).toContain("runtime_service_installed");
     expect(systemBaseMaintenance).toContain("Field base maintenance runtime service does not match the reviewed LocalSystem contract.");
+    expect(systemBaseMaintenance).toContain('$allowedRuntimeBinaryPaths -cnotcontains [string]$runtimeService.PathName');
+    expect(systemBaseMaintenance).toContain('"$runtimeAgentPath --field-guest-service"');
     expect(systemBaseMaintenance).toContain("Field base maintenance refuses to reuse an authorization after a receipt exists.");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $AuthorizationPath -Force");
     expect(systemBaseMaintenance).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
