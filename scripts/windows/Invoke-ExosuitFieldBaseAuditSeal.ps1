@@ -58,7 +58,8 @@ try {
     } while ([DateTimeOffset]::UtcNow -lt $auditUiDeadline)
     if ($sysprepProcesses.Count -ne 1) { throw 'Field base sealing expected exactly one automatic Audit Mode Sysprep UI process.' }
     $auditUi = $sysprepProcesses[0]
-    if ([IO.Path]::GetFullPath([string]$auditUi.ExecutablePath) -cne $sysprepPath -or
+    $auditUiPath = [IO.Path]::GetFullPath([string]$auditUi.ExecutablePath)
+    if (-not [string]::Equals($auditUiPath, $sysprepPath, [StringComparison]::OrdinalIgnoreCase) -or
         [string]$auditUi.CommandLine -cnotmatch '(?i)^\s*"?[^"\r\n]*\\Sysprep\.exe"?\s+/reboot\s*$') {
         throw 'Field base sealing refuses a non-canonical or non-Audit-UI Sysprep process.'
     }

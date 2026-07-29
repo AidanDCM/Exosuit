@@ -352,9 +352,12 @@ describe("Windows Field administration scripts", () => {
     expect(auditSeal).toContain("$receipt.perGenerationConfigurationAbsent -ne $true");
     expect(auditSeal).toContain("principal = 'built_in_audit_administrator'");
     expect(auditSeal).toContain("automaticAuditUiTerminated = $true");
-    expect(auditSeal).toContain("expected exactly one automatic Audit Mode Sysprep UI process");
-    expect(auditSeal).toContain("refuses a non-canonical or non-Audit-UI Sysprep process");
-    expect(auditSeal).toContain("Start-Process -FilePath $sysprepPath");
+      expect(auditSeal).toContain("expected exactly one automatic Audit Mode Sysprep UI process");
+      expect(auditSeal).toContain("refuses a non-canonical or non-Audit-UI Sysprep process");
+      expect(auditSeal).toContain(
+        "[string]::Equals($auditUiPath, $sysprepPath, [StringComparison]::OrdinalIgnoreCase)",
+      );
+      expect(auditSeal).toContain("Start-Process -FilePath $sysprepPath");
     expect(auditSeal).toContain("'/generalize', '/oobe', '/shutdown', '/quiet'");
     for (const content of [start, install, readKvp]) {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
