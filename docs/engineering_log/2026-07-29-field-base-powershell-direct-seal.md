@@ -30,6 +30,8 @@ The maintenance bootstrap now stops after SYSTEM maintenance and receipt validat
 - writes a receipt bound to the SYSTEM maintenance receipt and the exact audit-seal script digest;
 - launches only `/generalize /oobe /shutdown /quiet`.
 
+SYSTEM maintenance now also requires the reviewed PowerShell Direct unattended marker and rejects any `RunSynchronous` or `RunSynchronousCommand` element before consuming the answer file.
+
 The host-side v19 builder will invoke maintenance and sealing as separate PowerShell Direct operations after Windows Setup audit passes have returned. That live builder is local evidence tooling and is not claimed by this source slice.
 
 ## Tests added or updated

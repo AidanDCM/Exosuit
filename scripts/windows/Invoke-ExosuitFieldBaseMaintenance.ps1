@@ -106,7 +106,8 @@ $bootstrapUnattendText = Get-Content -LiteralPath $bootstrapUnattendPath -Raw
 $bootstrapUnattendDigest = Get-CanonicalUnattendDigest -Xml $bootstrapUnattendText
 if ($bootstrapUnattendDigest -cne [string]$authorization.bootstrapUnattendSha256 -or
     $bootstrapUnattendText -notlike '*ExosuitFieldBaseMaintenance*' -or
-    $bootstrapUnattendText -notlike '*Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1*') {
+    $bootstrapUnattendText -notlike '*ExosuitFieldBasePowerShellDirect*' -or
+    $bootstrapUnattendText -match '(?i)<RunSynchronous(?:Command)?>') {
     throw 'Field base maintenance bootstrap answer file does not match its authorization.'
 }
 

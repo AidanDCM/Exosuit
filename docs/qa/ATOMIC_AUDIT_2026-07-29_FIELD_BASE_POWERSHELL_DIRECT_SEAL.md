@@ -34,6 +34,7 @@ The new split preserves:
 ## Deny-by-default properties
 
 - Bootstrap no longer contains a Sysprep launch.
+- SYSTEM maintenance rejects unattended files containing `RunSynchronous` and requires the PowerShell Direct marker.
 - Missing, duplicate, non-canonical, or differently-argued Sysprep processes stop sealing.
 - Wrong principal, missing receipt, digest mismatch, network attachment, personal configuration, unexpected accounts, or noncanonical guest service stop sealing.
 - No network listener, broad mount, credential logging, full-control enablement, or approval automation was added.

@@ -257,7 +257,8 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Get-CanonicalUnattendDigest");
     expect(systemBaseMaintenance).toContain("$document.SelectNodes('//*[@wasPassProcessed]')");
     expect(systemBaseMaintenance).toContain("$document.DocumentElement.OuterXml");
-    expect(systemBaseMaintenance).toContain("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
+    expect(systemBaseMaintenance).toContain("ExosuitFieldBasePowerShellDirect");
+    expect(systemBaseMaintenance).toContain("(?i)<RunSynchronous(?:Command)?>");
     expect(systemBaseMaintenance).toContain("Remove-Item -LiteralPath $bootstrapUnattendPath -Force");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendConsumed = $true");
     expect(systemBaseMaintenance).toContain("Unregister-ScheduledTask -TaskName $maintenanceDispatchName -Confirm:$false");
