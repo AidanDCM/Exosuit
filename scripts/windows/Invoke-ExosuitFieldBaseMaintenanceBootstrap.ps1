@@ -6,7 +6,6 @@ $ErrorActionPreference = 'Stop'
 
 $authorizationPath = 'C:\Exosuit\Base\maintenance-authorization.json'
 $receiptPath = 'C:\Exosuit\Base\maintenance-receipt.json'
-$auditSysprepReceiptPath = 'C:\Exosuit\Base\audit-sysprep-receipt.json'
 $maintenancePath = 'C:\Exosuit\Agent\Invoke-ExosuitFieldBaseMaintenance.ps1'
 $timeZonePath = 'C:\Exosuit\Base\host-timezone.txt'
 $statusPath = 'C:\Exosuit\Logs\maintenance-bootstrap-status.txt'
@@ -169,31 +168,7 @@ if ($remainingService) {
     throw 'Field base SYSTEM maintenance service did not exit before Audit administrator Sysprep.'
 }
 
-$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-$principal = [Security.Principal.WindowsPrincipal]::new($identity)
-if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) -or $identity.User.Value -notmatch '-500$') {
-    throw 'Field base Sysprep requires the built-in Audit Mode administrator.'
-}
-if (Test-Path -LiteralPath $auditSysprepReceiptPath -PathType Leaf) {
-    throw 'Field base Audit administrator Sysprep receipt already exists.'
-}
-
-$systemReceiptSha256 = (Get-FileHash -LiteralPath $receiptPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$auditReceipt = [ordered]@{
-    contractVersion = 1
-    requestedAt = [DateTimeOffset]::UtcNow.ToString('O')
-    sourceCommit = [string]$receipt.sourceCommit
-    targetImageId = [string]$receipt.targetImageId
-    systemMaintenanceReceiptSha256 = $systemReceiptSha256
-    principal = 'built_in_audit_administrator'
-    sysprep = '/generalize /oobe /shutdown /quiet'
-}
-[IO.File]::WriteAllText($auditSysprepReceiptPath, ($auditReceipt | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
-Write-BootstrapStatus -Route 'auditUser_sysprep_requested'
-
-$sysprepPath = Join-Path $env:WINDIR 'System32\Sysprep\Sysprep.exe'
-$process = Start-Process -FilePath $sysprepPath -ArgumentList '/generalize', '/oobe', '/shutdown', '/quiet' -PassThru -Wait
-if ($process.ExitCode -ne 0) { throw "Sysprep failed with exit code $($process.ExitCode)." }
+Write-BootstrapStatus -Route 'powershell_direct_system_maintenance_complete'
 return
 } catch {
     Write-BootstrapStatus -Route 'dispatch_failed' -ErrorText $_.Exception.Message
