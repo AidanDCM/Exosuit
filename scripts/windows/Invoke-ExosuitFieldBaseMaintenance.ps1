@@ -89,6 +89,15 @@ function Get-CanonicalUnattendDigest {
     foreach ($processed in @($document.SelectNodes('//*[@wasPassProcessed]'))) {
         $null = $processed.RemoveAttribute('wasPassProcessed')
     }
+    # Windows Setup consumes one-use audit credentials by removing these whole
+    # elements from the cached answer file. They are intentionally excluded from
+    # the canonical contract: the host never records the secret, while every
+    # non-secret pass, component, account name, and setting remains digest-bound.
+    foreach ($consumedSecret in @($document.SelectNodes(
+        '//*[local-name()="Password" or local-name()="AdministratorPassword"]'
+    ))) {
+        $null = $consumedSecret.ParentNode.RemoveChild($consumedSecret)
+    }
     $sha256 = [Security.Cryptography.SHA256]::Create()
     try {
         $bytes = [Text.UTF8Encoding]::new($false).GetBytes($document.DocumentElement.OuterXml)

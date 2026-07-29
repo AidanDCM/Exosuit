@@ -249,13 +249,17 @@ describe("Windows Field administration scripts", () => {
     expect(systemBaseMaintenance).toContain("Field base maintenance script digest does not match its authorization.");
     expect(systemBaseMaintenance).toContain("bootstrapUnattendSha256");
     expect(systemBaseMaintenance).toContain("Field base maintenance bootstrap answer file does not match its authorization.");
-    // Windows Setup reserialises the answer file in place, dropping comments and
-    // rewriting the XML declaration, so a byte digest of the live file can never
-    // match what was injected. The documents are compared as canonical XML, with
-    // only comments and setup's own wasPassProcessed bookkeeping removed - the
-    // passes, components and exact command paths all remain covered.
+    // Windows Setup reserialises the answer file in place, drops comments, adds
+    // wasPassProcessed bookkeeping, and consumes the complete Password and
+    // AdministratorPassword elements. Canonical comparison excludes exactly
+    // those Setup-owned mutations; all non-secret passes, components, account
+    // names, and settings remain covered.
     expect(systemBaseMaintenance).toContain("Get-CanonicalUnattendDigest");
     expect(systemBaseMaintenance).toContain("$document.SelectNodes('//*[@wasPassProcessed]')");
+    expect(systemBaseMaintenance).toContain(
+      `'//*[local-name()="Password" or local-name()="AdministratorPassword"]'`,
+    );
+    expect(systemBaseMaintenance).toContain("$consumedSecret.ParentNode.RemoveChild($consumedSecret)");
     expect(systemBaseMaintenance).toContain("$document.DocumentElement.OuterXml");
     expect(systemBaseMaintenance).toContain("ExosuitFieldBasePowerShellDirect");
     expect(systemBaseMaintenance).toContain("(?i)<RunSynchronous(?:Command)?>");
