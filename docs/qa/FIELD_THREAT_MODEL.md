@@ -50,7 +50,7 @@
 |---|---|---|---|
 | Pilot grants itself VM or consent authority | `FieldAdminAuthority` blocks `pilot_model`; review cannot be satisfied by model | unit tests and static validator | local admin UI/transport acceptance |
 | Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration | TS/.NET tests and shared fixture | actual transport fault injection |
-| Replay or reordering | message ID, nonce, strictly increasing sequence, and bounded atomic replay state | replay/restart tests in both languages | protected-state operational validation and rotation |
+| Replay or reordering | message ID, nonce, strictly increasing sequence, bounded atomic replay state, and a KVP observation ledger that permits only exact retained-record rereads after fresh cryptographic/expiry verification | replay/restart tests in both languages; repeated live v20 readiness observations | live mutation/regression injection, protected-state restart validation, and rotation |
 | Cross-generation action | every channel, heartbeat, command, scene, artifact, episode, and visual reference binds Field generation | unit tests | stale live process and rollback tests |
 | Stale desktop state | exact expected scene version required for action | command and scene tests | live focus/window race injection |
 | Arbitrary shell execution | no shell field in provisioning plan; guest routes exclude shell; scripts reject arbitrary evaluation | schemas, validator, script tests | command-line and process-monitor observation |
@@ -67,7 +67,7 @@
 | Blind retry | recovery allows only bounded idempotent no-effect retry; uncertain effect requires reconciliation | recovery tests | live timeout and partial-effect fixtures |
 | Heartbeat spoof/staleness | signed channel, expected agent/boot, sequence, time thresholds | tests | guest crash, pause, sleep, and network interruption |
 | Secure Desktop/lock operation | scene and heartbeat reject ready input state | tests | actual lock/UAC acceptance |
-| Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract | fresh base and generation boot |
+| Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20 SYSTEM/Audit receipts and authenticated development canary | production-authenticated generation and repeated lifecycle matrix |
 | Diagnostic privacy leak | Field support bundle accepts only hashes and aggregate counts; forbidden fields/values | tests | support bundle manual inspection |
 | Emergency-stop failure | recovery marks release blocking and denies automated recovery | tests | physical end-to-end stop test |
 
@@ -77,6 +77,9 @@
 - A policy, consent, channel key, or attestation cannot be created by model text.
 - Every mutable action is tied to one Field generation and one current scene version.
 - Live channel replay state is bounded, atomically persisted, and bound to exact Field generation, direction, and key ID; corrupt or mismatched state fails closed.
+- Retained Hyper-V KVP records are observations, not re-executed commands: exact
+  envelope digest/message/sequence rereads are idempotent only after fresh
+  authentication and expiry checks; any changed record must advance strictly.
 - Signed channel timestamps use one canonical UTC representation with exactly millisecond precision.
 - Field policies authorize canonical origins and reviewed executable name/hash identities, not arbitrary URLs or process-name strings.
 - No Field command accepts arbitrary shell or PowerShell strings.

@@ -211,6 +211,13 @@ describe("Windows Field administration scripts", () => {
     expect(readKvp).toContain("Chunked KVP envelope digest is invalid");
     expect(readKvp).toContain("for ($attempt = 1; $attempt -le 20; $attempt++)");
     expect(readKvp).toContain("$snapshot = Get-FieldKvpItems");
+    expect(readKvp).toContain("guest-to-host-observation.json");
+    expect(readKvp).toContain("guest-to-host-snapshot-");
+    expect(readKvp).toContain("$idempotent");
+    expect(readKvp).toContain("envelopeSha256");
+    expect(readKvp).toContain("KVP observation sequence did not increase strictly");
+    expect(readKvp).toContain("KVP observation reused a prior message ID");
+    expect(readKvp).toContain("Move-Item -LiteralPath $observationTemporaryPath");
     expect(initializeGuest).toContain("Marshal.ReadInt32(buffer, 16)");
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");

@@ -558,3 +558,25 @@ Production is denied until one exact signed release candidate has:
 See `docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md`.
 
 Current Field production status: **DENIED**.
+
+## 24. v20 development-access canary evidence (2026-07-30)
+
+- Base v20 receipt: service staged `ManualUntilSetupComplete`, SYSTEM identity,
+  network detached, non-built-in accounts absent, one-use authorization and
+  bootstrap unattend consumed.
+- Audit seal: built-in Audit administrator, automatic Audit UI terminated,
+  canonical generalize/OOBE/shutdown Sysprep.
+- Generation: exact Field `7fad0376-68aa-4300-899d-a2ded6e1fb15`, generation 1,
+  isolated networking, read-only base plus disposable OS overlay and task disk.
+- Authenticated readiness: handshake, zero-failure bootstrap, exact identity and
+  digest bindings, display contract, unlocked/non-Secure-Desktop session, and
+  heartbeat `ready`.
+- Repeated observation: unchanged retained handshake/bootstrap records accepted
+  idempotently only after fresh signature/expiry verification; heartbeat advanced
+  strictly from host sequence `1785449589383193` to `1785449589383218`.
+- Destruction: exact Generation 1 VM registration and disposable root removed;
+  post-destruction v20 digest remained `452790e...547d` and read-only.
+- Held: production authentication, negative replay mutation/regression live
+  injection, restart/key rotation, lock/Secure Desktop, heartbeat loss, VM
+  suspend/resume, repeated create/destroy, repeated/faulted base immutability, input,
+  recording, and emergency stop.

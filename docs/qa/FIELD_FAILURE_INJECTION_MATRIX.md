@@ -156,6 +156,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Tamper demonstration ciphertext | authentication failure | U | W |
 | Wrong demonstration key | hide from list and fail direct load | U | W |
 | Corrupt Field Manager audit event | chain verification failure | U foundation | W |
+| Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20 live repeated observation | restart and malicious mutation/regression W/H |
 
 ## Promotion rule
 

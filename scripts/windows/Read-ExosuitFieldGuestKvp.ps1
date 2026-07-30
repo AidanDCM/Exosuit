@@ -83,21 +83,77 @@ function Resolve-KvpEnvelope {
 }
 
 New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
-$replayPath = Join-Path $EvidenceDirectory 'guest-to-host-replay.json'
-$verified = @()
-foreach ($entry in @(
-    @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
-    @{ name = 'bootstrap'; key = 'Exosuit.Field.Bootstrap' },
-    @{ name = 'heartbeat'; key = 'Exosuit.Field.Heartbeat' }
-)) {
-    $envelopePath = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
-    [IO.File]::WriteAllText($envelopePath, (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
-    $output = & $AgentPath --field-verify-envelope $RuntimeConfigPath $envelopePath $replayPath 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Guest $($entry.name) envelope verification failed: $($output -join ' ')"
+$observationPath = Join-Path $EvidenceDirectory 'guest-to-host-observation.json'
+$snapshotReplayPath = Join-Path $EvidenceDirectory "guest-to-host-snapshot-$([Guid]::NewGuid().ToString('N')).json"
+$observation = if (Test-Path -LiteralPath $observationPath -PathType Leaf) {
+    Get-Content -LiteralPath $observationPath -Raw | ConvertFrom-Json
+} else {
+    [pscustomobject]@{
+        contractVersion = 1
+        lastSequence = -1
+        entries = [pscustomobject]@{}
     }
-    $verified += ($output -join [Environment]::NewLine) | ConvertFrom-Json
 }
+if ($observation.contractVersion -ne 1 -or [long]$observation.lastSequence -lt -1) {
+    throw 'Persisted Field KVP observation state is invalid.'
+}
+
+function Get-EnvelopeSha256 {
+    param([Parameter(Mandatory)][string]$Path)
+    (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+$verified = @()
+try {
+    foreach ($entry in @(
+        @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
+        @{ name = 'bootstrap'; key = 'Exosuit.Field.Bootstrap' },
+        @{ name = 'heartbeat'; key = 'Exosuit.Field.Heartbeat' }
+    )) {
+        $envelopePath = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
+        [IO.File]::WriteAllText($envelopePath, (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
+        $output = & $AgentPath --field-verify-envelope $RuntimeConfigPath $envelopePath $snapshotReplayPath 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Guest $($entry.name) envelope verification failed: $($output -join ' ')"
+        }
+        $current = ($output -join [Environment]::NewLine) | ConvertFrom-Json
+        $digest = Get-EnvelopeSha256 -Path $envelopePath
+        $previousProperty = $observation.entries.PSObject.Properties[$entry.name]
+        $previous = if ($null -ne $previousProperty) { $previousProperty.Value } else { $null }
+        $idempotent = $null -ne $previous -and
+            [string]$previous.envelopeSha256 -ceq $digest -and
+            [string]$previous.messageId -ceq [string]$current.messageId -and
+            [long]$previous.sequence -eq [long]$current.sequence
+        if (-not $idempotent) {
+            if ([long]$current.sequence -le [long]$observation.lastSequence) {
+                throw "Guest $($entry.name) KVP observation sequence did not increase strictly."
+            }
+            foreach ($property in @($observation.entries.PSObject.Properties)) {
+                if ([string]$property.Value.messageId -ceq [string]$current.messageId) {
+                    throw "Guest $($entry.name) KVP observation reused a prior message ID."
+                }
+            }
+            $observation.lastSequence = [long]$current.sequence
+            $record = [pscustomobject]@{
+                messageId = [string]$current.messageId
+                sequence = [long]$current.sequence
+                envelopeSha256 = $digest
+            }
+            if ($null -eq $previousProperty) {
+                $observation.entries | Add-Member -NotePropertyName $entry.name -NotePropertyValue $record
+            } else {
+                $observation.entries.($entry.name) = $record
+            }
+        }
+        $verified += $current
+    }
+} finally {
+    Remove-Item -LiteralPath $snapshotReplayPath -Force -ErrorAction SilentlyContinue
+}
+
+$observationTemporaryPath = "$observationPath.tmp"
+[IO.File]::WriteAllText($observationTemporaryPath, ($observation | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+Move-Item -LiteralPath $observationTemporaryPath -Destination $observationPath -Force
 
 $result = [ordered]@{
     contractVersion = 1

@@ -171,6 +171,37 @@ See `docs/FIELD_WINDOWS_RUNBOOK.md`.
 
 ## Validation status
 
+### 2026-07-30 v20 development-access canary
+
+Immutable base `exosuit-field-base-v20` was built from reviewed v10 parent
+`624a27cf...a7b30` on source commit `2735a85`. Its promoted read-only digest is
+`452790e549cc31f3d4bb2613113f5a386716447d9b4795ded2a9193ad415547d`.
+The SYSTEM maintenance receipt binds the guest service to
+`ManualUntilSetupComplete`; the Audit receipt binds canonical
+`/generalize /oobe /shutdown /quiet` Sysprep.
+
+Development-only Field `7fad0376-68aa-4300-899d-a2ded6e1fb15`, generation 1,
+booted from a disposable differencing overlay and reached authenticated KVP
+`ready`. Identity, base digest, task disk, directory layout, 1920x1080 display,
+agent digest, channel key ID, policy binding, unlocked session, inactive Secure
+Desktop, and heartbeat checks passed. A delayed sample advanced guest heartbeat
+sequence to 213 with lifecycle `ready`, desktop ready, zero queued input, and
+zero pending commands. This is development-access canary evidence, not
+production authentication, execution, recording, isolation-matrix, or release
+evidence.
+
+The canary generation was then destroyed with the exact typed-confirmation
+path. Its VM registration and disposable generation root were removed. A
+post-destruction SHA-256 check matched the promoted v20 digest exactly and the
+base remained read-only. This proves immutability for this one canary lifecycle,
+not the required repeated/failure-injected matrix.
+
+Repeated KVP observation exposed and corrected a host-reader defect: retained
+handshake/bootstrap envelopes are now accepted only as exact idempotent
+observations after fresh cryptographic/expiry verification. Any changed record
+must advance sequence and use a new message ID. Two live samples passed with
+retained handshake/bootstrap records and an advancing heartbeat.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.
