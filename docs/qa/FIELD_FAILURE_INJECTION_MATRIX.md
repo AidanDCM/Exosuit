@@ -40,6 +40,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Heartbeat stale beyond fault threshold | fault and stop/reprovision plan | U | guest kill/network break |
 | Locked session reports ready | reject heartbeat | U | lock guest session |
 | Secure Desktop reports ready | reject heartbeat | U | UAC/Secure Desktop |
+| Guest service is Automatic in sealed base | reject base receipt/promotion; do not boot as trusted | S/U | offline base inspection and fresh canary |
 | Fault code present | fault state and diagnostic code only | U | guest provider failure |
 | Huge queue depth | accepted only within schema max; health monitoring may degrade later | U schema | load fixture |
 

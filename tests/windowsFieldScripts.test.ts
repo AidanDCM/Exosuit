@@ -171,6 +171,10 @@ describe("Windows Field administration scripts", () => {
     const systemBaseMaintenance = await script("Invoke-ExosuitFieldBaseMaintenance.ps1");
     const baseMaintenanceBootstrap = await script("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     const auditSeal = await script("Invoke-ExosuitFieldBaseAuditSeal.ps1");
+    expect(install).toContain("[ValidateSet('Automatic', 'Manual')]");
+    expect(install).toContain("[string]$StartupType = 'Automatic'");
+    expect(install).toContain("$scStartMode = if ($StartupType -ceq 'Automatic') { 'auto' } else { 'demand' }");
+    expect(install).toContain("Starting the Field guest service requires Automatic startup.");
     expect(start).toContain("--field-guest-kvp");
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
@@ -179,7 +183,7 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("$serviceName = 'ExosuitFieldGuest'");
     expect(install).toContain("--field-guest-service");
     expect(install).toContain("Field guest service installation requires the exact compiled launcher paths.");
-    expect(install).toContain("'start=', 'auto', 'obj=', 'LocalSystem'");
+    expect(install).toContain("'start=', $scStartMode, 'obj=', 'LocalSystem'");
     expect(install).toContain("'restart/5000/restart/30000/restart/60000'");
     expect(install).toContain('$allowedRegisteredBinaryPaths -cnotcontains [string]$registered.PathName');
     expect(install).toContain('$binaryPath,');
@@ -341,6 +345,9 @@ describe("Windows Field administration scripts", () => {
     expect(agentChecks).toEqual([...fieldBootstrapCheckNameSchema.options]);
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_maintenance_complete_sysprep_pending'");
+    expect(systemBaseMaintenance).toContain("& $runtimeInstallerPath -StartupType Manual -Confirm:$false");
+    expect(systemBaseMaintenance).toContain("[string]$runtimeService.StartMode -cne 'Manual'");
+    expect(systemBaseMaintenance).toContain("startMode = 'ManualUntilSetupComplete'");
     expect(systemBaseMaintenance).toContain("sysprep = 'pending_audit_administrator'");
     expect(systemBaseMaintenance).not.toContain("Start-Process -FilePath $sysprepPath");
     expect(auditSeal).toContain("Field base sealing requires the built-in Audit Mode administrator.");
@@ -349,6 +356,7 @@ describe("Windows Field administration scripts", () => {
     expect(auditSeal).toContain("Get-FileHash -LiteralPath $PSCommandPath");
     expect(auditSeal).toContain("$expectedMaintenanceSha256");
     expect(auditSeal).toContain("$receipt.runtimeService.principal -cne 'SYSTEM'");
+    expect(auditSeal).toContain("$receipt.runtimeService.startMode -cne 'ManualUntilSetupComplete'");
     expect(auditSeal).toContain("$receipt.perGenerationConfigurationAbsent -ne $true");
     expect(auditSeal).toContain("principal = 'built_in_audit_administrator'");
     expect(auditSeal).toContain("automaticAuditUiTerminated = $true");

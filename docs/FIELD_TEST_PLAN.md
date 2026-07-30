@@ -47,6 +47,11 @@ Source and tests exist for identity, policy, attestation, lifecycle, desired sta
 
 Current-head execution, Hyper-V behavior, live recording, live prediction, personal models, and Pilot operation remain unproven.
 
+The base-image matrix must additionally prove that the Field guest service is
+Manual in the sealed base, cannot start during `specialize`, and becomes
+Automatic only through the reviewed SetupComplete path. A boot that configures
+development access before Setup completes is a failed generation.
+
 ## 4. Mandatory source validation
 
 ```bash

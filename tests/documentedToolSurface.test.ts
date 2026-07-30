@@ -86,10 +86,17 @@ describe("documented MCP tool surface", () => {
   let core: string[];
   let full: string[];
 
-  beforeAll(async () => {
-    core = await registeredTools({ EXOSUIT_MCP_SURFACE: "core" });
-    full = await registeredTools({ EXOSUIT_MCP_SURFACE: "full" });
-  });
+  beforeAll(
+    async () => {
+      core = await registeredTools({ EXOSUIT_MCP_SURFACE: "core" });
+      full = await registeredTools({ EXOSUIT_MCP_SURFACE: "full" });
+    },
+    // Exact-head Windows validation runs this after npm ci, typecheck, and the
+    // complete Field suite. MCP startup remained deterministic but crossed the
+    // framework's 10-second default under host load, so keep a bounded deadline
+    // that measures the surface instead of scheduler contention.
+    60_000,
+  );
 
   it.each(surfaceDocuments)(
     "$path publishes exactly the $surface tools",

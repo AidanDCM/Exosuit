@@ -21,6 +21,15 @@ Therefore:
 - repeatability, negative cases, failure injection, production authentication, and higher Field modes remain unproven;
 - production remains denied.
 
+On 2026-07-30, the first v19 disposable generation exposed a later bootstrap
+ordering defect. The sealed base carried the guest service as Automatic, so it
+started during Windows `specialize`; development initialization requested a
+restart and Setup failed with Win32 `0x13` while shutdown was in progress.
+Generation 1 was stopped and preserved as negative evidence. Source now stages
+the service as Manual in the base and reserves Automatic activation plus start
+for `SetupComplete.cmd`. A replacement base/generation has not yet proved this
+path live, so v19 remains unpromoted.
+
 ## Glove and Field split
 
 | Subsystem | Current role |
