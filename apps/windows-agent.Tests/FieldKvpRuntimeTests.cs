@@ -94,6 +94,81 @@ public sealed class FieldKvpRuntimeTests
     }
 
     [Fact]
+    public void ObservationSnapshotAllowsExactRetentionAndRejectsRegressionMutationReuseAndCorruptState()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"exosuit-kvp-observation-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var now = DateTimeOffset.Parse("2026-07-30T22:00:00.000Z");
+            var secret = "field-kvp-observation-secret-that-is-long-enough";
+            var field = new FieldReference(Guid.NewGuid(), 1);
+            var secretPath = Path.Combine(root, "secret.txt");
+            var configPath = Path.Combine(root, "config.json");
+            var observationPath = Path.Combine(root, "observation.json");
+            var handshakePath = Path.Combine(root, "handshake.json");
+            var bootstrapPath = Path.Combine(root, "bootstrap.json");
+            var heartbeatPath = Path.Combine(root, "heartbeat.json");
+            File.WriteAllText(secretPath, secret);
+            var configuration = new FieldKvpRuntimeConfiguration(
+                1, field, "field-agent-test", "field-key-test", secretPath,
+                Path.Combine(root, "bootstrap-report.json"), 1_000);
+            File.WriteAllText(configPath, JsonSerializer.Serialize(configuration, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+
+            FieldChannelEnvelope Create(long sequence, FieldChannelMessageType type, Guid? messageId = null) =>
+                FieldChannelAuthentication.Create(
+                    field, FieldChannelDirection.GuestToHost, sequence, type,
+                    new Dictionary<string, object?> { ["sequence"] = sequence }, configuration.KeyId,
+                    secret, now.AddSeconds(-1), type == FieldChannelMessageType.Heartbeat ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(5),
+                    messageId);
+            void Write(string path, FieldChannelEnvelope envelope) => File.WriteAllText(path, FieldKvpRuntime.SerializeEnvelope(envelope));
+
+            var handshake = Create(10, FieldChannelMessageType.Handshake);
+            var bootstrap = Create(11, FieldChannelMessageType.BootstrapStatus);
+            var heartbeat = Create(12, FieldChannelMessageType.Heartbeat);
+            Write(handshakePath, handshake);
+            Write(bootstrapPath, bootstrap);
+            Write(heartbeatPath, heartbeat);
+
+            Assert.Equal(3, FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now).Count);
+            var retainedState = File.ReadAllText(observationPath);
+            Assert.Equal(3, FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now).Count);
+            Assert.Equal(retainedState, File.ReadAllText(observationPath));
+
+            var advancedHeartbeat = Create(13, FieldChannelMessageType.Heartbeat);
+            Write(heartbeatPath, advancedHeartbeat);
+            FieldKvpRuntime.ObserveSnapshot(configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now);
+            var advancedState = File.ReadAllText(observationPath);
+
+            Write(heartbeatPath, Create(12, FieldChannelMessageType.Heartbeat));
+            Assert.Throws<InvalidOperationException>(() => FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now));
+            Assert.Equal(advancedState, File.ReadAllText(observationPath));
+
+            Write(heartbeatPath, Create(14, FieldChannelMessageType.Heartbeat, handshake.MessageId));
+            Assert.Throws<InvalidOperationException>(() => FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now));
+            Assert.Equal(advancedState, File.ReadAllText(observationPath));
+
+            var corrupt = JsonSerializer.Deserialize<KvpObservationState>(advancedState, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+            File.WriteAllText(observationPath, JsonSerializer.Serialize(corrupt with { KeyId = "wrong-key" }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            Write(heartbeatPath, advancedHeartbeat);
+            Assert.Throws<InvalidOperationException>(() => FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now));
+
+            File.WriteAllText(observationPath, "{");
+            Assert.Throws<InvalidOperationException>(() => FieldKvpRuntime.ObserveSnapshot(
+                configPath, handshakePath, bootstrapPath, heartbeatPath, observationPath, now));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void BootstrapStatusPreservesDurableEnrollmentForHostEvaluation()
     {
         var path = Path.Combine(Path.GetTempPath(), $"exosuit-bootstrap-{Guid.NewGuid():N}.json");

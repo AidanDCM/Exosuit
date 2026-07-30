@@ -202,6 +202,14 @@ observations after fresh cryptographic/expiry verification. Any changed record
 must advance sequence and use a new message ID. Two live samples passed with
 retained handshake/bootstrap records and an advancing heartbeat.
 
+The observation transition has subsequently moved into the compiled Windows
+agent so the full snapshot is verified and the ledger is committed atomically.
+Executable .NET tests now cover exact retention, advancing heartbeat,
+same-sequence mutation, prior message-ID reuse, wrong-key state, malformed state,
+and no state update after rejection. This compiled boundary is source/unit
+evidence only until a newly published agent and fresh base/generation repeat the
+live canary.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.

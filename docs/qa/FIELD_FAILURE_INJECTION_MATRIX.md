@@ -157,6 +157,9 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Wrong demonstration key | hide from list and fail direct load | U | W |
 | Corrupt Field Manager audit event | chain verification failure | U foundation | W |
 | Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20 live repeated observation | restart and malicious mutation/regression W/H |
+| Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit | W/H with fresh published agent |
+| Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit | W/H with fresh published agent |
+| Corrupt or cross-bind the KVP observation ledger | fail closed before update | .NET unit | restart/protected-state W/H |
 
 ## Promotion rule
 

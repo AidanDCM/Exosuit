@@ -580,3 +580,21 @@ Current Field production status: **DENIED**.
   injection, restart/key rotation, lock/Secure Desktop, heartbeat loss, VM
   suspend/resume, repeated create/destroy, repeated/faulted base immutability, input,
   recording, and emergency stop.
+
+## 25. Compiled KVP observation negative contract
+
+The Windows agent owns one atomic `--field-observe-kvp-snapshot` operation. Tests
+must prove:
+
+- handshake, bootstrap, and heartbeat authenticate together with correct types;
+- an exact retained snapshot is idempotent;
+- an advancing heartbeat commits a strictly greater last sequence;
+- a validly signed mutation at an old/equal sequence is denied;
+- reuse of any previously accepted message ID is denied;
+- wrong Field/key identity, malformed state, invalid entry shape, and duplicate
+  identities fail closed;
+- rejected snapshots leave the prior observation ledger byte-for-byte unchanged;
+- the PowerShell reader delegates the complete transition to the compiled agent.
+
+Passing unit/source evidence does not substitute for a fresh published-agent
+live canary or live mutation/restart/key-rotation injection.

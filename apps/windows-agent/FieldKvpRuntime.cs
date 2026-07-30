@@ -17,6 +17,15 @@ public sealed record FieldKvpRuntimeConfiguration(
     string BootstrapReportPath,
     int HeartbeatIntervalMilliseconds);
 
+public sealed record KvpObservationEntry(Guid MessageId, long Sequence, string EnvelopeSha256);
+
+public sealed record KvpObservationState(
+    int ContractVersion,
+    FieldReference Field,
+    string KeyId,
+    long LastSequence,
+    IReadOnlyDictionary<string, KvpObservationEntry> Entries);
+
 public static class FieldKvpRuntime
 {
     public const string HandshakeValueName = "Exosuit.Field.Handshake";
@@ -234,6 +243,123 @@ public static class FieldKvpRuntime
             replayLastSequence = guard.LastSequence,
         }, WireJson));
         return verified;
+    }
+
+    public static IReadOnlyList<FieldChannelEnvelope> ObserveSnapshot(
+        string configurationPath,
+        string handshakeEnvelopePath,
+        string bootstrapEnvelopePath,
+        string heartbeatEnvelopePath,
+        string observationStatePath,
+        DateTimeOffset? now = null)
+    {
+        var configuration = ReadConfiguration(configurationPath);
+        var secret = ReadSecret(configuration.SecretPath);
+        var expected = new[]
+        {
+            (Name: "handshake", Path: handshakeEnvelopePath, Type: FieldChannelMessageType.Handshake),
+            (Name: "bootstrap", Path: bootstrapEnvelopePath, Type: FieldChannelMessageType.BootstrapStatus),
+            (Name: "heartbeat", Path: heartbeatEnvelopePath, Type: FieldChannelMessageType.Heartbeat),
+        };
+        var guard = new FieldChannelReplayGuard(
+            configuration.Field,
+            FieldChannelDirection.GuestToHost,
+            configuration.KeyId);
+        var verified = new List<(string Name, string Digest, FieldChannelEnvelope Envelope)>(3);
+        foreach (var item in expected)
+        {
+            var bytes = File.ReadAllBytes(item.Path);
+            var envelope = JsonSerializer.Deserialize<FieldChannelEnvelope>(bytes, WireJson)
+                ?? throw new InvalidOperationException($"Field KVP {item.Name} envelope is empty.");
+            var accepted = guard.Accept(envelope, secret, now ?? DateTimeOffset.UtcNow);
+            if (accepted.MessageType != item.Type)
+                throw new InvalidOperationException($"Field KVP {item.Name} envelope has the wrong message type.");
+            verified.Add((item.Name, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), accepted));
+        }
+
+        var state = File.Exists(observationStatePath)
+            ? ReadObservationState(observationStatePath)
+            : new KvpObservationState(1, configuration.Field, configuration.KeyId, -1, new Dictionary<string, KvpObservationEntry>(StringComparer.Ordinal));
+        ValidateObservationState(state, configuration);
+        var entries = new Dictionary<string, KvpObservationEntry>(state.Entries, StringComparer.Ordinal);
+        var lastSequence = state.LastSequence;
+        foreach (var item in verified)
+        {
+            entries.TryGetValue(item.Name, out var previous);
+            var idempotent = previous is not null &&
+                string.Equals(previous.EnvelopeSha256, item.Digest, StringComparison.Ordinal) &&
+                previous.MessageId == item.Envelope.MessageId &&
+                previous.Sequence == item.Envelope.Sequence;
+            if (idempotent) continue;
+            if (item.Envelope.Sequence <= lastSequence)
+                throw new InvalidOperationException($"Field KVP {item.Name} observation sequence did not increase strictly.");
+            if (entries.Values.Any(entry => entry.MessageId == item.Envelope.MessageId))
+                throw new InvalidOperationException($"Field KVP {item.Name} observation reused a prior message ID.");
+            entries[item.Name] = new KvpObservationEntry(item.Envelope.MessageId, item.Envelope.Sequence, item.Digest);
+            lastSequence = item.Envelope.Sequence;
+        }
+
+        var updated = new KvpObservationState(1, configuration.Field, configuration.KeyId, lastSequence, entries);
+        var fullObservationPath = Path.GetFullPath(observationStatePath);
+        var directory = Path.GetDirectoryName(fullObservationPath)
+            ?? throw new InvalidOperationException("Field KVP observation state path has no parent directory.");
+        Directory.CreateDirectory(directory);
+        var temporary = $"{fullObservationPath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            WriteDurableState(temporary, JsonSerializer.Serialize(updated, WireJson));
+            File.Move(temporary, fullObservationPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+        return verified.Select(item => item.Envelope).ToArray();
+    }
+
+    public static string SerializeVerificationResults(IReadOnlyList<FieldChannelEnvelope> verified) =>
+        JsonSerializer.Serialize(verified.Select(VerificationResult).ToArray(), WireJson);
+
+    private static object VerificationResult(FieldChannelEnvelope verified) => new
+    {
+        status = "verified",
+        field = verified.Field,
+        verified.MessageId,
+        verified.Sequence,
+        messageType = verified.MessageType,
+        verified.SentAt,
+        verified.ExpiresAt,
+        verified.PayloadHash,
+        verified.Payload,
+    };
+
+    private static void ValidateObservationState(KvpObservationState state, FieldKvpRuntimeConfiguration configuration)
+    {
+        if (state.ContractVersion != 1 || state.Field != configuration.Field ||
+            !string.Equals(state.KeyId, configuration.KeyId, StringComparison.Ordinal) || state.LastSequence < -1 ||
+            state.Entries is null || state.Entries.Count > 3 ||
+            state.Entries.Keys.Any(key => key is not ("handshake" or "bootstrap" or "heartbeat")) ||
+            state.Entries.Values.Any(entry => entry is null || entry.MessageId == Guid.Empty || entry.Sequence < 0 ||
+                string.IsNullOrWhiteSpace(entry.EnvelopeSha256) || entry.EnvelopeSha256.Length != 64 ||
+                entry.EnvelopeSha256.Any(character => !Uri.IsHexDigit(character))) ||
+            state.Entries.Values.Select(entry => entry.MessageId).Distinct().Count() != state.Entries.Count ||
+            (state.Entries.Count > 0 && state.LastSequence != state.Entries.Values.Max(entry => entry.Sequence)))
+        {
+            throw new InvalidOperationException("Persisted Field KVP observation state is invalid or belongs to another channel.");
+        }
+    }
+
+    private static KvpObservationState ReadObservationState(string path)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<KvpObservationState>(File.ReadAllText(path), WireJson)
+                ?? throw new InvalidOperationException("Persisted Field KVP observation state is empty.");
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidOperationException("Persisted Field KVP observation state is malformed.", exception);
+        }
     }
 
     public static string SerializeEnvelope(FieldChannelEnvelope envelope) =>
