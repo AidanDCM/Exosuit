@@ -206,9 +206,44 @@ The observation transition has subsequently moved into the compiled Windows
 agent so the full snapshot is verified and the ledger is committed atomically.
 Executable .NET tests now cover exact retention, advancing heartbeat,
 same-sequence mutation, prior message-ID reuse, wrong-key state, malformed state,
-and no state update after rejection. This compiled boundary is source/unit
-evidence only until a newly published agent and fresh base/generation repeat the
-live canary.
+and no state update after rejection.
+
+### 2026-07-31 v21 compiled-ledger canary
+
+The exact self-contained agent from commit `454fc85` was published with digest
+`c9cf91e1709ec651a9b17d926c6f01e13f31f2df4ea75ff4b04c208133ebba40`.
+Immutable base `exosuit-field-base-v21` was rebuilt from reviewed v10, sealed by
+SYSTEM maintenance plus the built-in Audit administrator, promoted read-only,
+and recorded digest
+`e74c7fe500e56b3f925cdc4d9549fd7adf82b477a0ac4a4b2bb819b3374d7265`.
+
+Development Field `6834d5ff-3b29-4dcb-b405-73f5227ea63f`, generation 1,
+passed exact preview and provisioning on the isolated switch with a disposable
+OS overlay and task disk. The guest produced authenticated readiness using a
+durable enrollment after the original manifest expired. A graceful restart
+changed boot ID from `5daeabad-5dbd-429d-8d06-e4027f43aa31` to
+`1f98d012-268b-47a5-8e34-178ab28e0795`; the compiled ledger advanced from
+sequence `1785506839784505` to `1785506839785776`.
+
+Two subsequent live observations accepted the exact retained handshake and
+bootstrap records while heartbeat ID changed and the ledger advanced from
+`1785506839787236` to `1785506839787241`. Live-captured payload tampering, a
+validly signed equal-sequence heartbeat, and a validly signed prior-message-ID
+reuse were all rejected with the observation ledger byte-for-byte unchanged.
+
+The live run exposed a Windows PowerShell 5.1 adapter defect: `@(...)` retained
+the verifier's JSON array as one nested object. The reader now casts explicitly
+to `[object[]]` and requires exactly three results; a native Windows PowerShell
+regression test covers this behavior. It also recorded an unsupported
+`Stop-VM -Shutdown` parameter and an uncertain `Start-VM` allocation error whose
+possible effect reconciled to Running before any retry. Neither failure was
+misreported as a pass.
+
+The exact generation was destroyed. Its VM registration and disposable root
+were removed, and the post-destruction v21 base remained read-only with the
+exact promoted digest. This is bounded development evidence, not production
+authentication, key rotation, lock/Secure Desktop, heartbeat-loss, input,
+recording, or release evidence.
 
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 

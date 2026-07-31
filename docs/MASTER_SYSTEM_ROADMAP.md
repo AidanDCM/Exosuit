@@ -284,9 +284,19 @@ The preserved Field development line contains substantial source, fake/pure foun
 - synthetic acceptance application;
 - manuals, audits, and CI contracts;
 - unattended base-image sealing and generation provisioning;
-- a v13 development generation that produced authenticated handshake, bootstrap, and heartbeat evidence.
+- v13 and v20 development generations that produced authenticated handshake,
+  bootstrap, heartbeat, and bounded lifecycle evidence;
+- a v21 development generation that exercised the compiled observation ledger
+  across restart, retained polling, live-captured negative transitions, exact
+  destruction, and post-destruction base immutability.
 
-Exact-head Field L0 validation passed on `e10e921` before consolidation and again on the hardened consolidated commit `7a7c435` on 2026-07-28. The consolidated run recorded 15/15 runner steps passed, including locked install, validators, all tests/builds/pulses, dependency reports, and the read-only host capability check. The existing live evidence still used development access and one generation, so it is evidence of feasibility, not production acceptance. Production-configured repeatability and negative cases remain outstanding.
+Exact-head Field L0 validation passed on `e10e921` before consolidation, on the
+hardened consolidated commit `7a7c435`, and on compiled-ledger commit `454fc85`.
+The latest run recorded all 15 runner steps passed, including locked install,
+validators, all tests/builds/pulses, and the read-only host capability check.
+Live evidence still uses development access and does not prove production
+authentication or the complete failure matrix, so it remains feasibility and
+bounded implementation evidence rather than production acceptance.
 
 ### 7.3 Current promotion posture
 

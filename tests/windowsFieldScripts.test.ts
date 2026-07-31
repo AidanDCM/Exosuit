@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { fieldBootstrapCheckNameSchema } from "../src/fieldBootstrap.js";
 
@@ -217,6 +218,8 @@ describe("Windows Field administration scripts", () => {
     expect(readKvp).toContain("$envelopePaths.bootstrap");
     expect(readKvp).toContain("$envelopePaths.heartbeat");
     expect(readKvp).toContain("Guest KVP snapshot verification failed");
+    expect(readKvp).toContain("$verified = [object[]]");
+    expect(readKvp).toContain("if ($verified.Count -ne 3)");
     expect(initializeGuest).toContain("Marshal.ReadInt32(buffer, 16)");
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");
@@ -377,5 +380,20 @@ describe("Windows Field administration scripts", () => {
       expect(content).not.toMatch(/https?:\/\/|TcpListener|WebSocket|Invoke-WebRequest|Invoke-RestMethod/i);
       expect(content).not.toContain("Invoke-Expression");
     }
+  });
+
+  const windowsIt = process.platform === "win32" ? it : it.skip;
+  windowsIt("normalizes Windows PowerShell JSON arrays before indexing KVP verification results", () => {
+    const command = [
+      "$json='[{\"status\":\"verified\"},{\"status\":\"verified\"},{\"status\":\"verified\"}]'",
+      "$verified=[object[]]($json | ConvertFrom-Json)",
+      "if ($verified.Count -ne 3) { exit 9 }",
+      "Write-Output $verified.Count",
+    ].join("; ");
+    const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", command], {
+      encoding: "utf8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toBe("3");
   });
 });

@@ -156,10 +156,10 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Tamper demonstration ciphertext | authentication failure | U | W |
 | Wrong demonstration key | hide from list and fail direct load | U | W |
 | Corrupt Field Manager audit event | chain verification failure | U foundation | W |
-| Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20 live repeated observation | restart and malicious mutation/regression W/H |
-| Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit | W/H with fresh published agent |
-| Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit | W/H with fresh published agent |
-| Corrupt or cross-bind the KVP observation ledger | fail closed before update | .NET unit | restart/protected-state W/H |
+| Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20 and v21 live repeated observation | production-repeatable W/H |
+| Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured equal-sequence rejection | production-repeatable W/H |
+| Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured rejection | production-repeatable W/H |
+| Corrupt or cross-bind the KVP observation ledger | fail closed before update | .NET unit; v21 restart preserved and advanced exact-generation state | protected-state corruption and stale-generation W/H |
 
 ## Promotion rule
 

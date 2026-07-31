@@ -50,7 +50,7 @@
 |---|---|---|---|
 | Pilot grants itself VM or consent authority | `FieldAdminAuthority` blocks `pilot_model`; review cannot be satisfied by model | unit tests and static validator | local admin UI/transport acceptance |
 | Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration | TS/.NET tests and shared fixture | actual transport fault injection |
-| Replay or reordering | compiled snapshot verification checks message ID, nonce, strictly increasing sequence, expected message types, and an atomic KVP ledger that permits only exact retained-record rereads after fresh cryptographic/expiry verification | replay/restart tests in both languages; compiled negative observation tests; repeated live v20 readiness observations on the prior host implementation | fresh compiled-agent canary, live mutation/regression injection, protected-state restart validation, and rotation |
+| Replay or reordering | compiled snapshot verification checks message ID, nonce, strictly increasing sequence, expected message types, and an atomic KVP ledger that permits only exact retained-record rereads after fresh cryptographic/expiry verification | replay/restart tests in both languages; v21 compiled-agent restart, repeated observation, payload-tamper, equal-sequence, and message-ID-reuse live evidence | protected-state corruption, stale-generation replacement, and key rotation |
 | Cross-generation action | every channel, heartbeat, command, scene, artifact, episode, and visual reference binds Field generation | unit tests | stale live process and rollback tests |
 | Stale desktop state | exact expected scene version required for action | command and scene tests | live focus/window race injection |
 | Arbitrary shell execution | no shell field in provisioning plan; guest routes exclude shell; scripts reject arbitrary evaluation | schemas, validator, script tests | command-line and process-monitor observation |
@@ -67,7 +67,7 @@
 | Blind retry | recovery allows only bounded idempotent no-effect retry; uncertain effect requires reconciliation | recovery tests | live timeout and partial-effect fixtures |
 | Heartbeat spoof/staleness | signed channel, expected agent/boot, sequence, time thresholds | tests | guest crash, pause, sleep, and network interruption |
 | Secure Desktop/lock operation | scene and heartbeat reject ready input state | tests | actual lock/UAC acceptance |
-| Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20 SYSTEM/Audit receipts and authenticated development canary | production-authenticated generation and repeated lifecycle matrix |
+| Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20/v21 SYSTEM/Audit receipts and authenticated development canaries | production-authenticated repeated lifecycle matrix |
 | Diagnostic privacy leak | Field support bundle accepts only hashes and aggregate counts; forbidden fields/values | tests | support bundle manual inspection |
 | Emergency-stop failure | recovery marks release blocking and denies automated recovery | tests | physical end-to-end stop test |
 

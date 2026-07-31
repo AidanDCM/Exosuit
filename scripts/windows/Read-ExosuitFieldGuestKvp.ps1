@@ -102,7 +102,10 @@ $output = & $AgentPath --field-observe-kvp-snapshot `
 if ($LASTEXITCODE -ne 0) {
     throw "Guest KVP snapshot verification failed: $($output -join ' ')"
 }
-$verified = @(($output -join [Environment]::NewLine) | ConvertFrom-Json)
+$verified = [object[]](($output -join [Environment]::NewLine) | ConvertFrom-Json)
+if ($verified.Count -ne 3) {
+    throw "Guest KVP snapshot verifier returned $($verified.Count) results; exactly three are required."
+}
 
 $result = [ordered]@{
     contractVersion = 1

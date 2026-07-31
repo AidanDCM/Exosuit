@@ -598,3 +598,26 @@ must prove:
 
 Passing unit/source evidence does not substitute for a fresh published-agent
 live canary or live mutation/restart/key-rotation injection.
+
+## 26. v21 compiled-ledger live evidence (2026-07-31)
+
+- Exact source/publish binding: commit `454fc85`; self-contained agent digest
+  `c9cf91e...ba40`; immutable v21 digest `e74c7fe...7265`.
+- Provisioning: exact preview passed; isolated development generation used one
+  disposable overlay and one disposable task disk.
+- Restart: graceful shutdown only, no force; new boot ID; durable enrollment
+  remained valid after manifest expiry; authenticated readiness passed after
+  bounded retries.
+- Repeated observation: retained handshake/bootstrap message IDs and envelope
+  digests remained exact; heartbeat message ID and ledger sequence advanced.
+- Live-captured negatives: payload tampering, valid equal sequence, and valid
+  accepted-message-ID reuse all failed with byte-identical durable ledger state.
+- Destruction: exact VM registration and generation root removed; base remained
+  read-only and SHA-256-identical.
+- Adapter regression: Windows PowerShell 5.1 requires `[object[]]` normalization
+  of `ConvertFrom-Json` array output before indexing. The script requires exactly
+  three verifier results and the Windows-only test executes that behavior.
+
+Held: protected key rotation, corrupt protected ledger on the live host,
+stale-generation replacement, lock/Secure Desktop, deliberate heartbeat loss,
+pause/resume, production authentication, input, recording, and emergency stop.
