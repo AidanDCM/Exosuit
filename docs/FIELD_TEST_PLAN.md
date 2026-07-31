@@ -621,3 +621,22 @@ live canary or live mutation/restart/key-rotation injection.
 Held: protected key rotation, corrupt protected ledger on the live host,
 stale-generation replacement, lock/Secure Desktop, deliberate heartbeat loss,
 pause/resume, production authentication, input, recording, and emergency stop.
+
+## 27. Protected KVP observation-state contract
+
+The durable compiled observation state must be serialized inside an authenticated
+envelope. Tests must prove:
+
+- the envelope binds a domain separator, exact Field ID/generation, channel key
+  ID, algorithm, and payload;
+- authentication is verified before the ledger payload is trusted;
+- state files and encoded payloads are bounded before decoding;
+- a well-formed tag or payload mutation fails closed;
+- changing the channel key or Field generation cannot reuse old state;
+- every rejected read leaves the preexisting state byte-for-byte unchanged;
+- no plaintext fallback, silent migration, automatic rotation, or model-facing
+  administrative path exists.
+
+Current evidence is focused .NET source/unit execution. A fresh published-agent
+canary must still prove protected-state corruption, owner-authorized rotation,
+and stale-generation replacement on a disposable live Field.

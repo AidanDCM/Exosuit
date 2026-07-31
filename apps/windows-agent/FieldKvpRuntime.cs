@@ -26,6 +26,14 @@ public sealed record KvpObservationState(
     long LastSequence,
     IReadOnlyDictionary<string, KvpObservationEntry> Entries);
 
+public sealed record ProtectedKvpObservationState(
+    int ContractVersion,
+    FieldReference Field,
+    string KeyId,
+    string Algorithm,
+    string PayloadBase64,
+    string AuthenticationTag);
+
 public static class FieldKvpRuntime
 {
     public const string HandshakeValueName = "Exosuit.Field.Handshake";
@@ -36,6 +44,9 @@ public static class FieldKvpRuntime
     // below 1,000 characters so a heartbeat fits atomically with safety margin.
     private const int KvpChunkCharacters = 1000;
     private const long MaximumSafeWireSequence = 9_007_199_254_740_991;
+    private const int MaximumObservationStateBytes = 32 * 1_024;
+    private const int MaximumObservationPayloadBase64Characters = 16 * 1_024;
+    private const string ObservationStateAlgorithm = "hmac-sha256";
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
 
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
@@ -278,7 +289,7 @@ public static class FieldKvpRuntime
         }
 
         var state = File.Exists(observationStatePath)
-            ? ReadObservationState(observationStatePath)
+            ? ReadObservationState(observationStatePath, configuration, secret)
             : new KvpObservationState(1, configuration.Field, configuration.KeyId, -1, new Dictionary<string, KvpObservationEntry>(StringComparer.Ordinal));
         ValidateObservationState(state, configuration);
         var entries = new Dictionary<string, KvpObservationEntry>(state.Entries, StringComparer.Ordinal);
@@ -307,7 +318,7 @@ public static class FieldKvpRuntime
         var temporary = $"{fullObservationPath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
         try
         {
-            WriteDurableState(temporary, JsonSerializer.Serialize(updated, WireJson));
+            WriteDurableState(temporary, ProtectObservationState(updated, configuration, secret));
             File.Move(temporary, fullObservationPath, overwrite: true);
         }
         finally
@@ -349,17 +360,78 @@ public static class FieldKvpRuntime
         }
     }
 
-    private static KvpObservationState ReadObservationState(string path)
+    private static string ProtectObservationState(
+        KvpObservationState state,
+        FieldKvpRuntimeConfiguration configuration,
+        string secret)
+    {
+        ValidateObservationState(state, configuration);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(state, WireJson);
+        var protectedState = new ProtectedKvpObservationState(
+            1,
+            configuration.Field,
+            configuration.KeyId,
+            ObservationStateAlgorithm,
+            Convert.ToBase64String(payload),
+            ComputeObservationStateTag(configuration, secret, payload));
+        return JsonSerializer.Serialize(protectedState, WireJson);
+    }
+
+    private static KvpObservationState ReadObservationState(
+        string path,
+        FieldKvpRuntimeConfiguration configuration,
+        string secret)
     {
         try
         {
-            return JsonSerializer.Deserialize<KvpObservationState>(File.ReadAllText(path), WireJson)
+            var fileLength = new FileInfo(path).Length;
+            if (fileLength is <= 0 or > MaximumObservationStateBytes)
+                throw new InvalidOperationException("Protected Field KVP observation state exceeds its byte limit.");
+            var protectedState = JsonSerializer.Deserialize<ProtectedKvpObservationState>(File.ReadAllText(path), WireJson)
                 ?? throw new InvalidOperationException("Persisted Field KVP observation state is empty.");
+            if (protectedState.ContractVersion != 1 ||
+                protectedState.Field != configuration.Field ||
+                !string.Equals(protectedState.KeyId, configuration.KeyId, StringComparison.Ordinal) ||
+                !string.Equals(protectedState.Algorithm, ObservationStateAlgorithm, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(protectedState.PayloadBase64) ||
+                protectedState.PayloadBase64.Length > MaximumObservationPayloadBase64Characters ||
+                string.IsNullOrWhiteSpace(protectedState.AuthenticationTag) ||
+                protectedState.AuthenticationTag.Length != 64 ||
+                protectedState.AuthenticationTag.Any(character => !Uri.IsHexDigit(character)))
+            {
+                throw new InvalidOperationException("Protected Field KVP observation state is invalid or belongs to another channel.");
+            }
+            var payload = Convert.FromBase64String(protectedState.PayloadBase64);
+            var expectedTag = Convert.FromHexString(ComputeObservationStateTag(configuration, secret, payload));
+            var actualTag = Convert.FromHexString(protectedState.AuthenticationTag);
+            if (!CryptographicOperations.FixedTimeEquals(expectedTag, actualTag))
+                throw new InvalidOperationException("Protected Field KVP observation state authentication failed.");
+            return JsonSerializer.Deserialize<KvpObservationState>(payload, WireJson)
+                ?? throw new InvalidOperationException("Persisted Field KVP observation state payload is empty.");
         }
-        catch (JsonException exception)
+        catch (Exception exception) when (exception is JsonException or FormatException)
         {
             throw new InvalidOperationException("Persisted Field KVP observation state is malformed.", exception);
         }
+    }
+
+    private static string ComputeObservationStateTag(
+        FieldKvpRuntimeConfiguration configuration,
+        string secret,
+        byte[] payload)
+    {
+        var scope = Encoding.UTF8.GetBytes(string.Join('\n',
+            "exosuit-field-kvp-observation-v1",
+            configuration.Field.FieldId.ToString("D"),
+            configuration.Field.FieldGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            configuration.KeyId,
+            ObservationStateAlgorithm,
+            string.Empty));
+        var authenticated = new byte[scope.Length + payload.Length];
+        Buffer.BlockCopy(scope, 0, authenticated, 0, scope.Length);
+        Buffer.BlockCopy(payload, 0, authenticated, scope.Length, payload.Length);
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        return Convert.ToHexString(hmac.ComputeHash(authenticated)).ToLowerInvariant();
     }
 
     public static string SerializeEnvelope(FieldChannelEnvelope envelope) =>

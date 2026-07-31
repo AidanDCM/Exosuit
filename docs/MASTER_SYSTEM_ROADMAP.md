@@ -288,11 +288,15 @@ The preserved Field development line contains substantial source, fake/pure foun
   bootstrap, heartbeat, and bounded lifecycle evidence;
 - a v21 development generation that exercised the compiled observation ledger
   across restart, retained polling, live-captured negative transitions, exact
-  destruction, and post-destruction base immutability.
+  destruction, and post-destruction base immutability;
+- an authenticated-at-rest observation-state envelope bound to the exact Field
+  generation and channel key, with fail-closed corruption, rotation, and stale-
+  generation source tests. Live protected-state injection remains pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the
 hardened consolidated commit `7a7c435`, and on compiled-ledger commit `454fc85`.
-The latest run recorded all 15 runner steps passed, including locked install,
+Adapter commit `26251da` also passed an exact-head 15-step runner. The latest run
+recorded locked install,
 validators, all tests/builds/pulses, and the read-only host capability check.
 Live evidence still uses development access and does not prove production
 authentication or the complete failure matrix, so it remains feasibility and

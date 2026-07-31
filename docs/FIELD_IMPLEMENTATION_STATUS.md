@@ -106,7 +106,7 @@ Every message binds:
 - sent/expiration time,
 - HMAC-SHA256 signature.
 
-Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. A narrow Hyper-V KVP guest emitter and host verifier now provide a no-network transport implementation; live guest wiring, protected-state operational validation, and key rotation remain pending.
+Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. The compiled KVP observation state is now stored in an HMAC-SHA256 envelope authenticated by the existing channel secret and bound to the exact Field generation, key ID, algorithm, and payload. Well-formed corruption, a new key, or a new generation fails closed without replacing prior bytes. A narrow Hyper-V KVP guest emitter and host verifier provide a no-network transport implementation; live protected-state fault injection, protected key storage, and owner-authorized key rotation remain pending.
 
 ### Guest action boundary
 
@@ -245,6 +245,18 @@ exact promoted digest. This is bounded development evidence, not production
 authentication, key rotation, lock/Secure Desktop, heartbeat-loss, input,
 recording, or release evidence.
 
+### 2026-07-31 protected observation-state foundation
+
+The compiled host verifier now persists the KVP observation ledger inside an
+HMAC-SHA256 envelope. Authentication covers a domain separator, exact Field ID
+and generation, key ID, algorithm, and serialized ledger payload. Verification
+uses a fixed-time tag comparison before payload deserialization. Plaintext legacy
+state, altered tags/payloads, wrong keys, and stale generations fail closed; no
+automatic migration or rotation is attempted. Focused .NET tests pass, including
+byte-identical prior state after rejected key and generation changes. This is
+source/unit evidence only until a fresh published-agent canary injects faults on
+a disposable Field.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.
@@ -255,7 +267,8 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - production-repeatable VM lifecycle and failure-injection evidence;
 - automatic transactional checkpoint/reconciliation around live provider effects;
 - base-image immutability proof across the required repeated matrix;
-- protected channel-key persistence and rotation evidence;
+- protected channel-key persistence and owner-authorized rotation evidence;
+- live protected KVP observation-state corruption and stale-generation evidence;
 - production-authenticated guest bootstrap/heartbeat evidence without development access;
 - live authenticated transport from the existing Windows UIA observer into the Field scene adapter;
 - live Teach input and UI Automation hooks;
