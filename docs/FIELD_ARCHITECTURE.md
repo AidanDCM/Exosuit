@@ -173,8 +173,8 @@ fixed, explicit guest command. It accepts only the literal
 before configuration access, rejects Config/config-file reparse points and
 ambiguous JSON, and derives Field generation, key ID, and the exact seed path
 only from the bounded validated configuration. The command emits only the
-converter receipt. It is not invoked by ordinary KVP startup, the guest service,
-or provisioning. Atomic replacement removes plaintext from the active file
+converter receipt. The fixed guest launcher invokes it before the KVP emitter;
+MCP and host-side provisioning cannot invoke it. Atomic replacement removes plaintext from the active file
 namespace but does not promise forensic secure erasure of prior filesystem
 blocks or snapshots.
 
@@ -193,6 +193,16 @@ Host-side KVP observation is a different authority and machine-protection
 domain. It still uses its separately provisioned host verification secret; it
 must not attempt to decrypt guest-machine DPAPI ciphertext. Host protected-key
 storage and rotation remain an independent required slice.
+
+`Start-ExosuitFieldGuest.ps1` is the guest startup transaction boundary. After
+bootstrap precheck and before any KVP emitter launch, it invokes the fixed
+protection command against the exact runtime configuration. It captures rather
+than prints the receipt, requires exactly one JSON value with the exact metadata
+and nested Field schemas, and checks Field ID/generation, key ID, conversion or
+already-protected status, lowercase ciphertext digest, and a bounded completion
+time. Any command, parsing, schema, binding, status, digest, or freshness failure
+stops startup before heartbeat. Restart is idempotent because the command
+verifies an already-protected envelope without rewriting it.
 
 ## Field policy
 

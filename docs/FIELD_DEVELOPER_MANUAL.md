@@ -144,9 +144,11 @@ malformed JSON as a legacy seed. The command must retain its literal-path,
 LocalSystem-before-read, bounded strict JSON, exact Field/generation/key/path
 derivation, and metadata-only output rules. The guest KVP emitter must use
 `ProtectedFieldKvpSecretReader`; never restore its former `File.ReadAllText`
-fallback. Provisioning and startup must remain held until a separate transaction
-can run the protection command, verify the envelope, start the emitter, and
-record restart/failure evidence. Treat atomic replacement as namespace removal,
+fallback. The fixed guest launcher must run the protection command, validate the
+metadata receipt against runtime Field/generation/key, status, digest, and time,
+and only then start the emitter. Do not weaken this ordering or print the
+receipt. Live promotion remains held until combined LocalSystem restart/failure
+evidence passes. Treat atomic replacement as namespace removal,
 not secure erasure; disposable overlay destruction and storage-retention policy
 remain part of secret retirement.
 

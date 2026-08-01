@@ -802,3 +802,22 @@ Current evidence is a five-test reader suite plus compiled emitter wiring. It
 does not prove the combined LocalSystem DPAPI/DACL path inside a guest, managed-
 string retirement, configuration/secret TOCTOU resistance, protection-command
 startup ordering, restart, crash/power loss, or host protected-key storage.
+
+## 35. Guest secret startup transaction
+
+Static and script tests must prove:
+
+- the protection command runs after bootstrap precheck and before the guest KVP
+  emitter;
+- nonzero exit or anything other than exactly one JSON receipt stops startup;
+- receipt top-level and nested Field schemas are exact;
+- receipt version, Field ID/generation, key ID, converted/already-protected
+  status, lowercase ciphertext digest, and completion freshness are checked;
+- the receipt is captured, not printed or placed in the runtime error log;
+- any failure prevents emitter launch and therefore prevents heartbeat;
+- a valid already-protected receipt permits idempotent restart.
+
+Current evidence is PowerShell parser success and static order/validation tests.
+It does not prove real LocalSystem conversion, DPAPI/DACL composition, process
+failure behavior, restart, post-publication interruption, or heartbeat absence
+inside a disposable guest.

@@ -177,6 +177,14 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("$scStartMode = if ($StartupType -ceq 'Automatic') { 'auto' } else { 'demand' }");
     expect(install).toContain("Starting the Field guest service requires Automatic startup.");
     expect(start).toContain("--field-guest-kvp");
+    expect(start).toContain("--field-protect-channel-secret");
+    expect(start).toContain("Field channel-secret protection did not return exactly one metadata receipt.");
+    expect(start).toContain("Field channel-secret protection returned an unexpected Field receipt schema.");
+    expect(start).toContain("Field channel-secret protection receipt does not match the runtime Field generation and key.");
+    expect(start).toContain("@('converted', 'already_protected') -cnotcontains");
+    expect(start).toContain("'^[0-9a-f]{64}$'");
+    expect(start).toContain("Field channel-secret protection receipt is stale or from the future.");
+    expect(start.indexOf("--field-protect-channel-secret")).toBeLessThan(start.indexOf("--field-guest-kvp"));
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
     expect(start).toContain("guest-runtime-error.log");

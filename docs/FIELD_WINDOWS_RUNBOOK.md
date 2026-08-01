@@ -166,6 +166,12 @@ Bootstrap checks identity, exact directory layout, display dimensions, agent bin
 
 A Field becomes ready only after the host validates:
 
+Before the guest can publish item 1, the fixed LocalSystem launcher converts or
+verifies `C:\Exosuit\Config\channel-secret.txt`, validates the metadata receipt
+against the runtime Field generation and key, and starts the protected-only KVP
+emitter. Any protection or receipt failure stops before heartbeat. Do not invoke
+the emitter manually or restore plaintext fallback.
+
 1. bootstrap report identity and manifest digest;
 2. authenticated channel handshake;
 3. replay-resistant sequence state;

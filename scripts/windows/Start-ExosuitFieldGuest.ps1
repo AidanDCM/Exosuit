@@ -77,6 +77,53 @@ do {
     Start-Sleep -Seconds 2
 } while ($true)
 $runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
+$protectionOutput = @(& $agentPath --field-protect-channel-secret $runtimeConfigPath 2>> $runtimeErrorLog)
+$protectionExitCode = $LASTEXITCODE
+if ($protectionExitCode -ne 0) {
+    throw "Field channel-secret protection failed with exit code $protectionExitCode. See the bounded guest runtime error log."
+}
+if ($protectionOutput.Count -ne 1) { throw 'Field channel-secret protection did not return exactly one metadata receipt.' }
+try {
+    $protectionReceipt = $protectionOutput[0] | ConvertFrom-Json
+} catch {
+    throw 'Field channel-secret protection returned a malformed metadata receipt.'
+}
+$expectedReceiptProperties = @('completedAt', 'contractVersion', 'ciphertextEnvelopeSha256', 'field', 'keyId', 'status') | Sort-Object
+$actualReceiptProperties = @($protectionReceipt.PSObject.Properties.Name) | Sort-Object
+if (($actualReceiptProperties -join "`n") -cne ($expectedReceiptProperties -join "`n")) {
+    throw 'Field channel-secret protection returned an unexpected metadata receipt schema.'
+}
+$expectedReceiptFieldProperties = @('fieldGeneration', 'fieldId') | Sort-Object
+$actualReceiptFieldProperties = @($protectionReceipt.field.PSObject.Properties.Name) | Sort-Object
+if (($actualReceiptFieldProperties -join "`n") -cne ($expectedReceiptFieldProperties -join "`n")) {
+    throw 'Field channel-secret protection returned an unexpected Field receipt schema.'
+}
+$runtimeFieldId = [guid]::Empty
+$receiptFieldId = [guid]::Empty
+if (-not [guid]::TryParse([string]$runtime.field.fieldId, [ref]$runtimeFieldId) -or
+    -not [guid]::TryParse([string]$protectionReceipt.field.fieldId, [ref]$receiptFieldId) -or
+    $receiptFieldId -ne $runtimeFieldId -or
+    [long]$protectionReceipt.field.fieldGeneration -ne [long]$runtime.field.fieldGeneration -or
+    [string]$protectionReceipt.keyId -cne [string]$runtime.keyId) {
+    throw 'Field channel-secret protection receipt does not match the runtime Field generation and key.'
+}
+if ([int]$protectionReceipt.contractVersion -ne 1 -or
+    @('converted', 'already_protected') -cnotcontains [string]$protectionReceipt.status -or
+    [string]$protectionReceipt.ciphertextEnvelopeSha256 -cnotmatch '^[0-9a-f]{64}$') {
+    throw 'Field channel-secret protection receipt status or digest is invalid.'
+}
+$receiptCompletedAt = [DateTimeOffset]::MinValue
+if (-not [DateTimeOffset]::TryParse(
+        [string]$protectionReceipt.completedAt,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$receiptCompletedAt)) {
+    throw 'Field channel-secret protection receipt completion time is invalid.'
+}
+$receiptNow = [DateTimeOffset]::UtcNow
+if ($receiptCompletedAt -lt $receiptNow.AddMinutes(-5) -or $receiptCompletedAt -gt $receiptNow.AddSeconds(30)) {
+    throw 'Field channel-secret protection receipt is stale or from the future.'
+}
 & $agentPath --field-guest-kvp $runtimeConfigPath 2>> $runtimeErrorLog
 $agentExitCode = $LASTEXITCODE
 if ($agentExitCode -ne 0) { throw "Guest runtime failed with exit code $agentExitCode. See the bounded guest runtime error log." }
