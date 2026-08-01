@@ -159,7 +159,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20 and v21 live repeated observation | production-repeatable W/H |
 | Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured equal-sequence rejection | production-repeatable W/H |
 | Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured rejection | production-repeatable W/H |
-| Corrupt or cross-bind the KVP observation ledger | authenticate before payload use; fail closed before update; preserve prior bytes | HMAC-protected envelope plus .NET corruption/key/generation tests; v21 restart preserved prior plaintext-ledger generation state | protected-state corruption and stale-generation W/H |
+| Corrupt or cross-bind the KVP observation ledger | authenticate before payload use; fail closed before update; preserve prior bytes | HMAC-protected envelope plus .NET corruption/key/generation tests; v22 live copy-based tag/payload/key-ID/generation/plaintext/oversize rejection, byte preservation, and authoritative-ledger recovery | actual stale-generation replacement and owner-authorized key-rotation W/H |
 
 ## Promotion rule
 

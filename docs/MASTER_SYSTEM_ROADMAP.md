@@ -291,13 +291,20 @@ The preserved Field development line contains substantial source, fake/pure foun
   destruction, and post-destruction base immutability;
 - an authenticated-at-rest observation-state envelope bound to the exact Field
   generation and channel key, with fail-closed corruption, rotation, and stale-
-  generation source tests. Live protected-state injection remains pending.
+  generation source tests;
+- a v22 development generation that persisted that protected envelope, rejected
+  live copy-based tag, payload, key-ID, generation, plaintext, and oversize
+  mutations without changing any rejected copy or the authoritative ledger,
+  then advanced the untouched ledger and passed exact destruction/base checks.
+  Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the
 hardened consolidated commit `7a7c435`, and on compiled-ledger commit `454fc85`.
 Adapter commit `26251da` also passed an exact-head 15-step runner. The latest run
-recorded locked install,
-validators, all tests/builds/pulses, and the read-only host capability check.
+for protected-state commit `6de98c9` passed the same exact-head 15-step runner.
+The v22 live canary is bounded development evidence and does not change those
+promotion gates. Those runs recorded locked install, validators, all
+tests/builds/pulses, and the read-only host capability check.
 Live evidence still uses development access and does not prove production
 authentication or the complete failure matrix, so it remains feasibility and
 bounded implementation evidence rather than production acceptance.

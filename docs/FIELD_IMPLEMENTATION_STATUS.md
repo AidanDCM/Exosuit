@@ -254,8 +254,38 @@ uses a fixed-time tag comparison before payload deserialization. Plaintext legac
 state, altered tags/payloads, wrong keys, and stale generations fail closed; no
 automatic migration or rotation is attempted. Focused .NET tests pass, including
 byte-identical prior state after rejected key and generation changes. This is
-source/unit evidence only until a fresh published-agent canary injects faults on
-a disposable Field.
+now backed by a v22 development canary that exercised copy-based protected-state
+faults and strict advancement of the untouched live ledger. Actual
+owner-authorized key rotation and replacement by a new Field generation remain
+unproven.
+
+### 2026-08-01 v22 protected-state canary
+
+The exact self-contained agent from commit `6de98c9` was published with digest
+`520e486151cbfc03e09ce104ba5ca2746646f9d374c63ff14e90726c6d3d3755`.
+Immutable base `exosuit-field-base-v22` was rebuilt from reviewed v10, sealed
+through the existing detached SYSTEM/Audit process, promoted read-only, and
+recorded digest
+`4c8fbe970a17c2980a013cf9016e82fa135a29a65d4fedcbafebbaf57c002b71`.
+
+Development Field `4e0f7c83-3c7f-4be8-90f9-2ee024830980`, generation 1,
+passed exact preview and provisioning with the isolated switch, one disposable
+OS overlay, and one disposable task disk. The first readiness probe observed a
+running VM before the guest handshake existed and failed closed. One bounded
+retry authenticated bootstrap status `ready` and created the protected ledger.
+
+Copy-based fault injection altered authentication tag, payload, key ID, and
+Field-generation metadata and supplied plaintext legacy and oversized state.
+All six inputs were rejected, each input remained byte-identical, and the
+authoritative state retained SHA-256 `afdc0179...2377`. A later authenticated
+observation under the same key advanced the ledger sequence strictly and wrote
+a new protected-state digest. The exact VM and generation root were then
+destroyed; the v22 base remained read-only with its exact promoted digest.
+
+This proves a bounded development-access protected-state lifecycle. It does not
+prove an owner-authorized key-rotation operation, replacement by an actual new
+Field generation, production authentication, lock/Secure Desktop behavior,
+input, recording, artifact transfer, or release readiness.
 
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
@@ -268,7 +298,8 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - automatic transactional checkpoint/reconciliation around live provider effects;
 - base-image immutability proof across the required repeated matrix;
 - protected channel-key persistence and owner-authorized rotation evidence;
-- live protected KVP observation-state corruption and stale-generation evidence;
+- owner-authorized protected channel-key rotation and actual stale-generation
+  replacement evidence (copy-based v22 corruption/cross-binding evidence passes);
 - production-authenticated guest bootstrap/heartbeat evidence without development access;
 - live authenticated transport from the existing Windows UIA observer into the Field scene adapter;
 - live Teach input and UI Automation hooks;

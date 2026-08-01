@@ -637,6 +637,31 @@ envelope. Tests must prove:
 - no plaintext fallback, silent migration, automatic rotation, or model-facing
   administrative path exists.
 
-Current evidence is focused .NET source/unit execution. A fresh published-agent
-canary must still prove protected-state corruption, owner-authorized rotation,
-and stale-generation replacement on a disposable live Field.
+Current evidence includes focused .NET execution and the bounded v22 live
+copy-based fault canary. A later canary must still prove owner-authorized key
+rotation and rejection of prior state after an actual Field-generation
+replacement rather than a mutated generation field.
+
+## 28. v22 protected-state live evidence (2026-08-01)
+
+- Exact source/publish binding: commit `6de98c9`; self-contained agent digest
+  `520e4861...755`; immutable v22 digest `4c8fbe97...b71`.
+- Provisioning: exact preview passed; isolated development generation used one
+  disposable OS overlay and one disposable task disk.
+- Readiness: the premature probe failed because handshake was absent; a bounded
+  retry authenticated bootstrap `ready` without weakening freshness.
+- Protected envelope: live state reported contract 1, `hmac-sha256`, exact Field
+  ID/generation, and exact key ID.
+- Copy-based negatives: authentication-tag corruption, payload corruption,
+  wrong key ID, stale-generation metadata, plaintext legacy state, and a
+  32-KiB-plus-one state were all rejected. Each rejected file remained
+  byte-identical and the authoritative ledger hash did not change.
+- Recovery/advance: the untouched authoritative ledger later authenticated under
+  the same key and advanced from sequence `1785531727455426` to
+  `1785531727456680` with a new protected-state digest.
+- Destruction: exact VM registration and generation root were removed; the base
+  remained read-only and SHA-256-identical.
+
+Held: owner-authorized key rotation, actual replacement with a new Field
+generation, lock/Secure Desktop, deliberate heartbeat loss, pause/resume,
+production authentication, input, recording, emergency stop, and release.
