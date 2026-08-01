@@ -33,14 +33,38 @@ function Invoke-FieldSecretProtectionProcess {
     [pscustomobject]@{ output = $output; exitCode = $LASTEXITCODE }
 }
 
-function Invoke-FieldGuestProcess {
+function Start-FieldGuestProcess {
     param(
         [Parameter(Mandatory)][string]$AgentPath,
         [Parameter(Mandatory)][string]$RuntimeConfigPath,
         [Parameter(Mandatory)][string]$RuntimeErrorLog
     )
-    & $AgentPath --field-guest-kvp $RuntimeConfigPath 2>> $RuntimeErrorLog | Out-Host
-    $LASTEXITCODE
+    Start-Process -FilePath $AgentPath `
+        -ArgumentList @('--field-guest-kvp', $RuntimeConfigPath) `
+        -RedirectStandardError $RuntimeErrorLog `
+        -NoNewWindow `
+        -PassThru
+}
+
+function Test-FieldGuestProcessExited {
+    param([Parameter(Mandatory)]$Process)
+    [bool]$Process.HasExited
+}
+
+function Wait-FieldGuestProcess {
+    param([Parameter(Mandatory)]$Process)
+    $Process.WaitForExit()
+    [int]$Process.ExitCode
+}
+
+function Stop-FieldGuestProcess {
+    param([Parameter(Mandatory)]$Process)
+    if (-not $Process.HasExited) {
+        $Process.Kill()
+        if (-not $Process.WaitForExit(10000)) {
+            throw 'Timed out stopping the exact Field guest process after startup denial.'
+        }
+    }
 }
 # END FIELD PROCESS ADAPTERS
 
@@ -87,19 +111,17 @@ if (Test-Path -LiteralPath $developmentConfigPath -PathType Leaf) {
     if (-not $?) { throw 'Development access initialization failed.' }
 }
 $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)
-do {
+function Invoke-FieldBootstrapPrecheck {
     & $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -ReportPath $bootstrapReportPath -Confirm:$false
     if (-not $?) { throw 'Guest bootstrap precheck did not complete successfully.' }
     $bootstrapReport = ConvertFrom-JsonDocument -Path $bootstrapReportPath -Depth 50
     $sessionCheck = @($bootstrapReport.checks | Where-Object name -EQ 'session_unlocked')
     if ($sessionCheck.Count -ne 1) { throw 'Guest bootstrap report did not contain exactly one session_unlocked check.' }
-    if ([bool]$sessionCheck[0].passed) { break }
-    if ([DateTimeOffset]::UtcNow -ge $desktopDeadline) {
-        throw "Interactive desktop did not become ready within $DesktopReadyTimeoutSeconds seconds."
-    }
-    Start-Sleep -Seconds 2
-} while ($true)
+    [bool]$sessionCheck[0].passed
+}
+
+$desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)
+$sessionUnlocked = Invoke-FieldBootstrapPrecheck
 $runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
 $protectionProcess = Invoke-FieldSecretProtectionProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
 $protectionOutput = @($protectionProcess.output)
@@ -149,6 +171,23 @@ $receiptNow = [DateTimeOffset]::UtcNow
 if ($receiptCompletedAt -lt $receiptNow.AddMinutes(-5) -or $receiptCompletedAt -gt $receiptNow.AddSeconds(30)) {
     throw 'Field channel-secret protection receipt is stale or from the future.'
 }
-$agentExitCode = Invoke-FieldGuestProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
+$guestProcess = Start-FieldGuestProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
+if ($null -eq $guestProcess) { throw 'Field guest process did not return a process handle.' }
+try {
+    while (-not $sessionUnlocked) {
+        if (Test-FieldGuestProcessExited -Process $guestProcess) {
+            throw 'Field guest runtime exited before the interactive desktop became ready.'
+        }
+        if ([DateTimeOffset]::UtcNow -ge $desktopDeadline) {
+            throw "Interactive desktop did not become ready within $DesktopReadyTimeoutSeconds seconds."
+        }
+        Start-Sleep -Seconds 2
+        $sessionUnlocked = Invoke-FieldBootstrapPrecheck
+    }
+    $agentExitCode = Wait-FieldGuestProcess -Process $guestProcess
+} catch {
+    Stop-FieldGuestProcess -Process $guestProcess
+    throw
+}
 if ($agentExitCode -ne 0) { throw "Guest runtime failed with exit code $agentExitCode. See the bounded guest runtime error log." }
 exit 0

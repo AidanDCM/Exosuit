@@ -294,6 +294,22 @@ prove an owner-authorized key-rotation operation, replacement by an actual new
 Field generation, production authentication, lock/Secure Desktop behavior,
 input, recording, artifact transfer, or release readiness.
 
+### 2026-08-01 v23 protected-startup timing diagnosis
+
+An exact-head v23 immutable base and fresh isolated generation proved seed
+conversion to the protected envelope and idempotent protected restart, but host
+KVP observations denied because the handshake was absent. The 90-attempt
+observer ended at 23:09:18Z; read-only evidence showed the all-pass bootstrap
+report arrived at 23:09:33Z with an empty runtime error log. This is negative
+timing evidence, not a live protected-KVP pass. The generation was gracefully
+stopped and remains Off.
+
+The source launcher now starts authenticated non-ready/provisioning KVP after one
+bootstrap precheck and exact secret receipt validation, while continuing the
+unlock bootstrap loop. Timeout and early exit explicitly stop the child. The
+Windows harness passes this ordering and cleanup contract. A rebuilt immutable
+base and fresh generation are required before any live-corrected claim.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.

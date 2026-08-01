@@ -172,6 +172,12 @@ against the runtime Field generation and key, and starts the protected-only KVP
 emitter. Any protection or receipt failure stops before heartbeat. Do not invoke
 the emitter manually or restore plaintext fallback.
 
+The emitter may publish an authenticated `provisioning` lifecycle after the
+initial bootstrap precheck while the interactive session is still locked. That
+is diagnostic state only, not readiness or action authority. The launcher keeps
+refreshing bootstrap until unlock and stops the exact child on timeout or early
+exit. Host acceptance must still require every readiness item below.
+
 1. bootstrap report identity and manifest digest;
 2. authenticated channel handshake;
 3. replay-resistant sequence state;

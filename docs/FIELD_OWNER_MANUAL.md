@@ -185,6 +185,11 @@ Do not trust it merely because:
 - unit tests pass,
 - the VM started.
 
+An authenticated `provisioning` heartbeat while Windows is locked is also not a
+readiness pass. It is diagnostic evidence only. The owner must still require an
+unlocked session, inactive Secure Desktop, fresh heartbeat, exact policy and
+attestation, and every remaining readiness gate before any action mode.
+
 ## Failure reporting
 
 When something fails, record:

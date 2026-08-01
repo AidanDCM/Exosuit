@@ -325,7 +325,13 @@ The preserved Field development line contains substantial source, fake/pure foun
   A Windows PowerShell subprocess harness now proves first conversion and
   already-protected restart reach the emitter while command failure, malformed
   receipt, and post-publication/no-receipt interruption stop before it; live
-  guest LocalSystem and heartbeat evidence remain pending.
+  guest LocalSystem and heartbeat evidence remain pending. Exact v23 timing
+  evidence then showed that withholding authenticated observation behind
+  `session_unlocked` can consume the complete desktop-ready window. The source
+  launcher now starts authenticated provisioning observation only after one
+  bootstrap precheck and exact protected-secret receipt validation, refreshes
+  bootstrap until unlock, and stops the exact child on timeout or early exit.
+  Harness evidence passes; rebuilt-base live evidence remains required.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

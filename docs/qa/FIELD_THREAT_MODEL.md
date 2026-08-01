@@ -80,6 +80,11 @@
 - Retained Hyper-V KVP records are observations, not re-executed commands: exact
   envelope digest/message/sequence rereads are idempotent only after fresh
   authentication and expiry checks; any changed record must advance strictly.
+- A locked session does not grant readiness or action authority. After initial
+  bootstrap and exact protected-secret receipt validation, the guest may report
+  authenticated non-ready/provisioning state while bootstrap refreshes. Timeout
+  or early exit stops the exact child. Source harness evidence passes; rebuilt-
+  base lock/Secure Desktop evidence remains pending.
 - Signed channel timestamps use one canonical UTC representation with exactly millisecond precision.
 - Field policies authorize canonical origins and reviewed executable name/hash identities, not arbitrary URLs or process-name strings.
 - No Field command accepts arbitrary shell or PowerShell strings.

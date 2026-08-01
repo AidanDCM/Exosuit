@@ -803,24 +803,30 @@ does not prove the combined LocalSystem DPAPI/DACL path inside a guest, managed-
 string retirement, configuration/secret TOCTOU resistance, protection-command
 startup ordering, restart, crash/power loss, or host protected-key storage.
 
-## 35. Guest secret startup transaction
+## 35. Guest secret startup transaction and pre-unlock observation
 
 Static and script tests must prove:
 
-- the protection command runs after bootstrap precheck and before the guest KVP
-  emitter;
+- one bootstrap precheck runs before protection, and the protection command plus
+  exact receipt validation run before the guest KVP emitter;
 - nonzero exit or anything other than exactly one JSON receipt stops startup;
 - receipt top-level and nested Field schemas are exact;
 - receipt version, Field ID/generation, key ID, converted/already-protected
   status, lowercase ciphertext digest, and completion freshness are checked;
 - the receipt is captured, not printed or placed in the runtime error log;
 - any failure prevents emitter launch and therefore prevents heartbeat;
-- a valid already-protected receipt permits idempotent restart.
+- a valid already-protected receipt permits idempotent restart;
+- a locked session may start authenticated KVP only as non-ready/provisioning;
+  bootstrap continues refreshing until `session_unlocked` passes;
+- early guest exit, bootstrap failure, and desktop timeout stop the exact guest
+  child before launcher denial.
 
 Current evidence includes PowerShell parser success, static order/validation
 tests, and a Windows PowerShell subprocess harness. The harness executes the
 launcher with inert injected process adapters: converted and already-protected
 receipts reach the emitter, while nonzero protection exit, malformed receipt,
-and post-publication/no-receipt interruption stop before emitter invocation. It
-does not prove real LocalSystem conversion, DPAPI/DACL composition, actual
-process termination, or observed heartbeat absence inside a disposable guest.
+and post-publication/no-receipt interruption stop before emitter invocation. A
+locked-then-unlocked harness proves the emitter starts after receipt but before
+unlock, and a never-unlocked harness proves explicit child cleanup. Exact v23
+live evidence diagnosed the old ordering delay but does not validate the
+corrected source. A new immutable-base canary remains required.

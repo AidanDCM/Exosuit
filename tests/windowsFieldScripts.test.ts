@@ -10,7 +10,7 @@ async function script(name: string): Promise<string> {
 }
 
 async function runGuestStartupHarness(
-  scenario: "converted" | "already_protected" | "command_failure" | "malformed_receipt" | "post_publication_interruption",
+    scenario: "converted" | "already_protected" | "command_failure" | "malformed_receipt" | "post_publication_interruption" | "locked_then_unlocked" | "never_unlocked",
 ) {
   const root = await mkdtemp(join(tmpdir(), "exosuit-field-startup-"));
   const agentDirectory = join(root, "Agent");
@@ -42,10 +42,23 @@ function Invoke-FieldSecretProtectionProcess {
     $receipt = Get-Content -LiteralPath $env:EXOSUIT_HARNESS_RECEIPT -Raw
     return [pscustomobject]@{ output = @($receipt); exitCode = 0 }
 }
-function Invoke-FieldGuestProcess {
+function Start-FieldGuestProcess {
     param([string]$AgentPath, [string]$RuntimeConfigPath, [string]$RuntimeErrorLog)
     Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'guest' -Encoding ascii
-    return 0
+    return [pscustomobject]@{ HasExited = $false; ExitCode = 0 }
+}
+function Test-FieldGuestProcessExited {
+    param($Process)
+    return [bool]$Process.HasExited
+}
+function Wait-FieldGuestProcess {
+    param($Process)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'wait' -Encoding ascii
+    return [int]$Process.ExitCode
+}
+function Stop-FieldGuestProcess {
+    param($Process)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'stop' -Encoding ascii
 }
 # END FIELD PROCESS ADAPTERS`;
   const testSource = `${source.slice(0, adapterStart)}${injectedAdapters}${source.slice(adapterEnd + adapterEndMarker.length)}`
@@ -66,7 +79,11 @@ function Invoke-FieldGuestProcess {
     bootstrapPath,
     String.raw`[CmdletBinding(SupportsShouldProcess=$true)]
 param([string]$ManifestPath, [string]$ManifestDigest, [string]$ReportPath)
-[IO.File]::WriteAllText($ReportPath, '{"checks":[{"name":"session_unlocked","passed":true}]}', [Text.UTF8Encoding]::new($false))`,
+Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'bootstrap' -Encoding ascii
+$bootstrapCalls = @(Get-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS | Where-Object { $_ -ceq 'bootstrap' }).Count
+$unlocked = $env:EXOSUIT_HARNESS_SCENARIO -cne 'never_unlocked' -and ($env:EXOSUIT_HARNESS_SCENARIO -cne 'locked_then_unlocked' -or $bootstrapCalls -ge 2)
+$passed = if ($unlocked) { 'true' } else { 'false' }
+[IO.File]::WriteAllText($ReportPath, ('{"checks":[{"name":"session_unlocked","passed":' + $passed + '}]}'), [Text.UTF8Encoding]::new($false))`,
     "utf8",
   );
   await writeFile(agentPath, "inert harness placeholder", "utf8");
@@ -495,13 +512,20 @@ describe("Windows Field administration scripts", () => {
     for (const scenario of ["converted", "already_protected"] as const) {
       const result = await runGuestStartupHarness(scenario);
       expect(result.status, `${scenario}: ${result.stderr}`).toBe(0);
-      expect(result.calls).toEqual(["protect", "guest"]);
+      expect(result.calls).toEqual(["bootstrap", "protect", "guest", "wait"]);
     }
     for (const scenario of ["command_failure", "malformed_receipt", "post_publication_interruption"] as const) {
       const result = await runGuestStartupHarness(scenario);
       expect(result.status, scenario).not.toBe(0);
-      expect(result.calls).toEqual(["protect"]);
+      expect(result.calls).toEqual(["bootstrap", "protect"]);
     }
+    const lockedThenUnlocked = await runGuestStartupHarness("locked_then_unlocked");
+    expect(lockedThenUnlocked.status, lockedThenUnlocked.stderr).toBe(0);
+    expect(lockedThenUnlocked.calls).toEqual(["bootstrap", "protect", "guest", "bootstrap", "wait"]);
+
+    const neverUnlocked = await runGuestStartupHarness("never_unlocked");
+    expect(neverUnlocked.status).not.toBe(0);
+    expect(neverUnlocked.calls).toEqual(["bootstrap", "protect", "guest", "bootstrap", "stop"]);
   }, 60_000);
 
   windowsIt("normalizes Windows PowerShell JSON arrays before indexing KVP verification results", () => {

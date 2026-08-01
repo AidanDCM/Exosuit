@@ -146,8 +146,11 @@ derivation, and metadata-only output rules. The guest KVP emitter must use
 `ProtectedFieldKvpSecretReader`; never restore its former `File.ReadAllText`
 fallback. The fixed guest launcher must run the protection command, validate the
 metadata receipt against runtime Field/generation/key, status, digest, and time,
-and only then start the emitter. Do not weaken this ordering or print the
-receipt. Live promotion remains held until combined LocalSystem restart/failure
+and only then start the emitter. After one valid bootstrap precheck, the emitter
+may report authenticated `provisioning` while the session remains locked; the
+launcher must keep refreshing bootstrap, deny readiness, and stop the exact child
+on exit or timeout. Do not weaken this ordering or print the receipt. Live
+promotion remains held until combined LocalSystem restart/failure
 evidence passes. Treat atomic replacement as namespace removal,
 not secure erasure; disposable overlay destruction and storage-retention policy
 remain part of secret retirement.
