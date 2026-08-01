@@ -76,7 +76,13 @@ was copied.
 - The PATH-resolved runtime-only `dotnet` host had no SDK. Using the installed
   repository SDK at `C:\Users\Aidan\.dotnet\dotnet.exe`, restore passed, Release
   build passed with zero warnings/errors, and 74 .NET tests passed.
-- Exact-head Windows runner: pending commit.
+- Exact-head run `20260801T232354Z` failed before steps because PATH selected a
+  runtime-only `dotnet`; it supports no passing claim. Run `20260801T232408Z`
+  used the installed user SDK and passed through 159 Field tests, then exposed a
+  full-suite-only harness flake: the locked-then-unlocked synthetic case used the
+  same one-second deadline as the deliberate never-unlocked timeout. The former
+  now has a ten-second test-only deadline; the denial case remains one second.
+  A new exact-head run is required.
 - Live proof of corrected ordering: pending a new immutable base/generation.
 
 ## Rollback and next slice

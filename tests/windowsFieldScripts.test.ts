@@ -108,7 +108,17 @@ $passed = if ($unlocked) { 'true' } else { 'false' }
   );
   const result = spawnSync(
     "powershell.exe",
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-LaunchConfigPath", launchPath, "-DesktopReadyTimeoutSeconds", "1"],
+    [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      launcherPath,
+      "-LaunchConfigPath",
+      launchPath,
+      "-DesktopReadyTimeoutSeconds",
+      scenario === "locked_then_unlocked" ? "10" : "1",
+    ],
     {
       encoding: "utf8",
       env: {
