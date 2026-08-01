@@ -691,3 +691,23 @@ protected Windows key provider, authenticated guest prepare/commit/rollback,
 crash/restart persistence, mid-flight packet injection, old-key traffic over the
 live transport, and an owner-visible ceremony. No model-facing rotation tool is
 authorized.
+
+## 30. Protected rotation metadata persistence
+
+The rotation coordinator state store must prove:
+
+- a domain-separated HMAC binds exact Field ID/generation, algorithm, and raw
+  serialized state payload;
+- authentication uses fixed-time comparison before authority-state
+  deserialization;
+- the persisted envelope and decoded payload have explicit byte bounds;
+- missing is distinct from malformed, plaintext legacy, oversized, corrupt,
+  wrong-secret, cross-generation, and contradictory state;
+- rejected reads do not rewrite the input;
+- writes use an exclusive private temporary file and atomic replacement, leaving
+  no temporary file after success;
+- the integrity secret is supplied separately and never serialized.
+
+Current evidence is pure file-component execution. It does not prove Windows
+ACL enforcement, DPAPI/vault ownership, crash/power-loss atomicity, backup,
+revocation, or integration with a real rotation provider.

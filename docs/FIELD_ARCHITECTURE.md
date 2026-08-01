@@ -135,6 +135,13 @@ proven next-active state may commit locally; unknown or failed reconciliation
 blocks all key acceptance until local owner review. The current implementation
 has only a fake provider and is not a live ceremony or protected key store.
 
+Coordinator metadata can be persisted through a separate bounded file store.
+The store authenticates a base64 payload with HMAC-SHA256 over a domain
+separator and exact Field ID/generation, verifies the tag in fixed time before
+deserializing authority state, and replaces the file through an exclusive
+temporary file plus rename. This protects metadata only when the caller protects
+the separate integrity secret; Windows ACL/DPAPI/vault storage remains pending.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:

@@ -30,6 +30,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Pilot/service/remote/stale rotation request | deny before provider effect | U | local owner UI/transport acceptance |
 | Rotation commit fails after prepare | reconcile; roll back prepared key or adopt only proven next-active state | U fake provider | Windows provider crash/fault injection |
 | Rotation reconciliation unknown or rollback fails | trust neither key; block continuation for owner review | U fake provider | host/guest restart and storage fault injection |
+| Corrupt, wrong-secret, legacy, oversized, or cross-generation rotation metadata | reject before authority-state hydration; preserve bytes | U protected file store | Windows ACL, crash/power-loss, and vault injection |
 | Expired message | deny | U | delayed transport delivery |
 | Prior Field generation | deny and plan new generation if trust changed | U | stale guest process after rollback |
 | Guest boot ID changes inside generation | fault | U | reboot guest without generation transition |
