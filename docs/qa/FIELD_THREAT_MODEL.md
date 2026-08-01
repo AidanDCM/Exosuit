@@ -97,7 +97,7 @@
 ## Residual risks
 
 - HMAC attestation is local software binding, not hardware-rooted remote attestation.
-- Replay state has bounded atomic persistence and the KVP observation ledger now has an HMAC-protected, Field/generation/key-bound envelope; protected-state operational validation and key rotation are not proven live.
+- Replay state has bounded atomic persistence and the KVP observation ledger has an HMAC-protected, Field/generation/key-bound envelope. A transactional owner-only rotation coordinator has fake-provider reconciliation/rollback and old-key rejection tests; protected storage and the host/guest ceremony are not proven live.
 - Actual Hyper-V socket or private transport is not implemented.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
@@ -110,7 +110,7 @@
 
 1. stale-generation signed command;
 2. replay after guest and host restart;
-3. channel key rotation with old-key rejection;
+3. live channel-key rotation with protected storage, crash reconciliation, and old-key rejection;
 4. guest process crash and heartbeat expiry;
 5. Secure Desktop and locked-session input denial;
 6. wrong display scaling and dynamic-resolution denial;

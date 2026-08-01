@@ -619,7 +619,10 @@ Required protections:
 - wrong direction rejection;
 - wrong generation rejection;
 - expiration;
-- key rotation;
+- owner-authorized key rotation with exact request/generation binding,
+  prepare/commit receipts, fail-closed reconciliation, rollback, and old-key
+  rejection (transactional fake-provider foundation implemented; protected
+  storage and live provider ceremony pending);
 - durable replay state;
 - boot replacement invalidation;
 - bounded message and payload sizes;

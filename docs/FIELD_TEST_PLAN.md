@@ -665,3 +665,29 @@ replacement rather than a mutated generation field.
 Held: owner-authorized key rotation, actual replacement with a new Field
 generation, lock/Secure Desktop, deliberate heartbeat loss, pause/resume,
 production authentication, input, recording, emergency stop, and release.
+
+## 29. Transactional channel-key rotation foundation
+
+Source tests must prove:
+
+- only a fresh, local, interactive `owner_local` request for
+  `rotate_channel_key` can start a transaction;
+- the authorization request ID, rotation ID, exact Field generation, current key
+  ID, and distinct next key ID all match before provider effects;
+- secret bytes never enter result or durable coordinator state; only an opaque
+  provider handle crosses the coordinator boundary, and provider errors are
+  redacted;
+- prepare requires a bound guest acknowledgment before commit;
+- failed commit reconciles to prior-active, next-prepared, next-active, or
+  unknown; prepared rolls back and unknown blocks continuation;
+- malformed, stale, or cross-bound provider receipts fail closed;
+- committed next-key identity causes the existing replay guard to deny old-key
+  traffic;
+- rotation IDs cannot be replayed and hydrated state cannot contradict its last
+  result.
+
+Current evidence is pure/fake TypeScript only. Required next evidence is a
+protected Windows key provider, authenticated guest prepare/commit/rollback,
+crash/restart persistence, mid-flight packet injection, old-key traffic over the
+live transport, and an owner-visible ceremony. No model-facing rotation tool is
+authorized.

@@ -26,7 +26,10 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Reuse nonce with a new ID | replay denial | U | transport-level replay |
 | Decrease or repeat sequence | deny | U | restart and reconnect sequence tests |
 | Wrong direction | deny | U | host-to-guest message on guest-to-host receiver |
-| Wrong key ID | deny | U | old-key traffic after rotation |
+| Wrong key ID | deny | U plus fake owner-rotation/replay-guard integration | old-key traffic after live rotation |
+| Pilot/service/remote/stale rotation request | deny before provider effect | U | local owner UI/transport acceptance |
+| Rotation commit fails after prepare | reconcile; roll back prepared key or adopt only proven next-active state | U fake provider | Windows provider crash/fault injection |
+| Rotation reconciliation unknown or rollback fails | trust neither key; block continuation for owner review | U fake provider | host/guest restart and storage fault injection |
 | Expired message | deny | U | delayed transport delivery |
 | Prior Field generation | deny and plan new generation if trust changed | U | stale guest process after rollback |
 | Guest boot ID changes inside generation | fault | U | reboot guest without generation transition |

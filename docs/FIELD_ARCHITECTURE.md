@@ -119,6 +119,22 @@ The host Field Manager creates a local attestation binding:
 
 The foundation implementation uses HMAC-SHA256 to prove local binding. This is not yet a complete hardware-rooted or remote attestation system. Future promotion may replace or wrap it with stronger key storage and VM identity evidence without changing the contract purpose.
 
+## Channel-key administration
+
+Channel-key rotation is a separate local-owner administration transaction. The
+request ID equals the rotation ID and binds the exact Field generation, current
+key ID, distinct next key ID, authenticated local transport, interactive owner
+presence, and a five-minute authorization window. Secret bytes remain owned by
+a provider; the coordinator accepts an opaque secret handle and excludes that
+handle and provider error text from exported state and results.
+
+The provider prepares the next key and obtains a guest acknowledgment before
+commit. A failed or malformed effect reconciles as prior-key active,
+next-key prepared, next-key active, or unknown. Prepared state rolls back;
+proven next-active state may commit locally; unknown or failed reconciliation
+blocks all key acceptance until local owner review. The current implementation
+has only a fake provider and is not a live ceremony or protected key store.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:

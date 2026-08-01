@@ -2,7 +2,7 @@
 
 **Status authority for current Field code:** this file  
 **Branch:** `codex/unify-glove-field`  
-**Updated:** 2026-07-28  
+**Updated:** 2026-08-01
 **Planning authority:** `docs/MASTER_SYSTEM_ROADMAP.md` and `docs/FIELD_ARCHITECTURE.md`
 
 ## Evidence warning
@@ -49,6 +49,7 @@ path live, so v19 remains unpromoted.
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
 | local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
 | authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests, shared fixture, v13 development KVP evidence | production key/rotation/repeatability pending |
+| channel-key rotation coordinator | `fieldChannelKeyRotation.ts` | owner/model/service, transaction, reconciliation, rollback, redaction, hydration, and old-key rejection tests | fake provider only; no protected key store or live ceremony |
 | guest heartbeat | `fieldHeartbeat.ts`, `.NET FieldKvpRuntime.cs` | unit tests plus v13 development observation | production and negative live matrix pending |
 | guest bootstrap | `fieldBootstrap.ts`, readiness evaluator, guest install/start/bootstrap scripts | unit/static tests, digest-bound enrollment tests, plus one v13 development boot | durable-enrollment live reboot proof and production-authenticated repeatability pending |
 | typed guest commands | `fieldCommand.ts` | mode/policy/scene/route/budget tests | not wired into agent |
@@ -106,7 +107,7 @@ Every message binds:
 - sent/expiration time,
 - HMAC-SHA256 signature.
 
-Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. The compiled KVP observation state is now stored in an HMAC-SHA256 envelope authenticated by the existing channel secret and bound to the exact Field generation, key ID, algorithm, and payload. Well-formed corruption, a new key, or a new generation fails closed without replacing prior bytes. A narrow Hyper-V KVP guest emitter and host verifier provide a no-network transport implementation; live protected-state fault injection, protected key storage, and owner-authorized key rotation remain pending.
+Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. The compiled KVP observation state is stored in an HMAC-SHA256 envelope authenticated by the existing channel secret and bound to the exact Field generation, key ID, algorithm, and payload. Well-formed corruption, a new key, or a new generation fails closed without replacing prior bytes. The v22 canary passed copy-based protected-state faults. A transactional source coordinator now requires exact interactive-owner authorization, opaque provider-owned secret handles, prepare/commit, reconciliation, rollback, and blocks every key after unknown state; tests feed a committed next key into the existing replay guard and reject old-key traffic. The rotation provider remains fake: protected key storage and a live host/guest ceremony remain pending.
 
 ### Guest action boundary
 
