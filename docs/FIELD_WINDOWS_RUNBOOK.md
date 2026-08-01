@@ -243,6 +243,20 @@ It may remove only:
 
 It must not remove the base image or personal-state registry objects. It refuses deletion through a reparse point.
 
+## Protected-secret startup preflight
+
+Before a live protected-secret guest attempt, run the Windows Field script test
+and confirm its startup-transaction harness passes. That harness must report
+that `converted` and `already_protected` receipts invoke the emitter, while
+nonzero protection exit, malformed receipt, and post-publication/no-receipt
+interruption do not. This is a preflight check only; preserve separate live
+evidence for LocalSystem identity, DPAPI/DACL state, restart, and heartbeat
+absence on denial.
+
+```powershell
+npm test -- --run tests/windowsFieldScripts.test.ts --reporter=verbose
+```
+
 ## Emergency handling
 
 If authentication, replay, boot identity, attestation, display contract, or task-disk integrity fails:

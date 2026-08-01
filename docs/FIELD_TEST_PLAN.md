@@ -817,7 +817,10 @@ Static and script tests must prove:
 - any failure prevents emitter launch and therefore prevents heartbeat;
 - a valid already-protected receipt permits idempotent restart.
 
-Current evidence is PowerShell parser success and static order/validation tests.
-It does not prove real LocalSystem conversion, DPAPI/DACL composition, process
-failure behavior, restart, post-publication interruption, or heartbeat absence
-inside a disposable guest.
+Current evidence includes PowerShell parser success, static order/validation
+tests, and a Windows PowerShell subprocess harness. The harness executes the
+launcher with inert injected process adapters: converted and already-protected
+receipts reach the emitter, while nonzero protection exit, malformed receipt,
+and post-publication/no-receipt interruption stop before emitter invocation. It
+does not prove real LocalSystem conversion, DPAPI/DACL composition, actual
+process termination, or observed heartbeat absence inside a disposable guest.

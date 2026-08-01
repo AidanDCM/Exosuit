@@ -20,6 +20,30 @@ function ConvertFrom-JsonDocument {
     return $json | ConvertFrom-Json
 }
 
+# START FIELD PROCESS ADAPTERS
+# These narrow adapters keep process effects separate from receipt validation so
+# the complete startup transaction can be exercised with inert subprocess fakes.
+function Invoke-FieldSecretProtectionProcess {
+    param(
+        [Parameter(Mandatory)][string]$AgentPath,
+        [Parameter(Mandatory)][string]$RuntimeConfigPath,
+        [Parameter(Mandatory)][string]$RuntimeErrorLog
+    )
+    $output = @(& $AgentPath --field-protect-channel-secret $RuntimeConfigPath 2>> $RuntimeErrorLog)
+    [pscustomobject]@{ output = $output; exitCode = $LASTEXITCODE }
+}
+
+function Invoke-FieldGuestProcess {
+    param(
+        [Parameter(Mandatory)][string]$AgentPath,
+        [Parameter(Mandatory)][string]$RuntimeConfigPath,
+        [Parameter(Mandatory)][string]$RuntimeErrorLog
+    )
+    & $AgentPath --field-guest-kvp $RuntimeConfigPath 2>> $RuntimeErrorLog | Out-Host
+    $LASTEXITCODE
+}
+# END FIELD PROCESS ADAPTERS
+
 $allowedRoot = [IO.Path]::GetFullPath('C:\Exosuit').TrimEnd('\') + '\'
 function Assert-ExosuitPath {
     param([Parameter(Mandatory)][string]$Path)
@@ -77,8 +101,9 @@ do {
     Start-Sleep -Seconds 2
 } while ($true)
 $runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
-$protectionOutput = @(& $agentPath --field-protect-channel-secret $runtimeConfigPath 2>> $runtimeErrorLog)
-$protectionExitCode = $LASTEXITCODE
+$protectionProcess = Invoke-FieldSecretProtectionProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
+$protectionOutput = @($protectionProcess.output)
+$protectionExitCode = [int]$protectionProcess.exitCode
 if ($protectionExitCode -ne 0) {
     throw "Field channel-secret protection failed with exit code $protectionExitCode. See the bounded guest runtime error log."
 }
@@ -124,7 +149,6 @@ $receiptNow = [DateTimeOffset]::UtcNow
 if ($receiptCompletedAt -lt $receiptNow.AddMinutes(-5) -or $receiptCompletedAt -gt $receiptNow.AddSeconds(30)) {
     throw 'Field channel-secret protection receipt is stale or from the future.'
 }
-& $agentPath --field-guest-kvp $runtimeConfigPath 2>> $runtimeErrorLog
-$agentExitCode = $LASTEXITCODE
+$agentExitCode = Invoke-FieldGuestProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
 if ($agentExitCode -ne 0) { throw "Guest runtime failed with exit code $agentExitCode. See the bounded guest runtime error log." }
 exit 0

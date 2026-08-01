@@ -1,10 +1,110 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { fieldBootstrapCheckNameSchema } from "../src/fieldBootstrap.js";
 
 async function script(name: string): Promise<string> {
   return readFile(`scripts/windows/${name}`, "utf8");
+}
+
+async function runGuestStartupHarness(
+  scenario: "converted" | "already_protected" | "command_failure" | "malformed_receipt" | "post_publication_interruption",
+) {
+  const root = await mkdtemp(join(tmpdir(), "exosuit-field-startup-"));
+  const agentDirectory = join(root, "Agent");
+  const configDirectory = join(root, "Config");
+  const logsDirectory = join(root, "Logs");
+  await Promise.all([
+    mkdir(agentDirectory, { recursive: true }),
+    mkdir(configDirectory, { recursive: true }),
+    mkdir(logsDirectory, { recursive: true }),
+  ]);
+  const source = await script("Start-ExosuitFieldGuest.ps1");
+  const adapterStart = source.indexOf("# START FIELD PROCESS ADAPTERS");
+  const adapterEndMarker = "# END FIELD PROCESS ADAPTERS";
+  const adapterEnd = source.indexOf(adapterEndMarker);
+  if (adapterStart < 0 || adapterEnd < adapterStart) throw new Error("Field process adapter markers are missing.");
+  const injectedAdapters = String.raw`# START FIELD PROCESS ADAPTERS
+function Invoke-FieldSecretProtectionProcess {
+    param([string]$AgentPath, [string]$RuntimeConfigPath, [string]$RuntimeErrorLog)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'protect' -Encoding ascii
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'command_failure') {
+        return [pscustomobject]@{ output = @(); exitCode = 23 }
+    }
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'malformed_receipt') {
+        return [pscustomobject]@{ output = @('{'); exitCode = 0 }
+    }
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'post_publication_interruption') {
+        return [pscustomobject]@{ output = @(); exitCode = 0 }
+    }
+    $receipt = Get-Content -LiteralPath $env:EXOSUIT_HARNESS_RECEIPT -Raw
+    return [pscustomobject]@{ output = @($receipt); exitCode = 0 }
+}
+function Invoke-FieldGuestProcess {
+    param([string]$AgentPath, [string]$RuntimeConfigPath, [string]$RuntimeErrorLog)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'guest' -Encoding ascii
+    return 0
+}
+# END FIELD PROCESS ADAPTERS`;
+  const testSource = `${source.slice(0, adapterStart)}${injectedAdapters}${source.slice(adapterEnd + adapterEndMarker.length)}`
+    .replaceAll("C:\\Exosuit", root);
+  const launcherPath = join(root, "Start-ExosuitFieldGuest.Harness.ps1");
+  const bootstrapPath = join(agentDirectory, "Initialize-ExosuitFieldGuest.ps1");
+  const agentPath = join(agentDirectory, "Exosuit.Agent.exe");
+  const manifestPath = join(configDirectory, "manifest.json");
+  const runtimePath = join(configDirectory, "runtime.json");
+  const launchPath = join(configDirectory, "launch.json");
+  const reportPath = join(logsDirectory, "bootstrap-report.json");
+  const receiptPath = join(logsDirectory, "receipt.json");
+  const callsPath = join(logsDirectory, "calls.log");
+  const fieldId = "3b9690ea-d2df-4ee8-9420-d52af32fa1c8";
+  const keyId = "field-key-0001";
+  await writeFile(launcherPath, testSource, "utf8");
+  await writeFile(
+    bootstrapPath,
+    String.raw`[CmdletBinding(SupportsShouldProcess=$true)]
+param([string]$ManifestPath, [string]$ManifestDigest, [string]$ReportPath)
+[IO.File]::WriteAllText($ReportPath, '{"checks":[{"name":"session_unlocked","passed":true}]}', [Text.UTF8Encoding]::new($false))`,
+    "utf8",
+  );
+  await writeFile(agentPath, "inert harness placeholder", "utf8");
+  await writeFile(manifestPath, "{}", "utf8");
+  await writeFile(
+    runtimePath,
+    JSON.stringify({ contractVersion: 1, bootstrapReportPath: reportPath, field: { fieldId, fieldGeneration: 7 }, keyId }),
+    "utf8",
+  );
+  await writeFile(launchPath, JSON.stringify({ contractVersion: 1, manifestPath, runtimeConfigPath: runtimePath }), "utf8");
+  await writeFile(
+    receiptPath,
+    JSON.stringify({
+      completedAt: new Date().toISOString(),
+      contractVersion: 1,
+      ciphertextEnvelopeSha256: "a".repeat(64),
+      field: { fieldGeneration: 7, fieldId },
+      keyId,
+      status: scenario === "already_protected" ? "already_protected" : "converted",
+    }),
+    "utf8",
+  );
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath, "-LaunchConfigPath", launchPath, "-DesktopReadyTimeoutSeconds", "1"],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        EXOSUIT_HARNESS_CALLS: callsPath,
+        EXOSUIT_HARNESS_RECEIPT: receiptPath,
+        EXOSUIT_HARNESS_SCENARIO: scenario,
+      },
+    },
+  );
+  const calls = await readFile(callsPath, "utf8").catch(() => "");
+  await rm(root, { recursive: true, force: true });
+  return { ...result, calls: calls.trim().split(/\r?\n/).filter(Boolean) };
 }
 
 describe("Windows Field administration scripts", () => {
@@ -391,6 +491,19 @@ describe("Windows Field administration scripts", () => {
   });
 
   const windowsIt = process.platform === "win32" ? it : it.skip;
+  windowsIt("executes the protected-secret startup transaction and never starts the guest after denial", async () => {
+    for (const scenario of ["converted", "already_protected"] as const) {
+      const result = await runGuestStartupHarness(scenario);
+      expect(result.status, `${scenario}: ${result.stderr}`).toBe(0);
+      expect(result.calls).toEqual(["protect", "guest"]);
+    }
+    for (const scenario of ["command_failure", "malformed_receipt", "post_publication_interruption"] as const) {
+      const result = await runGuestStartupHarness(scenario);
+      expect(result.status, scenario).not.toBe(0);
+      expect(result.calls).toEqual(["protect"]);
+    }
+  }, 60_000);
+
   windowsIt("normalizes Windows PowerShell JSON arrays before indexing KVP verification results", () => {
     const command = [
       "$json='[{\"status\":\"verified\"},{\"status\":\"verified\"},{\"status\":\"verified\"}]'",

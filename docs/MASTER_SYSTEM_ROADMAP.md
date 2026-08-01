@@ -322,6 +322,10 @@ The preserved Field development line contains substantial source, fake/pure foun
   the KVP emitter, captures exactly one metadata receipt, validates its exact
   schema, Field generation, key ID, status, ciphertext digest, and freshness,
   and publishes no heartbeat if conversion or receipt verification fails.
+  A Windows PowerShell subprocess harness now proves first conversion and
+  already-protected restart reach the emitter while command failure, malformed
+  receipt, and post-publication/no-receipt interruption stop before it; live
+  guest LocalSystem and heartbeat evidence remain pending.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

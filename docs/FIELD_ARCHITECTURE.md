@@ -204,6 +204,13 @@ time. Any command, parsing, schema, binding, status, digest, or freshness failur
 stops startup before heartbeat. Restart is idempotent because the command
 verifies an already-protected envelope without rewriting it.
 
+The process-effect calls are isolated behind two narrow internal launcher
+adapters. A source-derived subprocess harness replaces only those marked
+adapters with inert fakes and runs the remaining launcher transaction under
+Windows PowerShell. This proves branch ordering and fail-before-emitter behavior
+without introducing a production test switch or alternate executable path.
+The adapters are not a policy extension and are not externally configurable.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:

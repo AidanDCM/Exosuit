@@ -152,6 +152,13 @@ evidence passes. Treat atomic replacement as namespace removal,
 not secure erasure; disposable overlay destruction and storage-retention policy
 remain part of secret retirement.
 
+The launcher contains marked, narrow process adapters solely to separate the
+protection and emitter effects from receipt validation. Tests may create a
+temporary source-derived launcher and replace those adapters with inert fakes;
+never add an environment variable, command-line switch, alternate agent path,
+or other runtime injection hook to the production launcher. Harness success is
+script evidence, not guest LocalSystem or DPAPI evidence.
+
 Guest-machine DPAPI and host verification secrets are separate protection
 domains. Do not copy guest ciphertext to the host or teach the host observer to
 decrypt it. The host store requires its own reviewed protection and rotation
