@@ -446,7 +446,7 @@ public static class FieldKvpRuntime
         return configuration;
     }
 
-    private static void ValidateConfiguration(FieldKvpRuntimeConfiguration configuration)
+    internal static void ValidateConfiguration(FieldKvpRuntimeConfiguration configuration)
     {
         if (configuration.ContractVersion != 1) throw new InvalidOperationException("Unsupported Field KVP runtime contract version.");
         configuration.Field.Validate();

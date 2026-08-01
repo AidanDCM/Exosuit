@@ -26,7 +26,17 @@ public sealed class FileSystemFieldChannelSecretPathInspector : IFieldChannelSec
     public bool IsReparsePoint(string path) => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
 }
 
-public sealed class FieldChannelSecretSeedConverter
+public interface IFieldChannelSecretSeedConverter
+{
+    FieldChannelSecretSeedConversionResult Convert(
+        string path,
+        FieldReference field,
+        string keyId,
+        string? callerSid,
+        DateTimeOffset? now = null);
+}
+
+public sealed class FieldChannelSecretSeedConverter : IFieldChannelSecretSeedConverter
 {
     private const int MaximumSeedBytes = 16 * 1024;
     private const string CanonicalSeedFileName = "channel-secret.txt";

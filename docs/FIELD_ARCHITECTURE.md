@@ -164,9 +164,18 @@ Only a trailing CR/LF is normalized. It writes through the protected store,
 reloads and compares the secret in fixed time, zeros working bytes, and on a
 later invocation verifies the protected envelope without falling back to seed
 parsing. Its result contains only Field/key binding, status, time, and ciphertext
-envelope digest. It is not a command or startup hook yet. Atomic replacement
-removes plaintext from the active file namespace but does not promise forensic
-secure erasure of prior filesystem blocks or snapshots.
+envelope digest.
+
+`FieldChannelSecretProtectionCommand` exposes that transaction through one
+fixed, explicit guest command. It accepts only the literal
+`C:\Exosuit\Config\guest-runtime.json` production path, verifies LocalSystem
+before configuration access, rejects Config/config-file reparse points and
+ambiguous JSON, and derives Field generation, key ID, and the exact seed path
+only from the bounded validated configuration. The command emits only the
+converter receipt. It is not invoked by ordinary KVP startup, the guest service,
+or provisioning. Atomic replacement removes plaintext from the active file
+namespace but does not promise forensic secure erasure of prior filesystem
+blocks or snapshots.
 
 ## Field policy
 

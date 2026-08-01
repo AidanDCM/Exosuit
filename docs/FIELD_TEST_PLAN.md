@@ -753,8 +753,30 @@ Source tests must prove:
   Field generation/key without rewriting it;
 - pre-publication policy failure preserves the seed and removes temporary files.
 
-Current evidence is a fake-provider transaction suite. It does not prove a
-fixed CLI, validated runtime-config derivation, combined LocalSystem DPAPI/DACL
-execution, runtime protected-secret reads, interruption after publication,
-concurrent writers, forensic secure erasure, overlay/snapshot retirement, or
-live provisioning and restart.
+Current evidence is a fake-provider transaction suite plus a separately tested
+fixed command and validated runtime-config derivation. It does not prove
+combined LocalSystem DPAPI/DACL execution, runtime protected-secret reads,
+interruption after publication, concurrent writers, forensic secure erasure,
+overlay/snapshot retirement, or live provisioning and restart.
+
+## 33. Fixed channel-secret protection command
+
+Source tests must prove:
+
+- caller identity is exact LocalSystem before configuration existence, reparse,
+  size, or contents are inspected;
+- only the literal direct `Config/guest-runtime.json` path is accepted, without
+  case changes, dot segments, alternate separators, or another filename;
+- Config-root and runtime-config reparse points deny before parsing;
+- configuration is nonempty, bounded, valid UTF-8 JSON with case-sensitive,
+  unique, known properties and a valid Field runtime contract;
+- Field generation, key ID, and exact `Config/channel-secret.txt` are derived
+  solely from that configuration;
+- the converter receives those exact values and the command serializes only its
+  metadata receipt;
+- ordinary KVP startup and provisioning do not invoke conversion.
+
+Current evidence is a five-test source suite with an injected converter and path
+inspector. It does not prove combined guest LocalSystem DPAPI/DACL execution,
+configuration ACL/TOCTOU behavior, protected-only runtime reads, startup order,
+crash/power-loss recovery, secure retirement, or live restart.

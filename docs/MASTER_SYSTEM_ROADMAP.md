@@ -307,6 +307,12 @@ The preserved Field development line contains substantial source, fake/pure foun
   it for fixed-time verification, and verifies idempotent restart binding. It is
   not wired into provisioning or service startup, and namespace replacement is
   not forensic secure erasure.
+- a fixed `--field-protect-channel-secret` command boundary that requires the
+  literal `C:\Exosuit\Config\guest-runtime.json` path, checks LocalSystem before
+  configuration access, rejects reparse points, duplicate or unknown JSON
+  properties, and derives Field generation, key ID, and the one eligible seed
+  path only from the bounded validated configuration. It emits a metadata-only
+  receipt and remains absent from ordinary KVP startup and provisioning.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

@@ -136,13 +136,16 @@ inside the target guest. Do not add plaintext fallback or silently migrate
 `channel-secret.txt`; a guest LocalSystem conversion requires its own reviewed,
 consumed-seed, deletion, restart, and failure-injection slice.
 
-The seed converter is intentionally a library transaction only. Do not invoke
-it automatically from ordinary KVP startup and do not interpret malformed JSON
-as a legacy seed. A future fixed command must derive Field/key/path from the
-validated runtime configuration, independently verify LocalSystem, emit only a
-metadata receipt, and make protected runtime reading mandatory. Treat atomic
-replacement as namespace removal, not secure erasure; disposable overlay
-destruction and storage-retention policy remain part of secret retirement.
+The seed converter is invoked only by the explicit
+`--field-protect-channel-secret C:\Exosuit\Config\guest-runtime.json` command.
+Do not invoke it automatically from ordinary KVP startup and do not interpret
+malformed JSON as a legacy seed. The command must retain its literal-path,
+LocalSystem-before-read, bounded strict JSON, exact Field/generation/key/path
+derivation, and metadata-only output rules. Runtime reading remains plaintext
+until a separate protected-only reader slice passes review; therefore neither
+provisioning nor startup may call the command yet. Treat atomic replacement as
+namespace removal, not secure erasure; disposable overlay destruction and
+storage-retention policy remain part of secret retirement.
 
 ## Teach Mode requirements
 
