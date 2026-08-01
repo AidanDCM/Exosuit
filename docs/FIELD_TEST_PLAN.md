@@ -735,3 +735,26 @@ checks. It does not prove the combined write/rename/read path under guest
 LocalSystem, directory/reparse resistance, provisioning conversion and plaintext
 seed deletion, concurrent writers, crash/power-loss recovery, rotation-provider
 integration, or a live owner-authorized ceremony.
+
+## 32. Explicit channel-secret seed conversion transaction
+
+Source tests must prove:
+
+- caller identity is exact LocalSystem before any seed read or write;
+- only the direct, case-sensitive `channel-secret.txt` child of the configured
+  non-drive-root Config directory is eligible;
+- Config-root and target reparse points deny;
+- a seed is bounded printable ASCII, with only a trailing CR/LF normalized;
+- protected-looking malformed input denies without a plaintext fallback;
+- conversion uses the protected store in place, reloads the secret, compares it
+  in fixed time, zeros working buffers, and returns metadata plus ciphertext
+  digest only;
+- a repeated invocation verifies the existing protected envelope and exact
+  Field generation/key without rewriting it;
+- pre-publication policy failure preserves the seed and removes temporary files.
+
+Current evidence is a fake-provider transaction suite. It does not prove a
+fixed CLI, validated runtime-config derivation, combined LocalSystem DPAPI/DACL
+execution, runtime protected-secret reads, interruption after publication,
+concurrent writers, forensic secure erasure, overlay/snapshot retirement, or
+live provisioning and restart.

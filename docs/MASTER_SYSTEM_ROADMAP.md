@@ -301,6 +301,12 @@ The preserved Field development line contains substantial source, fake/pure foun
   publishes through a pre-sealed atomic temporary file, and requires an exact
   SYSTEM/Administrators DACL. Fake-provider tests and separate local DPAPI/ACL
   checks pass; combined LocalSystem guest execution is not yet proven.
+- an explicit SYSTEM-only seed-conversion transaction primitive that confines
+  conversion to exact `Config/channel-secret.txt`, rejects reparse paths and
+  protected-looking corruption, atomically replaces one printable seed, reloads
+  it for fixed-time verification, and verifies idempotent restart binding. It is
+  not wired into provisioning or service startup, and namespace replacement is
+  not forensic secure erasure.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

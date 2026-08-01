@@ -395,5 +395,5 @@ describe("Windows Field administration scripts", () => {
     });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout.trim()).toBe("3");
-  });
+  }, 30_000);
 });

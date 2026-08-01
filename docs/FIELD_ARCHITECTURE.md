@@ -156,6 +156,18 @@ rotation coordinator, or MCP. Because an offline host cannot create guest-
 machine DPAPI ciphertext, conversion/provisioning must eventually execute under
 the authenticated guest LocalSystem service and must not retain plaintext.
 
+`FieldChannelSecretSeedConverter` is the explicit conversion transaction
+foundation. It requires the LocalSystem SID before reading, confines the target
+to exact `Config/channel-secret.txt`, rejects a Config root or target reparse
+point, and distinguishes protected-looking JSON from a printable ASCII seed.
+Only a trailing CR/LF is normalized. It writes through the protected store,
+reloads and compares the secret in fixed time, zeros working bytes, and on a
+later invocation verifies the protected envelope without falling back to seed
+parsing. Its result contains only Field/key binding, status, time, and ciphertext
+envelope digest. It is not a command or startup hook yet. Atomic replacement
+removes plaintext from the active file namespace but does not promise forensic
+secure erasure of prior filesystem blocks or snapshots.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:

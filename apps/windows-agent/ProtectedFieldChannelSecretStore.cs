@@ -27,6 +27,12 @@ public interface IFieldChannelSecretFilePolicy
     void AssertProtected(string path);
 }
 
+public interface IProtectedFieldChannelSecretStore
+{
+    void Save(string path, FieldReference field, string keyId, ReadOnlySpan<byte> secret);
+    byte[] Load(string path, FieldReference field, string keyId);
+}
+
 public sealed class DpapiLocalMachineFieldChannelSecretProtector : IFieldChannelSecretProtector
 {
     public string Algorithm => "dpapi-local-machine";
@@ -80,7 +86,7 @@ public sealed class WindowsRestrictedFieldChannelSecretFilePolicy : IFieldChanne
     }
 }
 
-public sealed class ProtectedFieldChannelSecretStore
+public sealed class ProtectedFieldChannelSecretStore : IProtectedFieldChannelSecretStore
 {
     private const int ContractVersion = 1;
     private const int MinimumSecretBytes = 32;
