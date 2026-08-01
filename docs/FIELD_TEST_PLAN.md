@@ -711,3 +711,27 @@ The rotation coordinator state store must prove:
 Current evidence is pure file-component execution. It does not prove Windows
 ACL enforcement, DPAPI/vault ownership, crash/power-loss atomicity, backup,
 revocation, or integration with a real rotation provider.
+
+## 31. Protected Windows channel-secret primitive
+
+Source and local-Windows tests must prove:
+
+- secret bytes are encrypted before persistence and are absent from the bounded
+  JSON envelope;
+- DPAPI uses LocalMachine scope with domain-separated entropy bound to exact
+  Field ID, generation, key ID, and algorithm;
+- cross-generation, wrong-key, malformed, legacy plaintext, oversized,
+  non-canonical base64, weak-secret, and ciphertext-authentication failures deny;
+- publication uses an exclusive flushed temporary file, seals and verifies it
+  before atomic rename, preserves a prior envelope on pre-publication failure,
+  and removes the failed temporary file;
+- the Windows DACL disables inheritance and contains exactly LocalSystem and
+  Built-in Administrators with full control;
+- ordinary tests use fake protection and file-policy providers, while explicitly
+  tagged local-Windows checks exercise DPAPI and the DACL implementation.
+
+Current evidence proves the fake-provider matrix and separate local DPAPI/DACL
+checks. It does not prove the combined write/rename/read path under guest
+LocalSystem, directory/reparse resistance, provisioning conversion and plaintext
+seed deletion, concurrent writers, crash/power-loss recovery, rotation-provider
+integration, or a live owner-authorized ceremony.

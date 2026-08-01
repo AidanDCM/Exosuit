@@ -125,6 +125,17 @@ Attestation code must:
 
 Future key-storage improvements must preserve backward-incompatible versioning where necessary.
 
+### Protected channel-secret files
+
+`ProtectedFieldChannelSecretStore` is a disconnected Windows primitive, not a
+live key provider. Use fake protectors and file-policy providers in ordinary
+tests. The real provider uses guest-machine DPAPI LocalMachine and requires an
+exact non-inherited SYSTEM/Administrators DACL before publication. Do not call it
+from the host against an offline guest overlay: LocalMachine DPAPI must execute
+inside the target guest. Do not add plaintext fallback or silently migrate
+`channel-secret.txt`; a guest LocalSystem conversion requires its own reviewed,
+consumed-seed, deletion, restart, and failure-injection slice.
+
 ## Teach Mode requirements
 
 Teach Mode is a privacy-sensitive subsystem.

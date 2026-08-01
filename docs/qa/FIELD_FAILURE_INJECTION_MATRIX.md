@@ -31,6 +31,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Rotation commit fails after prepare | reconcile; roll back prepared key or adopt only proven next-active state | U fake provider | Windows provider crash/fault injection |
 | Rotation reconciliation unknown or rollback fails | trust neither key; block continuation for owner review | U fake provider | host/guest restart and storage fault injection |
 | Corrupt, wrong-secret, legacy, oversized, or cross-generation rotation metadata | reject before authority-state hydration; preserve bytes | U protected file store | Windows ACL, crash/power-loss, and vault injection |
+| Wrong generation/key, malformed/plaintext/oversized envelope, corrupt DPAPI ciphertext, or unexpected secret-file ACL | deny before returning secret; preserve prior published envelope on pre-publication failure | U fake providers plus separate local DPAPI and exact ACL checks | combined guest LocalSystem, reparse, crash/power-loss, and live rotation injection |
 | Expired message | deny | U | delayed transport delivery |
 | Prior Field generation | deny and plan new generation if trust changed | U | stale guest process after rollback |
 | Guest boot ID changes inside generation | fault | U | reboot guest without generation transition |

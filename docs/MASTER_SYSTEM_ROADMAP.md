@@ -296,6 +296,11 @@ The preserved Field development line contains substantial source, fake/pure foun
   live copy-based tag, payload, key-ID, generation, plaintext, and oversize
   mutations without changing any rejected copy or the authoritative ledger,
   then advanced the untouched ledger and passed exact destruction/base checks.
+- a compiled Windows protected channel-secret store primitive that binds the
+  exact Field generation and key ID into DPAPI LocalMachine optional entropy,
+  publishes through a pre-sealed atomic temporary file, and requires an exact
+  SYSTEM/Administrators DACL. Fake-provider tests and separate local DPAPI/ACL
+  checks pass; combined LocalSystem guest execution is not yet proven.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

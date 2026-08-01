@@ -142,6 +142,20 @@ deserializing authority state, and replaces the file through an exclusive
 temporary file plus rename. This protects metadata only when the caller protects
 the separate integrity secret; Windows ACL/DPAPI/vault storage remains pending.
 
+The compiled Windows agent also contains a separate protected channel-secret
+file primitive. It encrypts secret bytes with DPAPI LocalMachine using
+domain-separated optional entropy derived from the exact Field ID, generation,
+key ID, and algorithm. The bounded JSON envelope contains ciphertext and public
+binding metadata only. Publication writes and flushes an exclusive temporary
+file, applies and verifies a non-inherited DACL containing only LocalSystem and
+Built-in Administrators, then atomically renames it. Reads verify that DACL and
+the public binding before decryption. LocalMachine DPAPI is not a defense against
+an administrator or SYSTEM; the DACL and Field isolation are required parts of
+the boundary. This primitive is not wired to provisioning, the KVP runtime, the
+rotation coordinator, or MCP. Because an offline host cannot create guest-
+machine DPAPI ciphertext, conversion/provisioning must eventually execute under
+the authenticated guest LocalSystem service and must not retain plaintext.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:
