@@ -313,6 +313,11 @@ The preserved Field development line contains substantial source, fake/pure foun
   properties, and derives Field generation, key ID, and the one eligible seed
   path only from the bounded validated configuration. It emits a metadata-only
   receipt and remains absent from ordinary KVP startup and provisioning.
+- a protected-only guest KVP secret reader that rechecks LocalSystem, exact
+  runtime-config and secret paths, reparse endpoints, Field generation, key ID,
+  DPAPI envelope, DACL, bounds, and printable channel-secret format. The guest
+  emitter no longer reads a plaintext file. Host-side verification has a
+  separate key lifecycle, and provisioning/startup conversion remains pending.
   Actual generation replacement and owner-authorized key rotation remain pending.
 
 Exact-head Field L0 validation passed on `e10e921` before consolidation, on the

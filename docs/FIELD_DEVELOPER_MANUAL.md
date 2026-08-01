@@ -127,8 +127,9 @@ Future key-storage improvements must preserve backward-incompatible versioning w
 
 ### Protected channel-secret files
 
-`ProtectedFieldChannelSecretStore` is a disconnected Windows primitive, not a
-live key provider. Use fake protectors and file-policy providers in ordinary
+`ProtectedFieldChannelSecretStore` is a bounded Windows primitive, not a live
+rotation provider. It is used only by the explicit conversion command and the
+protected guest reader. Use fake protectors and file-policy providers in ordinary
 tests. The real provider uses guest-machine DPAPI LocalMachine and requires an
 exact non-inherited SYSTEM/Administrators DACL before publication. Do not call it
 from the host against an offline guest overlay: LocalMachine DPAPI must execute
@@ -141,11 +142,18 @@ The seed converter is invoked only by the explicit
 Do not invoke it automatically from ordinary KVP startup and do not interpret
 malformed JSON as a legacy seed. The command must retain its literal-path,
 LocalSystem-before-read, bounded strict JSON, exact Field/generation/key/path
-derivation, and metadata-only output rules. Runtime reading remains plaintext
-until a separate protected-only reader slice passes review; therefore neither
-provisioning nor startup may call the command yet. Treat atomic replacement as
-namespace removal, not secure erasure; disposable overlay destruction and
-storage-retention policy remain part of secret retirement.
+derivation, and metadata-only output rules. The guest KVP emitter must use
+`ProtectedFieldKvpSecretReader`; never restore its former `File.ReadAllText`
+fallback. Provisioning and startup must remain held until a separate transaction
+can run the protection command, verify the envelope, start the emitter, and
+record restart/failure evidence. Treat atomic replacement as namespace removal,
+not secure erasure; disposable overlay destruction and storage-retention policy
+remain part of secret retirement.
+
+Guest-machine DPAPI and host verification secrets are separate protection
+domains. Do not copy guest ciphertext to the host or teach the host observer to
+decrypt it. The host store requires its own reviewed protection and rotation
+implementation.
 
 ## Teach Mode requirements
 

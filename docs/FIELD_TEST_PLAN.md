@@ -754,8 +754,9 @@ Source tests must prove:
 - pre-publication policy failure preserves the seed and removes temporary files.
 
 Current evidence is a fake-provider transaction suite plus a separately tested
-fixed command and validated runtime-config derivation. It does not prove
-combined LocalSystem DPAPI/DACL execution, runtime protected-secret reads,
+fixed command, validated runtime-config derivation, and protected guest-reader
+wiring. It does not prove combined LocalSystem DPAPI/DACL execution or live
+runtime protected-secret reads,
 interruption after publication, concurrent writers, forensic secure erasure,
 overlay/snapshot retirement, or live provisioning and restart.
 
@@ -778,5 +779,26 @@ Source tests must prove:
 
 Current evidence is a five-test source suite with an injected converter and path
 inspector. It does not prove combined guest LocalSystem DPAPI/DACL execution,
-configuration ACL/TOCTOU behavior, protected-only runtime reads, startup order,
+configuration ACL/TOCTOU behavior, live protected-only runtime reads, startup order,
 crash/power-loss recovery, secure retirement, or live restart.
+
+## 34. Protected-only guest KVP secret reader
+
+Source tests must prove:
+
+- exact LocalSystem is checked before reader path or store access;
+- runtime configuration and secret use their literal fixed production paths;
+- Config-root and secret-file reparse points deny before store access;
+- the store receives the exact Field generation and key ID;
+- only bounded printable ASCII plaintext returned by the protected store is
+  accepted, invalid returned buffers are zeroed, and no file-content fallback
+  can occur;
+- the guest emitter uses the shared strict configuration loader, calls the
+  production DPAPI/DACL reader, and zeroes its loaded byte buffer on termination;
+- host-side verification remains a separate secret lifecycle and never attempts
+  to decrypt guest-machine ciphertext.
+
+Current evidence is a five-test reader suite plus compiled emitter wiring. It
+does not prove the combined LocalSystem DPAPI/DACL path inside a guest, managed-
+string retirement, configuration/secret TOCTOU resistance, protection-command
+startup ordering, restart, crash/power loss, or host protected-key storage.

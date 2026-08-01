@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -52,96 +53,109 @@ public static class FieldKvpRuntime
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Field KVP runtime requires Windows.");
-        var configuration = ReadConfiguration(configurationPath);
-        var secret = ReadSecret(configuration.SecretPath);
-        var bootId = Guid.NewGuid();
-        long heartbeatSequence = 0;
+        var callerSid = WindowsIdentity.GetCurrent().User?.Value;
+        FieldGuestServiceHost.AssertSystemIdentity(callerSid);
+        var configuration = FieldChannelSecretProtectionCommand.ReadValidatedRuntimeConfiguration(
+            FieldChannelSecretProtectionCommand.ProductionConfigRoot,
+            configurationPath,
+            callerSid);
+        var secretBytes = ProtectedFieldKvpSecretReader.CreateProduction().Read(configurationPath, configuration, callerSid);
 
-        using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
-            ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
-
-        WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
-            new Dictionary<string, object?>
-            {
-                ["agentId"] = configuration.AgentId,
-                ["bootId"] = bootId.ToString(),
-                ["transport"] = "hyperv_kvp",
-            }));
-
-        // Sent without runtime attestation: the heartbeat has not started, so
-        // claiming heartbeat_started here would be false rather than merely
-        // incomplete. The host evaluator reports not_ready until the completing
-        // report below arrives.
-        var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
-        WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
-        var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
-        var heartbeatStarted = false;
-        var lastSecureDesktopActive = false;
-
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            if (DateTimeOffset.UtcNow >= nextControlRefresh)
-            {
-                WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
-                    new Dictionary<string, object?>
-                    {
-                        ["agentId"] = configuration.AgentId,
-                        ["bootId"] = bootId.ToString(),
-                        ["transport"] = "hyperv_kvp",
-                    }));
-                bootstrap = ReadBootstrapStatus(
-                    configuration.BootstrapReportPath,
-                    heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
-                WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
-                nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
-            }
-            var activeSessionId = GetActiveInteractiveSessionId();
-            var locked = IsSessionLocked(activeSessionId);
-            var secureDesktop = Process.GetProcessesByName("consent").Any(process => process.SessionId == activeSessionId);
-            var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
-            var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
-            var process = Process.GetCurrentProcess();
-            var heartbeat = new Dictionary<string, object?>
-            {
-                ["contractVersion"] = 1,
-                ["field"] = new Dictionary<string, object?>
-                {
-                    ["fieldId"] = configuration.Field.FieldId.ToString(),
-                    ["fieldGeneration"] = configuration.Field.FieldGeneration,
-                },
-                ["agentId"] = configuration.AgentId,
-                ["bootId"] = bootId.ToString(),
-                ["sequence"] = heartbeatSequence++,
-                ["observedAt"] = WireDate(DateTimeOffset.UtcNow),
-                ["lifecycle"] = desktopReady ? "ready" : "provisioning",
-                ["desktopReady"] = desktopReady,
-                ["sessionLocked"] = locked,
-                ["secureDesktopActive"] = secureDesktop,
-                ["inputQueueDepth"] = 0,
-                ["pendingCommandCount"] = 0,
-                ["workingSetBytes"] = process.WorkingSet64,
-            };
-            WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
-                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
-            lastSecureDesktopActive = secureDesktop;
+            var secret = Encoding.ASCII.GetString(secretBytes);
+            var bootId = Guid.NewGuid();
+            long heartbeatSequence = 0;
+            using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
+                ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
 
-            // The first heartbeat is the evidence for heartbeat_started, so the
-            // completing bootstrap report is sent immediately after it rather
-            // than waiting up to four minutes for the next control refresh.
-            if (!heartbeatStarted)
+            WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
+                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
+                new Dictionary<string, object?>
+                {
+                    ["agentId"] = configuration.AgentId,
+                    ["bootId"] = bootId.ToString(),
+                    ["transport"] = "hyperv_kvp",
+                }));
+
+            // Sent without runtime attestation: the heartbeat has not started, so
+            // claiming heartbeat_started here would be false rather than merely
+            // incomplete. The host evaluator reports not_ready until the completing
+            // report below arrives.
+            var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
+            WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+            var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
+            var heartbeatStarted = false;
+            var lastSecureDesktopActive = false;
+
+            while (!cancellationToken.IsCancellationRequested)
             {
-                heartbeatStarted = true;
-                bootstrap = ReadBootstrapStatus(
-                    configuration.BootstrapReportPath,
-                    new FieldRuntimeAttestation(secureDesktop, true));
-                WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                if (DateTimeOffset.UtcNow >= nextControlRefresh)
+                {
+                    WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
+                        new Dictionary<string, object?>
+                        {
+                            ["agentId"] = configuration.AgentId,
+                            ["bootId"] = bootId.ToString(),
+                            ["transport"] = "hyperv_kvp",
+                        }));
+                    bootstrap = ReadBootstrapStatus(
+                        configuration.BootstrapReportPath,
+                        heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
+                    WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                    nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
+                }
+                var activeSessionId = GetActiveInteractiveSessionId();
+                var locked = IsSessionLocked(activeSessionId);
+                var secureDesktop = Process.GetProcessesByName("consent").Any(process => process.SessionId == activeSessionId);
+                var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
+                var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
+                var process = Process.GetCurrentProcess();
+                var heartbeat = new Dictionary<string, object?>
+                {
+                    ["contractVersion"] = 1,
+                    ["field"] = new Dictionary<string, object?>
+                    {
+                        ["fieldId"] = configuration.Field.FieldId.ToString(),
+                        ["fieldGeneration"] = configuration.Field.FieldGeneration,
+                    },
+                    ["agentId"] = configuration.AgentId,
+                    ["bootId"] = bootId.ToString(),
+                    ["sequence"] = heartbeatSequence++,
+                    ["observedAt"] = WireDate(DateTimeOffset.UtcNow),
+                    ["lifecycle"] = desktopReady ? "ready" : "provisioning",
+                    ["desktopReady"] = desktopReady,
+                    ["sessionLocked"] = locked,
+                    ["secureDesktopActive"] = secureDesktop,
+                    ["inputQueueDepth"] = 0,
+                    ["pendingCommandCount"] = 0,
+                    ["workingSetBytes"] = process.WorkingSet64,
+                };
+                WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
+                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
+                lastSecureDesktopActive = secureDesktop;
+
+                // The first heartbeat is the evidence for heartbeat_started, so the
+                // completing bootstrap report is sent immediately after it rather
+                // than waiting up to four minutes for the next control refresh.
+                if (!heartbeatStarted)
+                {
+                    heartbeatStarted = true;
+                    bootstrap = ReadBootstrapStatus(
+                        configuration.BootstrapReportPath,
+                        new FieldRuntimeAttestation(secureDesktop, true));
+                    WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                }
+                await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
             }
-            await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(secretBytes);
         }
     }
 

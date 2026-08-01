@@ -151,8 +151,9 @@ file, applies and verifies a non-inherited DACL containing only LocalSystem and
 Built-in Administrators, then atomically renames it. Reads verify that DACL and
 the public binding before decryption. LocalMachine DPAPI is not a defense against
 an administrator or SYSTEM; the DACL and Field isolation are required parts of
-the boundary. This primitive is not wired to provisioning, the KVP runtime, the
-rotation coordinator, or MCP. Because an offline host cannot create guest-
+the boundary. This primitive is wired only to the explicit conversion command
+and protected guest KVP reader; it is not wired to provisioning, the rotation
+coordinator, or MCP. Because an offline host cannot create guest-
 machine DPAPI ciphertext, conversion/provisioning must eventually execute under
 the authenticated guest LocalSystem service and must not retain plaintext.
 
@@ -176,6 +177,22 @@ converter receipt. It is not invoked by ordinary KVP startup, the guest service,
 or provisioning. Atomic replacement removes plaintext from the active file
 namespace but does not promise forensic secure erasure of prior filesystem
 blocks or snapshots.
+
+The guest KVP emitter uses `ProtectedFieldKvpSecretReader`. Before configuration
+access the runtime verifies its real process SID is LocalSystem and reuses the
+command's bounded, duplicate-rejecting, reparse-aware strict configuration
+loader. The reader then requires the literal runtime-config and channel-secret
+paths, denies Config or secret reparse points, and loads only through the
+Field/generation/key-bound protected store. Returned bytes must be bounded printable ASCII for cross-
+language channel compatibility and are zeroed when the emitter exits. There is
+no plaintext fallback. The current string-based channel-authentication API still
+creates a managed string that cannot be deterministically zeroed; a future byte-
+key API should remove that residual copy.
+
+Host-side KVP observation is a different authority and machine-protection
+domain. It still uses its separately provisioned host verification secret; it
+must not attempt to decrypt guest-machine DPAPI ciphertext. Host protected-key
+storage and rotation remain an independent required slice.
 
 ## Field policy
 

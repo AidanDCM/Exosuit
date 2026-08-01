@@ -33,19 +33,35 @@ public sealed class FieldChannelSecretProtectionCommand
         string? callerSid,
         DateTimeOffset? now = null)
     {
+        var configuration = ReadValidatedRuntimeConfiguration(
+            _configRoot, runtimeConfigurationPath, callerSid, _pathInspector);
+        return _converter.Convert(configuration.SecretPath, configuration.Field, configuration.KeyId, callerSid, now);
+    }
+
+    internal static FieldKvpRuntimeConfiguration ReadValidatedRuntimeConfiguration(
+        string configRoot,
+        string runtimeConfigurationPath,
+        string? callerSid,
+        IFieldChannelSecretPathInspector? pathInspector = null)
+    {
         FieldGuestServiceHost.AssertSystemIdentity(callerSid);
-        var fullConfigPath = ValidateRuntimeConfigurationPath(runtimeConfigurationPath);
-        if (!Directory.Exists(_configRoot)) throw new InvalidOperationException("Field Config root does not exist.");
-        if (_pathInspector.IsReparsePoint(_configRoot)) throw new InvalidOperationException("Field Config root cannot be a reparse point.");
+        if (string.IsNullOrWhiteSpace(configRoot)) throw new ArgumentException("A Field Config root is required.", nameof(configRoot));
+        var fullConfigRoot = Path.GetFullPath(configRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (Path.GetPathRoot(fullConfigRoot) == fullConfigRoot)
+            throw new ArgumentException("The Field Config root cannot be an entire drive.", nameof(configRoot));
+        var inspector = pathInspector ?? new FileSystemFieldChannelSecretPathInspector();
+        var fullConfigPath = ValidateRuntimeConfigurationPath(fullConfigRoot, runtimeConfigurationPath);
+        if (!Directory.Exists(fullConfigRoot)) throw new InvalidOperationException("Field Config root does not exist.");
+        if (inspector.IsReparsePoint(fullConfigRoot)) throw new InvalidOperationException("Field Config root cannot be a reparse point.");
         if (!File.Exists(fullConfigPath)) throw new InvalidOperationException("Field runtime configuration is missing.");
-        if (_pathInspector.IsReparsePoint(fullConfigPath)) throw new InvalidOperationException("Field runtime configuration cannot be a reparse point.");
+        if (inspector.IsReparsePoint(fullConfigPath)) throw new InvalidOperationException("Field runtime configuration cannot be a reparse point.");
 
         var configuration = ReadStrictConfiguration(fullConfigPath);
         FieldKvpRuntime.ValidateConfiguration(configuration);
-        var expectedSeedPath = Path.Combine(_configRoot, SeedFileName);
+        var expectedSeedPath = Path.Combine(fullConfigRoot, SeedFileName);
         if (!string.Equals(configuration.SecretPath, expectedSeedPath, StringComparison.Ordinal))
             throw new InvalidOperationException("Field runtime configuration must bind the exact channel-secret seed path.");
-        return _converter.Convert(configuration.SecretPath, configuration.Field, configuration.KeyId, callerSid, now);
+        return configuration;
     }
 
     public static FieldChannelSecretSeedConversionResult RunProduction(string runtimeConfigurationPath)
@@ -62,10 +78,10 @@ public sealed class FieldChannelSecretProtectionCommand
     public static string SerializeResult(FieldChannelSecretSeedConversionResult result) =>
         JsonSerializer.Serialize(result, StrictJson);
 
-    private string ValidateRuntimeConfigurationPath(string path)
+    private static string ValidateRuntimeConfigurationPath(string configRoot, string path)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("A Field runtime configuration path is required.", nameof(path));
-        var expectedPath = Path.Combine(_configRoot, RuntimeConfigurationFileName);
+        var expectedPath = Path.Combine(configRoot, RuntimeConfigurationFileName);
         if (!string.Equals(path, expectedPath, StringComparison.Ordinal))
             throw new InvalidOperationException("Field channel-secret protection requires the exact Config/guest-runtime.json path.");
         var fullPath = Path.GetFullPath(path);
