@@ -1472,6 +1472,8 @@ Prove creation, start, stop, rollback, destruction, and replacement of one dispo
 ### Deliverables
 
 - approved base-image registry entry and digest;
+- owner-installed, expiring local lifecycle-service policy with fixed script/configuration digests;
+- non-model-facing service queue limited to exact-generation provision, authenticated read-only observation, and destruction;
 - immutable parent VHDX;
 - disposable differencing OS overlay;
 - separate disposable task disk;
@@ -1488,6 +1490,10 @@ Prove creation, start, stop, rollback, destruction, and replacement of one dispo
 ### Failure injection
 
 - wrong image digest;
+- altered installed lifecycle script or host configuration;
+- stale, replayed, future-dated, wrong-policy, or wrong-generation service job;
+- unexpected job-package entry, reparse point, or active-Field capacity overflow;
+- service stop during lifecycle execution;
 - existing VM name;
 - existing generation directory;
 - wrong switch type;

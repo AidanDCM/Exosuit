@@ -119,3 +119,22 @@ The coordinator is `in_progress` in the master roadmap with no hosted CI evidenc
 **Scope limit:** this controls **exposure only**. It is not a security boundary for the coordinator's behavior. Workflow and agent state still hydrate under `core`, and every coordinator policy, approval, and verification requirement is unchanged in both modes. Hiding a tool must never be treated as a substitute for its safety controls.
 
 **Consequences:** Phase 1 acceptance now runs against thirteen tools, and the runbook allowlist, `docs/CODEX_HANDOFF.md`, `README.md`, and `docs/ARCHITECTURE.md` all state that. Coordinator acceptance belongs to Phase 2 and needs `EXOSUIT_MCP_SURFACE=full` plus its own promotion gate. `tests/mcpProtocol.test.ts` opts into `full` explicitly because it asserts the complete surface.
+
+## 2026-08-02 — Install a narrow Field owner lifecycle service, not a privileged shell
+
+**Decision:** Accelerate development with a separate LocalSystem service whose owner-
+installed standing policy permits only exact-generation Field provisioning,
+authenticated read-only observation, and destruction through fixed, hash-bound scripts and observer. The service has no MCP or network
+surface and cannot accept an executable, script, argument list, policy mutation,
+consent, recording, key, export, mode, or full-control operation.
+
+**Reason:** Repeated UAC launches and manual lifecycle handoffs dominate live evidence
+time, while the full local source suite takes only minutes. A bounded service preserves
+the existing `field_service` authority distinction and lets one reviewed installation
+replace repeated elevation without giving the pilot administrative authority.
+
+**Consequences:** Installation/policy replacement remains an elevated owner action;
+jobs are fresh, exact-generation, capacity-bound proposals to the service. Installed
+inputs are verified before every job. Static/unit or successful installation evidence
+does not promote L1-L3; live lifecycle, tamper, cancellation, immutability, destruction,
+and rollback evidence remains mandatory. Uninstall preserves sanitized evidence.

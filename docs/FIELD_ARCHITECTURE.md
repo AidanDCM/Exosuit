@@ -226,6 +226,32 @@ A policy is created outside the pilot and bound to one Field generation. It defi
 
 The pilot may operate within policy but cannot expand it.
 
+## Local Field owner lifecycle service
+
+The acceleration control plane is a separate host-side service authority. The owner
+installs or replaces its policy through one UAC-approved installation transaction.
+The policy expires within 180 days and fixes the owner SID, Field storage root,
+installed host configuration digest, installed lifecycle-script digests, allowed
+operations, development-access allowance, active-Field bound, and job freshness
+window.
+
+The service is not the Glove, guest agent, pilot, MCP gateway, or Field policy issuer.
+It has no network or MCP listener. Its only v1 operations are `provision`, authenticated
+read-only `observe`, and `destroy`, each bound to an exact Field ID and generation. It derives typed lifecycle
+confirmations itself and invokes only fixed installed PowerShell scripts and a fixed
+compiled observer. A
+job cannot name a command, executable, script, host configuration, evidence root, or
+storage root. Installed inputs are hash-verified before every job.
+
+The owner policy is standing pre-authorization for bounded development lifecycle
+execution; it is not consent or operating authority. The service cannot enter Teach,
+Shadow, Assisted, or Pilot mode; create or expand policy; grant recording consent;
+rotate keys; delete demonstrations; approve exports; enable full control; or weaken
+emergency stop. Job replay, expiry, future time, policy mismatch, generation mismatch,
+unexpected files, reparse points, and capacity overflow fail closed. Stopping the
+service cancels and kills its current lifecycle child; Glove and physical emergency
+stop remain independent.
+
 ## Operating modes
 
 ### Teach Mode

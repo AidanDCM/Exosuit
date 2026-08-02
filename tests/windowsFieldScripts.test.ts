@@ -135,6 +135,57 @@ $passed = if ($unlocked) { 'true' } else { 'false' }
 }
 
 describe("Windows Field administration scripts", () => {
+  it("installs a narrow hash-bound Field owner service with one visible UAC launch", async () => {
+    const show = await script("Show-ExosuitFieldOwnerInstallPlan.ps1");
+    const start = await script("Start-ExosuitFieldOwnerInstall.ps1");
+    const install = await script("Install-ExosuitFieldOwnerService.ps1");
+    const submit = await script("Submit-ExosuitFieldOwnerJob.ps1");
+    const uninstall = await script("Uninstall-ExosuitFieldOwnerService.ps1");
+
+    expect(show).toContain("arbitraryCommandExecution = $false");
+    expect(show).toContain("pilotMayChangePolicy = $false");
+    expect(show).toContain("recordingAuthority = $false");
+    expect(show).toContain("keyAuthority = $false");
+    expect(show).toContain("exportAuthority = $false");
+    expect(show).not.toContain("Start-Process");
+    expect(show).not.toMatch(/\bNew-VM\b|\bRemove-VM\b|\bStop-VM\b/);
+
+    expect(start.match(/-Verb RunAs/g)?.length).toBe(1);
+    expect(start).toContain("no UAC prompt was opened");
+    expect(start).toContain("Opening one Windows UAC prompt");
+    expect(start).not.toContain("Invoke-Expression");
+    expect(start).toContain("-EncodedCommand");
+    expect(start).toContain("Elevated installer changed after owner review.");
+    expect(start).toContain("-p:PublishSingleFile=true");
+
+    expect(install).toContain("serviceIdentity = 'LocalSystem'");
+    expect(install).toContain("policyChangeRequiresElevation = $true");
+    expect(install).toContain("Get-Digest $pair.Key");
+    expect(install).toContain("Field owner installation plan changed after owner review.");
+    expect(install).toContain("Installed Field owner input digest is invalid");
+    expect(install).toContain("*S-1-5-18:(OI)(CI)F");
+    expect(install).toContain("*S-1-5-32-544:(OI)(CI)F");
+    expect(install).toContain("@('provision', 'observe', 'destroy')");
+    expect(install).not.toContain("Invoke-Expression");
+
+    expect(submit).toContain("sourceHead = $head");
+    expect(submit).toContain("Queue\\Pending");
+    expect(submit).toContain(".staging-");
+    expect(submit).toContain("Move-Item -LiteralPath $staging -Destination $destination");
+    expect(submit).not.toContain("Start-Process");
+    expect(submit).not.toContain("Invoke-Expression");
+
+    expect(uninstall).toContain("UNINSTALL EXOSUIT FIELD OWNER SERVICE");
+    expect(uninstall).toContain("evidencePreserved = $true");
+    expect(uninstall).not.toMatch(/Remove-Item[^\n]*(Fields|Images|base|personal)/i);
+
+    const exactRunner = await script("Invoke-ExosuitFieldValidation.ps1");
+    expect(exactRunner).toContain("Resolve-DotnetSdk");
+    expect(exactRunner).toContain("& $dotnet restore");
+    expect(exactRunner).toContain("& $dotnet build");
+    expect(exactRunner).toContain("& $dotnet test");
+  });
+
   it("keeps the plan resolver non-mutating", async () => {
     const content = await script("Show-ExosuitFieldProvisioningPlan.ps1");
     expect(content).toContain("applySupportedByThisScript = $false");
@@ -536,7 +587,10 @@ describe("Windows Field administration scripts", () => {
     const neverUnlocked = await runGuestStartupHarness("never_unlocked");
     expect(neverUnlocked.status).not.toBe(0);
     expect(neverUnlocked.calls).toEqual(["bootstrap", "protect", "guest", "bootstrap", "stop"]);
-  }, 60_000);
+  // Seven isolated Windows PowerShell child processes execute product deadlines
+  // internally. This outer harness timeout only bounds aggregate process startup
+  // under host load; it does not relax any launcher or desktop-ready deadline.
+  }, 120_000);
 
   windowsIt("normalizes Windows PowerShell JSON arrays before indexing KVP verification results", () => {
     const command = [

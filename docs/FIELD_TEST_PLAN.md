@@ -124,6 +124,28 @@ Required scenarios:
 
 The source implementation now includes a bounded, atomic, integrity-protected snapshot for registry records, policy bindings, and the complete hash-linked audit chain. Restart, missing-file, tamper, duplicate-binding, broken-chain, and size-bound cases are covered with a fake provider. Production still requires transactional live-provider checkpoint/reconciliation and crash/failure-injection evidence; a snapshot alone does not prove that a Hyper-V side effect and local state committed together.
 
+### Local owner lifecycle service
+
+Source and installation tests must prove:
+
+- LocalSystem service identity and separate owner/service authority;
+- an expiring owner policy no longer than 180 days;
+- exact installed host-config and lifecycle-script hashes before every job;
+- only `provision`, authenticated read-only `observe`, and `destroy` operations;
+- exact Field ID/generation, policy ID, source head, timestamps, and plan digest;
+- no arbitrary command, executable, script path, policy, consent, recording, key,
+  export, mode, full-control, or MCP field;
+- atomic package publication and duplicate/replay denial;
+- job-package and guest-seed reparse denial;
+- active-Field capacity denial;
+- process-tree cancellation when the service stops;
+- removal of the exact consumed job package without claiming forensic erasure;
+- uninstall confinement and evidence preservation.
+
+Live installation is F4 host evidence only. It does not promote Field lifecycle until
+one exact provision/destroy run proves installed hashes, generation confinement, base
+immutability, evidence, cancellation, and rollback behavior.
+
 ## 7. Storage and disk identity
 
 ### Immutable base

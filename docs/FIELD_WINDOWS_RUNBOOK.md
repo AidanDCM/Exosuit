@@ -249,6 +249,66 @@ It may remove only:
 
 It must not remove the base image or personal-state registry objects. It refuses deletion through a reparse point.
 
+## Installing the accelerated Field owner service
+
+Run all source gates before installation. The launcher publishes the service and the
+fixed compiled KVP observer, displays the complete expiring owner policy, and opens
+exactly one UAC prompt:
+
+```powershell
+.\scripts\windows\Start-ExosuitFieldOwnerInstall.ps1 `
+  -HostConfigPath .\vm\field-host-config.local.json `
+  -ValidityDays 180 `
+  -MaxActiveFields 2 `
+  -AllowDevelopmentAccess
+```
+
+The installation copies fixed lifecycle scripts, the compiled observer, and a snapshot
+of the host configuration beneath administrator/SYSTEM-owned roots. Only the owner SID
+receives Modify access to `Queue\Pending`. Policy replacement requires another elevated
+installation; do not edit installed policy or binaries in place.
+
+Submit a provision job without elevation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation provision `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -PlanPath '<plan.json>' `
+  -GuestSeedDirectory '<seed-directory>' `
+  -DevelopmentAccess `
+  -Wait
+```
+
+Authenticated KVP observation uses a copied host runtime configuration and host secret.
+The submitter rewrites the copied secret path to the exact protected processing package;
+the service invokes only its hash-bound observer and deletes the consumed exact package
+from the active namespace after a terminal result. Do not claim forensic secure erase.
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation observe `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -RuntimeConfigPath '<host-runtime.json>' `
+  -HostSecretPath '<host-secret.txt>' `
+  -Wait
+```
+
+Destroy remains confined to the exact disposable generation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation destroy `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -Wait
+```
+
+Stop `ExosuitFieldOwner` to disable new jobs immediately. To remove the service, use an
+elevated owner console and the exact uninstall phrase documented in the owner manual.
+
 ## Protected-secret startup preflight
 
 Before a live protected-secret guest attempt, run the Windows Field script test

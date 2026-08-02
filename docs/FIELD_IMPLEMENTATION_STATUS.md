@@ -2,7 +2,7 @@
 
 **Status authority for current Field code:** this file  
 **Branch:** `codex/unify-glove-field`  
-**Updated:** 2026-08-01
+**Updated:** 2026-08-02
 **Planning authority:** `docs/MASTER_SYSTEM_ROADMAP.md` and `docs/FIELD_ARCHITECTURE.md`
 
 ## Evidence warning
@@ -47,7 +47,7 @@ path live, so v19 remains unpromoted.
 | lifecycle and Glove binding | `fieldRegistry.ts`, `fieldManager.ts`, `fieldManagerStore.ts` | fake lifecycle, restart, integrity, and audit-chain tests | durable snapshot primitive; fake provider |
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
 | immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
-| local admin authority | `fieldAdminAuthority.ts` | model/service/owner deny tests | no local UI/transport |
+| local admin authority | `fieldAdminAuthority.ts`, `apps/field-owner-service`, owner-service Windows scripts | model/service/owner deny tests; strict policy/job/command tests | source and local installation path; live install/lifecycle evidence pending |
 | authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests, shared fixture, v13 development KVP evidence | production key/rotation/repeatability pending |
 | channel-key rotation coordinator | `fieldChannelKeyRotation.ts` | owner/model/service, transaction, reconciliation, rollback, redaction, hydration, and old-key rejection tests | fake provider only; no protected key store or live ceremony |
 | protected rotation metadata store | `fieldChannelKeyRotationStore.ts` | HMAC, corruption/wrong-key/cross-generation/legacy/oversize, atomic replacement tests | pure file component; integrity-secret protection and Windows ACL review pending |

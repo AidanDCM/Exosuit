@@ -157,6 +157,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - artifact broker
 - Field audit
 - Field emergency stop integration
+- local Field owner lifecycle service with fixed job vocabulary
 
 ## Rejected shortcuts
 
@@ -176,6 +177,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - broad writable host drive mapping,
 - ordinary export of sensitive or untrusted artifacts,
 - arbitrary shell provisioning through MCP,
+- generic privileged broker or user-supplied service command/script path,
 - calling contract tests Hyper-V validation,
 - calling Teach recordings Pilot validation,
 - optimizing behavioral imitation for covert impersonation or security-evasion claims.

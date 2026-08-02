@@ -54,6 +54,20 @@ Use this sequence unless a recorded architecture decision changes it:
 
 Do not combine first live recording, first visual capture, first physical input, first autonomous policy, and first real-account task into one slice.
 
+### Accelerated build fabric
+
+Every active slice is declared in `development/current-slice.json`. Run
+`npm run build:fast` for non-promotional working-tree feedback, then run the complete
+`npm run build:exact` evidence runner against the exact review head. Test selection or
+parallelization is an inner-loop optimization only; it never waives a required command.
+
+The host Field owner service is a separate service authority. It may execute only an
+owner-preauthorized exact-generation provision, authenticated read-only observation, or destruction job. Do not add a shell,
+command string, script path, host-config path, recording operation, key operation,
+export operation, policy mutation, mode transition, or MCP endpoint. Its policy and
+installed scripts must remain admin/SYSTEM writable only and hash-bound. A policy
+replacement requires elevation and must retain a bounded expiry.
+
 ## Component naming
 
 Use explicit names:

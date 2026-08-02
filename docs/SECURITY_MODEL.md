@@ -37,6 +37,17 @@ Only the provider can touch the desktop. Providers expose a small semantic inter
 
 The panel is loopback-only and uses a per-process CSRF token. It can approve or deny proposals, change among limited modes, and emergency-stop. It cannot enable full control or skill autopilot.
 
+### Field owner lifecycle service
+
+The host may run a separate LocalSystem service under an owner-installed, expiring
+standing policy. It has no MCP/network surface and accepts only exact-generation
+provision, authenticated read-only observation, and destruction packages through a local queue. Policy and installed lifecycle
+inputs are writable only by SYSTEM/Administrators and are hash-checked before every
+job. Queue submission does not create policy or consent: the service independently
+enforces the fixed owner policy. Unknown operations, stale/replayed jobs, unexpected
+files, reparse points, and capacity overflow fail closed. The service cannot operate
+the desktop and is not part of the emergency-stop dependency chain.
+
 ### Application-map storage
 
 Application maps are local advisory memory. Their directory is configured locally. A map cannot carry approval, current element IDs, values, screenshots, or a command to execute. Hydrated files must satisfy the current schema before use.

@@ -18,6 +18,19 @@ The repository contains Field contracts, lifecycle rules, policy/attestation bin
 
 It does **not** yet record real Teach input, capture the Windows screen, process demonstrations, learn the owner's behavior, run a Shadow predictor, or allow ChatGPT to operate a production Field. The v13 proof used development access and is not owner or production acceptance.
 
+### One-UAC development lifecycle service
+
+The development build can install a local Windows service after displaying its exact
+policy and one UAC prompt. The installed service runs as LocalSystem but is limited to
+creating, authentically observing, and destroying exact disposable Field generations through fixed, hash-checked
+scripts. It is not exposed to ChatGPT or MCP and cannot approve recording, modes, keys,
+exports, policies, personal-state deletion, or full control.
+
+The standing policy expires, can bound concurrent Fields, and can be disabled by
+stopping the `ExosuitFieldOwner` service. Uninstall requires the exact phrase
+`UNINSTALL EXOSUIT FIELD OWNER SERVICE`; uninstall preserves sanitized evidence while
+removing the service, executable, policy, host-config copy, and queue.
+
 ## Planned Field modes
 
 ### Teach Mode

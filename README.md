@@ -137,6 +137,18 @@ On an authenticated Windows checkout of the exact branch head:
 
 This runner is intended to preserve exact evidence for repository validation, the master-plan validator, Field validation, TypeScript, tests, builds, PowerShell parsing, .NET, and the read-only Hyper-V host check.
 
+For working-tree feedback, `npm run build:fast` runs the independent contract and
+typecheck lanes concurrently and writes non-promotional evidence beneath
+`artifacts/build-fabric`. The active slice contract is
+`development/current-slice.json`. The fast runner never substitutes for the complete
+exact-head runner.
+
+The optional accelerated Field owner service is installed through one reviewed UAC
+transaction documented in `docs/FIELD_WINDOWS_RUNBOOK.md`. Its expiring standing policy
+allows only exact-generation provisioning, authenticated read-only KVP observation, and
+destruction through fixed hash-bound components. It has no MCP surface and grants no
+desktop, recording, consent, key, export, or policy authority.
+
 Hosted GitHub jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no logs. That is an infrastructure block—not a repository pass or failure.
 
 ## Current MCP surface
