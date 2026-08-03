@@ -33,13 +33,17 @@ function Invoke-Icacls([string[]]$Arguments) {
     & "$env:SystemRoot\System32\icacls.exe" @Arguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to establish the Field owner service ACL.' }
 }
-function Grant-OwnerPathAccess([string]$Path, [string]$OwnerSid, [Security.AccessControl.FileSystemRights]$Rights) {
+function Grant-OwnerPathAccess(
+    [string]$Path,
+    [string]$OwnerSid,
+    [Security.AccessControl.FileSystemRights]$Rights,
+    [Security.AccessControl.InheritanceFlags]$Inheritance = [Security.AccessControl.InheritanceFlags]::None
+) {
     $identity = [Security.Principal.SecurityIdentifier]::new($OwnerSid)
-    $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
     $rule = [Security.AccessControl.FileSystemAccessRule]::new(
         $identity,
         $Rights,
-        $inheritance,
+        $Inheritance,
         [Security.AccessControl.PropagationFlags]::None,
         [Security.AccessControl.AccessControlType]::Allow
     )
@@ -147,16 +151,19 @@ $policy = [ordered]@{
     maxActiveFields = [int]$plan.maxActiveFields
     maxJobAgeSeconds = [int]$plan.maxJobAgeSeconds
 }
-[IO.File]::WriteAllText((Join-Path $dataRoot 'policy.json'), ($policy | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
+$policyPath = Join-Path $dataRoot 'policy.json'
+[IO.File]::WriteAllText($policyPath, ($policy | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
 
 $script:InstallStage = 31
 Invoke-Icacls @($installRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 $script:InstallStage = 32
 Invoke-Icacls @($dataRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 $script:InstallStage = 33
-Grant-OwnerPathAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::Modify)
-Grant-OwnerPathAccess -Path $resultsRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)
-Grant-OwnerPathAccess -Path $evidenceRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)
+$directoryInheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
+Grant-OwnerPathAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::Modify) -Inheritance $directoryInheritance
+Grant-OwnerPathAccess -Path $resultsRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute) -Inheritance $directoryInheritance
+Grant-OwnerPathAccess -Path $evidenceRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute) -Inheritance $directoryInheritance
+Grant-OwnerPathAccess -Path $policyPath -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)
 
 $script:InstallStage = 40
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'

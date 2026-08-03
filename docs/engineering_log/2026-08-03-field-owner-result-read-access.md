@@ -12,7 +12,8 @@ without elevation. No phase promotion is claimed.
 
 This is Field-owned filesystem policy. Pending remains the only owner-writable service
 surface. Results and Evidence gain inherited `ReadAndExecute` for the exact owner SID;
-SYSTEM and Administrators retain write authority. Glove policy, Field identity and
+the exact public `policy.json` gains non-inherited read access; SYSTEM and Administrators
+retain write authority. The adjacent host configuration stays unreadable. Glove policy, Field identity and
 generation, lifecycle vocabulary, recording consent, keys, exports, and MCP authority
 are unchanged.
 

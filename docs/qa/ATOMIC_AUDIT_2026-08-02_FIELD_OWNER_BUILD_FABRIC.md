@@ -49,6 +49,9 @@ stale jobs fail the freshness/generation checks and never gain carry-forward aut
 - Pending queue: owner SID may submit atomic packages; policy is not writable there.
 - Results and sanitized installation evidence: the exact owner SID has inherited
   read/execute access only; it cannot modify service results or evidence.
+- Installed policy: the exact owner SID may read only this public contract so the
+  non-elevated submitter can bind policy ID and operation scope; the adjacent host
+  configuration remains protected.
 - Processing packages: the service atomically claims the submitted name, then copies
   bounded regular files through exclusive handles into a fresh protected job-ID
   directory. It never executes from the submitter-writable tree. Unexpected entries,
