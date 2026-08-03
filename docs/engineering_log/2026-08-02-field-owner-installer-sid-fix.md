@@ -28,6 +28,10 @@ Because the elevated console is intentionally isolated from the non-elevated lau
 the installer now returns a deterministic non-secret stage code for any terminating
 failure. This identifies validation, copy, ACL, SCM, start, or receipt failure without
 writing an elevated diagnostic into a user-controlled path.
+The installer places the numeric stage in one same-process global variable before
+rethrowing, and the hash-bound elevated bootstrap alone translates it into a process
+exit code. This avoids both Windows PowerShell normalizing an `exit` inside a trap and
+stripping custom exception metadata at a script boundary.
 
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those

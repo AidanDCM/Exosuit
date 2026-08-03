@@ -12,8 +12,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:InstallStage = 10
 trap {
-    [Console]::Error.WriteLine("Field owner installation failed at stage $script:InstallStage.")
-    exit $script:InstallStage
+    $global:ExosuitFieldOwnerInstallStage = $script:InstallStage
+    throw
 }
 
 function Read-Json([string]$Path, [int]$Depth) {

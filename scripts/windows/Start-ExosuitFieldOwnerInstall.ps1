@@ -63,8 +63,13 @@ $bootstrap = @"
 `$ErrorActionPreference = 'Stop'
 `$installer = $(Quote-PowerShellLiteral $installer)
 if ((Get-FileHash -LiteralPath `$installer -Algorithm SHA256).Hash.ToLowerInvariant() -cne '$installerDigest') { throw 'Elevated installer changed after owner review.' }
-& `$installer -InstallPlanPath $(Quote-PowerShellLiteral $planPath) -ExpectedInstallPlanSha256 '$planDigest' -PublishDirectory $(Quote-PowerShellLiteral $publish) -ObserverPublishDirectory $(Quote-PowerShellLiteral $observerPublish) -HostConfigPath $(Quote-PowerShellLiteral ([IO.Path]::GetFullPath($HostConfigPath))) -RepositoryRoot $(Quote-PowerShellLiteral $repository) -Confirm:`$false
-if (`$LASTEXITCODE -is [int] -and `$LASTEXITCODE -ne 0) { exit `$LASTEXITCODE }
+try {
+    & `$installer -InstallPlanPath $(Quote-PowerShellLiteral $planPath) -ExpectedInstallPlanSha256 '$planDigest' -PublishDirectory $(Quote-PowerShellLiteral $publish) -ObserverPublishDirectory $(Quote-PowerShellLiteral $observerPublish) -HostConfigPath $(Quote-PowerShellLiteral ([IO.Path]::GetFullPath($HostConfigPath))) -RepositoryRoot $(Quote-PowerShellLiteral $repository) -Confirm:`$false
+} catch {
+    `$stage = `$global:ExosuitFieldOwnerInstallStage
+    if (`$stage -is [int] -and `$stage -ge 10 -and `$stage -le 60) { exit `$stage }
+    exit 1
+}
 "@
 $encodedBootstrap = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($bootstrap))
 $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encodedBootstrap) -PassThru -Wait

@@ -156,6 +156,8 @@ describe("Windows Field administration scripts", () => {
     expect(start).not.toContain("Invoke-Expression");
     expect(start).toContain("-EncodedCommand");
     expect(start).toContain("Elevated installer changed after owner review.");
+    expect(start).toContain("$global:ExosuitFieldOwnerInstallStage");
+    expect(start).toContain("`$stage -ge 10 -and `$stage -le 60");
     expect(start).toContain("-p:PublishSingleFile=true");
 
     expect(install).toContain("serviceIdentity = 'LocalSystem'");
@@ -167,7 +169,7 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
     expect(install).toContain("FileSystemRights]::Modify");
     expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
-    expect(install).toContain('[Console]::Error.WriteLine("Field owner installation failed at stage $script:InstallStage.")');
+    expect(install).toContain("$global:ExosuitFieldOwnerInstallStage = $script:InstallStage");
     for (const stage of [10, 11, 12, 20, 21, 22, 23, 31, 32, 33, 40, 41, 42, 50, 60]) {
       expect(install).toContain(`$script:InstallStage = ${stage}`);
     }
