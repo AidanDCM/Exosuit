@@ -36,6 +36,12 @@ right in addition to Modify; it still grants no ACL/ownership administration. Su
 cleanup preserves and rethrows the original error even if best-effort staging cleanup
 also fails.
 
+Live retry proved owner-side directory rename remained denied. Publication now creates
+the final GUID directory directly and writes a fixed `.ready` marker last. The service
+ignores unready directories and LocalSystem performs the atomic claim rename before the
+existing exclusive protected snapshot. This removes the owner rename dependency without
+expanding operation or policy authority.
+
 ## Security, privacy, and rollback
 
 The owner receives no write/delete permission on Results or Evidence. These locations

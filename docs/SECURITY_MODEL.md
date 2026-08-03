@@ -50,8 +50,12 @@ the desktop and is not part of the emergency-stop dependency chain.
 The exact owner SID may modify only the Pending queue and may read, but not modify, the
 installed public policy file, terminal Results, and sanitized installation Evidence.
 The owner receives no read grant on the installed host configuration.
-Pending includes the narrow child-delete right required for same-parent atomic package
-rename and failed-staging cleanup; it does not grant ACL or ownership control.
+Pending includes the narrow child-delete right required for failed unpublished-package
+cleanup; it does not grant ACL or ownership control.
+Submission publication uses a fixed `.ready` marker written last in the final GUID
+directory. The service ignores unready directories; LocalSystem performs the atomic
+claim rename only after readiness, then executes solely from its exclusive protected
+snapshot.
 
 ### Application-map storage
 

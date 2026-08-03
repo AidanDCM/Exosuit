@@ -196,8 +196,9 @@ describe("Windows Field administration scripts", () => {
 
     expect(submit).toContain("sourceHead = $head");
     expect(submit).toContain("Queue\\Pending");
-    expect(submit).toContain(".staging-");
-    expect(submit).toContain("Move-Item -LiteralPath $staging -Destination $destination");
+    expect(submit).toContain("Join-Path $destination '.ready'");
+    expect(submit).not.toContain(".staging-");
+    expect(submit).not.toContain("Move-Item");
     expect(submit).toContain("$submissionError = $_");
     expect(submit).toContain("throw $submissionError");
     expect(submit).not.toContain("Start-Process");

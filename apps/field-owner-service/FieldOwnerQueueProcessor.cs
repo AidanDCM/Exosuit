@@ -21,6 +21,8 @@ internal sealed class FieldOwnerQueueProcessor
             cancellationToken.ThrowIfCancellationRequested();
             var name = Path.GetFileName(pending);
             if (!Guid.TryParseExact(name, "D", out var packageId)) continue;
+            var readyPath = Path.Combine(pending, ".ready");
+            if (!File.Exists(readyPath) || File.GetAttributes(readyPath).HasFlag(FileAttributes.ReparsePoint)) continue;
             var submissionClaim = Path.Combine(FieldOwnerPaths.PendingRoot, $".claimed-{name}");
             var claimed = Path.Combine(FieldOwnerPaths.ProcessingRoot, name);
             try
@@ -65,9 +67,9 @@ internal sealed class FieldOwnerQueueProcessor
     {
         var expected = operation switch
         {
-            "provision" => new[] { "guest-seed", "job.json", "plan.json" },
-            "observe" => new[] { "host-secret.txt", "job.json", "runtime-config.json" },
-            "destroy" => new[] { "job.json" },
+            "provision" => new[] { ".ready", "guest-seed", "job.json", "plan.json" },
+            "observe" => new[] { ".ready", "host-secret.txt", "job.json", "runtime-config.json" },
+            "destroy" => new[] { ".ready", "job.json" },
             _ => throw new InvalidOperationException("Submitted job operation is unsupported."),
         };
         var actual = Directory.EnumerateFileSystemEntries(root).Select(Path.GetFileName).Order(StringComparer.Ordinal).ToArray();

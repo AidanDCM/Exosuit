@@ -71,6 +71,9 @@ public sealed class FieldOwnerServiceTests
         Assert.Contains("FileShare.None", source, StringComparison.Ordinal);
         Assert.Contains("FileMode.CreateNew", source, StringComparison.Ordinal);
         Assert.Contains("SnapshotSubmission", source, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(pending, \".ready\")", source, StringComparison.Ordinal);
+        Assert.Contains("if (!File.Exists(readyPath)", source, StringComparison.Ordinal);
+        Assert.Contains("\"destroy\" => new[] { \".ready\", \"job.json\" }", source, StringComparison.Ordinal);
         Assert.Contains("if (read > remaining) exceeded = true", source, StringComparison.Ordinal);
         Assert.Contains("if (stdout.Exceeded || stderr.Exceeded)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Invoke-Expression", source, StringComparison.OrdinalIgnoreCase);

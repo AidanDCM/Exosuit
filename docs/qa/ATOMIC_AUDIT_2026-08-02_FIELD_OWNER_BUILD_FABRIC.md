@@ -47,6 +47,8 @@ stale jobs fail the freshness/generation checks and never gain carry-forward aut
 
 - Installed binaries/scripts/configuration: administrator/SYSTEM writable only.
 - Pending queue: owner SID may submit atomic packages; policy is not writable there.
+  Publication becomes visible only when the owner writes the fixed `.ready` marker last;
+  LocalSystem performs the atomic claim rename. Unready GUID directories are ignored.
 - Results and sanitized installation evidence: the exact owner SID has inherited
   read/execute access only; it cannot modify service results or evidence.
 - Installed policy: the exact owner SID may read only this public contract so the

@@ -26,20 +26,19 @@ $head = (& git -C $RepositoryRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $head -notmatch '^[0-9a-f]{40}$') { throw 'Unable to bind the job to an exact source head.' }
 $jobId = [Guid]::NewGuid()
 $pendingRoot = 'C:\ProgramData\Exosuit\FieldOwner\Queue\Pending'
-$staging = Join-Path $pendingRoot ".staging-$($jobId.ToString('D'))"
 $destination = Join-Path $pendingRoot $jobId.ToString('D')
-New-Item -ItemType Directory -Path $staging | Out-Null
+New-Item -ItemType Directory -Path $destination | Out-Null
 try {
     $planDigest = $null
     $runtimeConfigDigest = $null
     $hostSecretDigest = $null
     if ($Operation -ceq 'provision') {
-        Copy-Item -LiteralPath $PlanPath -Destination (Join-Path $staging 'plan.json')
-        $planDigest = (Get-FileHash -LiteralPath (Join-Path $staging 'plan.json') -Algorithm SHA256).Hash.ToLowerInvariant()
-        Copy-Item -LiteralPath $GuestSeedDirectory -Destination (Join-Path $staging 'guest-seed') -Recurse
+        Copy-Item -LiteralPath $PlanPath -Destination (Join-Path $destination 'plan.json')
+        $planDigest = (Get-FileHash -LiteralPath (Join-Path $destination 'plan.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+        Copy-Item -LiteralPath $GuestSeedDirectory -Destination (Join-Path $destination 'guest-seed') -Recurse
     } elseif ($Operation -ceq 'observe') {
-        $runtimeDestination = Join-Path $staging 'runtime-config.json'
-        $secretDestination = Join-Path $staging 'host-secret.txt'
+        $runtimeDestination = Join-Path $destination 'runtime-config.json'
+        $secretDestination = Join-Path $destination 'host-secret.txt'
         Copy-Item -LiteralPath $RuntimeConfigPath -Destination $runtimeDestination
         Copy-Item -LiteralPath $HostSecretPath -Destination $secretDestination
         $runtime = Get-Content -LiteralPath $runtimeDestination -Raw | ConvertFrom-Json
@@ -65,12 +64,12 @@ try {
         hostSecretSha256 = $hostSecretDigest
         developmentAccess = [bool]$DevelopmentAccess
     }
-    [IO.File]::WriteAllText((Join-Path $staging 'job.json'), ($job | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
-    Move-Item -LiteralPath $staging -Destination $destination
+    [IO.File]::WriteAllText((Join-Path $destination 'job.json'), ($job | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $destination '.ready'), $jobId.ToString('D'), [Text.UTF8Encoding]::new($false))
 } catch {
     $submissionError = $_
-    if (Test-Path -LiteralPath $staging) {
-        try { Remove-Item -LiteralPath $staging -Recurse -Force }
+    if (Test-Path -LiteralPath $destination) {
+        try { Remove-Item -LiteralPath $destination -Recurse -Force }
         catch { }
     }
     throw $submissionError
