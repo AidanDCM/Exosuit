@@ -85,15 +85,15 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Rollback itself fails | `failed_rollback_incomplete`, preserve evidence | script | H |
 | Destroy path contains reparse point | refuse deletion | script/static | H |
 | Destroy wrong typed confirmation | refuse | script/static | H |
-| Base image changes after guest use | acceptance failure | design | H |
+| Base image changes after guest use | acceptance failure | v24 remained read-only and digest-identical across exact generation-1/generation-2 lifecycle H | repeated production matrix H |
 | Owner-service policy expired, future-dated, over 180 days, wrong SID, or unknown operation | deny before service/job effect | .NET policy tests | installed-service W/H |
 | Owner-service job stale, replayed, wrong policy, wrong generation, or wrong plan digest | deny before lifecycle command | .NET job/command tests | installed-service W/H |
 | Installed owner-service script or host config changed | service refuses job before process start | .NET digest validation plus installer static tests | installed-file tamper W/H |
 | Owner-service package has unexpected entry or reparse point | deny; do not traverse or execute | .NET command/static tests | NTFS reparse W/H |
-| Active Field bound reached | deny provisioning | .NET source test | multiple-generation H |
+| Active Field bound reached | deny provisioning | .NET source test plus installed-service capacity denial H | production multiple-generation matrix H |
 | Owner service stops during lifecycle child | cancel and kill exact process tree; preserve terminal result | .NET source test | live cancellation H |
-| Windows PowerShell 5.1 receives a string-valued common `Confirm` switch through the native `-File` boundary | lifecycle command fails before mutation; fixed service uses a LocalSystem-only noninteractive flag after exact typed confirmation | S/U plus installed-service pre-effect failure | successful installed provision/destroy H |
-| Installed provisioning script's fixed host-capability dependency is absent or changed | fail before Hyper-V mutation; installer and service policy hash-bind and verify the dependency | installed-service pre-effect failure plus S/U repair | successful installed provision H |
+| Windows PowerShell 5.1 receives a string-valued common `Confirm` switch through the native `-File` boundary | lifecycle command fails before mutation; fixed service uses a LocalSystem-only noninteractive flag after exact typed confirmation | S/U, installed-service pre-effect failure, and successful exact generation-1/generation-2 provision/destroy H | repeated production matrix H |
+| Installed provisioning script's fixed host-capability dependency is absent or changed | fail before Hyper-V mutation; installer and service policy hash-bind and verify the dependency | installed-service pre-effect failure, S/U repair, reviewed reinstall, and successful generation-1/generation-2 provision H | installed-file tamper and production-repeatable H |
 
 ## Teach and visual recording
 

@@ -2,7 +2,7 @@
 
 **Status authority for current Field code:** this file  
 **Branch:** `codex/unify-glove-field`  
-**Updated:** 2026-08-02
+**Updated:** 2026-08-03
 **Planning authority:** `docs/MASTER_SYSTEM_ROADMAP.md` and `docs/FIELD_ARCHITECTURE.md`
 
 ## Evidence warning
@@ -46,8 +46,8 @@ path live, so v19 remains unpromoted.
 | identity, generation, display, policy, attestation | `fieldContracts.ts`, `.NET FieldFoundation.cs` | TS/.NET tests written | no live attestation channel |
 | lifecycle and Glove binding | `fieldRegistry.ts`, `fieldManager.ts`, `fieldManagerStore.ts` | fake lifecycle, restart, integrity, and audit-chain tests | durable snapshot primitive; fake provider |
 | Hyper-V desired state | `fieldProvisioningPlan.ts` | integrity and negative tests | plan only |
-| immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests | unexecuted |
-| local admin authority | `fieldAdminAuthority.ts`, `apps/field-owner-service`, owner-service Windows scripts | model/service/owner deny tests; strict policy/job/command tests | source and local installation path; live install/lifecycle evidence pending |
+| immutable base and disposable OS overlay | provisioning plan and Windows scripts | schema/static tests plus bounded v24 lifecycle/replacement evidence | development L1 provision/destroy passed; production matrix pending |
+| local admin authority | `fieldAdminAuthority.ts`, `apps/field-owner-service`, owner-service Windows scripts | model/service/owner deny tests; strict policy/job/command tests; exact installed L1 lifecycle evidence | constrained installed LocalSystem service passed development provision/destroy/replacement; higher authority remains denied |
 | authenticated channel | `fieldChannel.ts`, `.NET FieldChannelFoundation.cs`, `.NET FieldKvpRuntime.cs` | TS/.NET tests, shared fixture, v13 development KVP evidence | production key/rotation/repeatability pending |
 | channel-key rotation coordinator | `fieldChannelKeyRotation.ts` | owner/model/service, transaction, reconciliation, rollback, redaction, hydration, and old-key rejection tests | fake provider only; no protected key store or live ceremony |
 | protected rotation metadata store | `fieldChannelKeyRotationStore.ts` | HMAC, corruption/wrong-key/cross-generation/legacy/oversize, atomic replacement tests | pure file component; integrity-secret protection and Windows ACL review pending |
@@ -309,6 +309,25 @@ bootstrap precheck and exact secret receipt validation, while continuing the
 unlock bootstrap loop. Timeout and early exit explicitly stop the child. The
 Windows harness passes this ordering and cleanup contract. A rebuilt immutable
 base and fresh generation are required before any live-corrected claim.
+
+### 2026-08-03 constrained owner-service L1 acceptance
+
+Exact clean-head validation passed at `b9ae784` and the reviewed one-UAC installer
+installed policy `3de9c396-5e4c-4266-92fa-4c8990ec6187`. Seven historical exact
+disposable generation roots were reconciled and retired through owner-service jobs;
+registered bases v22-v24 remained read-only and digest-identical.
+
+Fresh development Field `c7dead44-f5e4-48c8-aa2d-a12a8902ea75` generation 1
+passed owner-service provision and exact destroy. Sixty bounded authenticated
+observations all denied readiness because the guest KVP handshake was absent. The
+same Field ID then advanced to generation 2; owner-service provision and exact
+destroy passed, the generation root was removed, active generation roots returned to
+zero, and base v24 retained exact SHA-256
+`62c29338163d108d6262507c05f24f624984bdb8dea512a7077d44584faf7b1d`.
+
+This closes only the bounded development L1 provision/destroy/replacement acceptance
+slice. L3 guest readiness remains failed, no production lifecycle matrix has passed,
+and production remains denied.
 
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 

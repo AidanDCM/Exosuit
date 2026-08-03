@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03
 **Depth:** Level 4 privileged lifecycle invocation
-**Status:** source repair; installed lifecycle retest pending
+**Status:** repaired and passed bounded installed L1 lifecycle retest
 **Master-plan phase:** L1
 
 ## Finding
@@ -49,3 +49,23 @@ been installed. The exact generation root remained absent. The installation plan
 policy contract, installer copy/verification set, and service startup digest validation
 now include that script. This adds no selectable command or job input; it closes the
 fixed provisioning dependency under the existing hash-bound authority.
+
+## Live closure evidence
+
+Exact clean-head validation passed at `b9ae784` with evidence directory
+`artifacts/field-validation/20260803T142921Z`. Reviewed installed policy
+`3de9c396-5e4c-4266-92fa-4c8990ec6187` hash-bound the fixed lifecycle scripts,
+host configuration, host-capability dependency, and observer components.
+
+Installed-service generation-1 provision and destroy jobs succeeded. The same Field
+identity then advanced to generation 2: provision job
+`a106d95f-d554-4fe5-b87a-9060c3958655` and destroy job
+`c9d8a10f-4772-4344-8382-db27650cbd3a` both terminated `succeeded` with exit code
+zero. The generation-2 root contained only VM state, one disposable OS overlay, and
+one disposable task disk. After destruction it was absent, no active generation
+roots remained, and base v24 was still read-only with its exact promoted digest.
+
+Sixty authenticated observation attempts on generation 1 consistently denied
+readiness because `Exosuit.Field.Handshake` was absent. This does not weaken the L1
+lifecycle result, and it is explicitly retained as an unresolved L3 guest-readiness
+failure. No production, recording, input, or higher-mode claim follows.
