@@ -25,6 +25,20 @@ function Invoke-Icacls([string[]]$Arguments) {
     & "$env:SystemRoot\System32\icacls.exe" @Arguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to establish the Field owner service ACL.' }
 }
+function Grant-PendingQueueAccess([string]$Path, [string]$OwnerSid) {
+    $identity = [Security.Principal.SecurityIdentifier]::new($OwnerSid)
+    $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
+    $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+        $identity,
+        [Security.AccessControl.FileSystemRights]::Modify,
+        $inheritance,
+        [Security.AccessControl.PropagationFlags]::None,
+        [Security.AccessControl.AccessControlType]::Allow
+    )
+    $acl = Get-Acl -LiteralPath $Path
+    $acl.SetAccessRule($rule)
+    Set-Acl -LiteralPath $Path -AclObject $acl
+}
 
 $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Field owner service installation requires an elevated local administrator.' }
@@ -122,7 +136,7 @@ $policy = [ordered]@{
 
 Invoke-Icacls @($installRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 Invoke-Icacls @($dataRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
-Invoke-Icacls @($pendingRoot, '/grant', "*$($plan.ownerSid):(OI)(CI)M")
+Grant-PendingQueueAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid)
 
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'
 $binaryPath = '"' + $installedBinary + '" --service'

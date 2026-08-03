@@ -164,7 +164,9 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("Field owner installation plan changed after owner review.");
     expect(install).toContain("Installed Field owner input digest is invalid");
     expect(install).toContain("*S-1-5-18:(OI)(CI)F");
-    expect(install).toContain('"*$($plan.ownerSid):(OI)(CI)M"');
+    expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
+    expect(install).toContain("FileSystemRights]::Modify");
+    expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
     expect(install).toContain("*S-1-5-32-544:(OI)(CI)F");
     expect(install).toContain("@('provision', 'observe', 'destroy')");
     expect(install).not.toContain("Invoke-Expression");

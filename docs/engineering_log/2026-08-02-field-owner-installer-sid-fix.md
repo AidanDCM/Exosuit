@@ -16,10 +16,13 @@ MCP authority. The pending queue remains the only owner-writable service surface
 
 ## Change and evidence
 
-The `icacls` trustee now uses the raw-SID form with a leading `*`. A static regression
-assertion requires the exact grant expression. The first live attempt accepted UAC,
-created protected install/data roots, and failed closed before SCM service creation;
-read-only checks proved that no service existed.
+The first correction used `icacls` raw-SID syntax with a leading `*`, but a second live
+attempt proved that the pending-queue grant still failed before SCM service creation.
+The installer now avoids native account-name translation for this grant: it constructs
+a typed `SecurityIdentifier` and inheritable `FileSystemAccessRule` granting `Modify`
+to the exact reviewed owner SID. Static regression assertions require that typed path.
+Both failed attempts created protected install/data roots and failed closed before SCM
+service creation; read-only checks proved that no service existed.
 
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those
