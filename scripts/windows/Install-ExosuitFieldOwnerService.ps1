@@ -122,7 +122,7 @@ $policy = [ordered]@{
 
 Invoke-Icacls @($installRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 Invoke-Icacls @($dataRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
-Invoke-Icacls @($pendingRoot, '/grant', "$($plan.ownerSid):(OI)(CI)M")
+Invoke-Icacls @($pendingRoot, '/grant', "*$($plan.ownerSid):(OI)(CI)M")
 
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'
 $binaryPath = '"' + $installedBinary + '" --service'
