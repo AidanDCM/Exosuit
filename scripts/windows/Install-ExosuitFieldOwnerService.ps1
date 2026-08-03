@@ -158,9 +158,9 @@ Grant-PendingQueueAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid)
 $script:InstallStage = 40
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'
 $binaryPath = '"' + $installedBinary + '" --service'
-Invoke-Sc @('create', $serviceName, 'binPath=', $binaryPath, 'start=', 'auto')
+New-Service -Name $serviceName -BinaryPathName $binaryPath -StartupType Automatic -DisplayName 'Exosuit Field Owner Authority' | Out-Null
 $script:InstallStage = 41
-Invoke-Sc @('config', $serviceName, 'start=', 'delayed-auto', 'DisplayName=', 'Exosuit Field Owner Authority')
+Invoke-Sc @('config', $serviceName, 'start=', 'delayed-auto')
 $script:InstallStage = 42
 Invoke-Sc @('failure', $serviceName, 'reset=', '86400', 'actions=', 'restart/5000/restart/30000/restart/60000')
 Invoke-Sc @('failureflag', $serviceName, '1')

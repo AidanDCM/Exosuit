@@ -177,8 +177,9 @@ describe("Windows Field administration scripts", () => {
       expect(install).toContain(`$script:InstallStage = ${stage}`);
     }
     expect(install).toContain("*S-1-5-32-544:(OI)(CI)F");
-    expect(install).toContain("@('create', $serviceName, 'binPath=', $binaryPath, 'start=', 'auto')");
-    expect(install).toContain("@('config', $serviceName, 'start=', 'delayed-auto', 'DisplayName=', 'Exosuit Field Owner Authority')");
+    expect(install).toContain("New-Service -Name $serviceName -BinaryPathName $binaryPath -StartupType Automatic -DisplayName 'Exosuit Field Owner Authority'");
+    expect(install).toContain("@('config', $serviceName, 'start=', 'delayed-auto')");
+    expect(install).not.toContain("@('create'");
     expect(install).not.toContain("'obj=', 'LocalSystem'");
     expect(install).toContain("@('provision', 'observe', 'destroy')");
     expect(install).not.toContain("Invoke-Expression");

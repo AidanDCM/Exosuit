@@ -40,6 +40,10 @@ the display name are applied in the subsequent config stage.
 Because stage 40 remained repeatable with the minimal form, SCM failures now return a
 bounded composite integer (`stage * 10000 + nativeCode`). This preserves exact native
 diagnostics without logging command output or machine data.
+Live composite result `401639` proved stage 40 failed with native SCM code 1639
+(`ERROR_INVALID_COMMAND_LINE`). Service creation now uses typed `New-Service` with the
+fixed binary path, Automatic startup, display name, and default LocalSystem identity;
+`sc.exe` remains only for narrow post-creation configuration and recovery settings.
 
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those
