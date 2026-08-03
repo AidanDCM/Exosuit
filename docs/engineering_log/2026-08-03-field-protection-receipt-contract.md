@@ -61,23 +61,48 @@ Commands actually run:
 - `npm run test:field -- --reporter=verbose` after that harness repair: 162/162
   passed under the full Field-suite load.
 
-The final exact-head rerun and live rebuilt-image evidence remain pending at the time
-of this entry and must be claimed only after they actually run.
+The exact-head evidence-preserving runner passed all 15 steps at
+`1327e8572204e953e95e60b3a8b5a0954e4c2f97`; evidence is under
+`artifacts/field-validation/20260803T152940Z`.
+
+A reviewed self-contained agent and immutable base were built from that exact head.
+The agent SHA-256 is
+`54bf4030870f622be6042c216a472fe8934f53ee923a8bb086bbf6f0f72b8207`;
+base `exosuit-field-base-v25` was sealed read-only at SHA-256
+`5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744`.
+Base-build and maintenance-cleanup receipts are under
+`artifacts/local-live/base-v25/`.
+
+Constrained owner policy `1ba343d4-171d-4996-b206-c4913ba2a860` provisioned
+Field `c7dead44-f5e4-48c8-aa2d-a12a8902ea75`, generation 3. Initial observations
+failed closed while first boot had not published a handshake. Exact-disk read-only
+inspection showed the repaired agent and launcher, protected secret envelope, no
+runtime error, and all ten pre-agent bootstrap checks passing. After exact restart,
+observe job `7619475d-3810-4a99-b1bc-58ae7a6fe3f2` authenticated the handshake,
+complete 12-check ready bootstrap, and ready heartbeat. Repeat job
+`8b762b94-be82-4984-8c66-8f61f1b849d0` retained idempotent handshake/bootstrap
+records while heartbeat wire sequence advanced from `1785773057626023` to
+`1785773057626040`.
+
+Destroy job `f917955c-37b6-411f-a04b-14a89d96aa6b` removed only the exact VM and
+generation-3 root. Zero generation roots remained. Base v25 stayed read-only and
+digest-identical. Local evidence is under
+`artifacts/local-live/field-owner-l1/c7dead44-f5e4-48c8-aa2d-a12a8902ea75/generation-3/`.
 
 ## Security, privacy, assumptions, and unvalidated areas
 
 The renamed value is a SHA-256 digest of the protected ciphertext envelope, not the
 secret. No secret, screenshot, UI text, demonstration byte, host token, or Field
 token is logged or committed. Deny-by-default receipt validation is retained. The
-causal conclusion is strongly supported by exact source/evidence agreement, but a
-new guest image is still required to prove it on Windows LocalSystem and Hyper-V.
-Session lock, Secure Desktop, heartbeat loss, replay, overflow, uncertain effects,
-emergency stop, rotation, and production authentication remain unvalidated here.
+repaired receipt boundary is now proven on Windows LocalSystem and Hyper-V in a
+development-access disposable generation. Session lock, Secure Desktop, heartbeat
+loss, overflow, uncertain effects, emergency stop, owner-authorized rotation, and
+production authentication remain unvalidated by this slice.
 
 ## Rollback and next slice
 
 Revert the record-property rename and its tests to restore the previous safe
-pre-emitter denial. Do not reuse or mutate v24. After exact-head validation, build a
-new immutable base from the reviewed commit, then provision a new disposable Field
-generation and require authenticated provisioning, ready transition, restart, exact
-destruction, and unchanged base digest before promotion.
+pre-emitter denial; retire v25 from local host configuration to disable this image.
+Do not reuse or mutate v24. The next slice is the remaining L3 failure matrix:
+locked session, Secure Desktop, heartbeat loss, crash/service recovery, and
+production-authenticated replacement. No production promotion is claimed here.

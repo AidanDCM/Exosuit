@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03  
 **Depth:** Level 4 authenticated guest startup  
-**Status:** source repair; rebuilt-image live proof pending  
+**Status:** development rebuilt-image live proof passed; production promotion denied
 **Master-plan phase:** L2/L3
 
 ## Question
@@ -18,6 +18,13 @@ Yes. The command emitted `protectedEnvelopeSha256`; the launcher accepted only
 The observed v23/v24 state—protected envelope present, complete bootstrap report,
 empty emitter error log, and no handshake—is consistent with rejection between
 protection and emitter start. Verdict: **DENY live promotion; source defect repaired.**
+
+The v25 generation-3 acceptance subsequently authenticated the exact handshake,
+complete ready bootstrap, and ready heartbeat twice through the constrained owner
+service. The second observation retained idempotent control records and advanced the
+heartbeat sequence. Exact destruction removed the disposable generation while the
+read-only base digest remained unchanged. Verdict: **PASS this development receipt
+boundary; DENY production promotion pending the remaining L3 matrix.**
 
 ## Repair properties
 
@@ -37,12 +44,13 @@ protection and emitter start. Verdict: **DENY live promotion; source defect repa
 
 This does not enable input, recording, transfer, policy creation, key rotation,
 attestation issuance, or MCP administration. It changes no host/guest identity or
-storage binding. A malformed or incompatible receipt continues to fail closed. A
-new image and generation are mandatory; v24 remains immutable negative evidence.
+storage binding. A malformed or incompatible receipt continues to fail closed. v24
+remains immutable negative evidence; the separate v25 proof is recorded above.
 
-## Required closure evidence
+## Remaining evidence
 
-Focused and exact-head source gates must pass, followed by a reviewed immutable-base
-build and fresh-generation Hyper-V proof of authenticated handshake, bootstrap,
-heartbeat, lock/Secure Desktop denial, restart behavior, destruction confinement,
-and unchanged base digest. Until then production remains denied.
+Exact-head source gates, reviewed immutable-base build, restart, authenticated
+handshake/bootstrap/heartbeat, repeated observation, destruction confinement, and
+unchanged base digest passed. Lock and Secure Desktop denial, heartbeat loss,
+crash/service recovery, stale-generation replacement, rotation, and production
+authentication remain required. Production remains denied.

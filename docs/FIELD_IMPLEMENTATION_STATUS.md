@@ -344,6 +344,26 @@ property, serializer assertion, and launcher. This is a source repair only. A ne
 immutable base and fresh disposable generation must prove authenticated KVP before
 L3 promotion; v24 is unchanged and remains negative evidence.
 
+### 2026-08-03 v25 repaired-receipt live acceptance
+
+All 15 exact-head validation steps passed at `1327e857` with evidence under
+`artifacts/field-validation/20260803T152940Z`. Immutable base v25 was built from
+that head and sealed read-only at SHA-256
+`5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744`.
+
+Constrained owner-service generation 3 authenticated the repaired LocalSystem
+startup boundary after an exact restart. Two observations verified the exact Field
+ID/generation handshake, a complete 12-check `ready` bootstrap, and a ready,
+desktop-unlocked heartbeat. The retained handshake/bootstrap remained idempotent
+while the heartbeat wire sequence advanced. Exact owner-service destruction removed
+the VM and generation root; zero generation roots remained; v25 stayed read-only
+and digest-identical.
+
+This passes the development L3 protected-receipt/restart/readiness slice only. The
+locked-session, Secure Desktop, heartbeat-loss, crash recovery, stale-generation
+replacement, rotation, and production-authentication gates remain open. Production
+remains denied.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.
