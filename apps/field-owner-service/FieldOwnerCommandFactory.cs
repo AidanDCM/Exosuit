@@ -33,7 +33,7 @@ internal static class FieldOwnerCommandFactory
                 "-TypedConfirmation", $"CREATE FIELD {job.FieldId:D} GENERATION {job.FieldGeneration}",
                 "-GuestSeedDirectory", seedPath,
                 "-EvidenceDirectory", FieldOwnerPaths.EvidenceRoot,
-                "-Confirm:$false");
+                "-OwnerPolicyAuthorized");
             if (job.DevelopmentAccess) startInfo.ArgumentList.Add("-DevelopmentAccess");
         }
         else if (job.Operation == "destroy")
@@ -44,7 +44,7 @@ internal static class FieldOwnerCommandFactory
                 "-HostConfigPath", FieldOwnerPaths.HostConfigPath,
                 "-TypedConfirmation", $"DESTROY FIELD {job.FieldId:D} GENERATION {job.FieldGeneration}",
                 "-EvidenceDirectory", FieldOwnerPaths.EvidenceRoot,
-                "-Confirm:$false");
+                "-OwnerPolicyAuthorized");
         }
         else if (job.Operation == "observe")
         {

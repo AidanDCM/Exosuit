@@ -22,6 +22,9 @@ param(
     [switch]$DevelopmentAccess,
 
     [Parameter()]
+    [switch]$OwnerPolicyAuthorized,
+
+    [Parameter()]
     [string]$EvidenceDirectory = "$env:ProgramData\Exosuit\Evidence"
 )
 
@@ -81,6 +84,11 @@ if ($generation -lt 1) { throw 'Field generation is invalid.' }
 $expectedConfirmation = "CREATE FIELD $fieldId GENERATION $generation"
 if ($Apply -and $TypedConfirmation -cne $expectedConfirmation) {
     throw "Apply requires exact typed confirmation: $expectedConfirmation"
+}
+if ($OwnerPolicyAuthorized) {
+    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    if ($currentSid -cne 'S-1-5-18') { throw 'Owner-policy noninteractive apply requires LocalSystem.' }
+    $ConfirmPreference = 'None'
 }
 
 function Add-GuestSeedToOverlay {

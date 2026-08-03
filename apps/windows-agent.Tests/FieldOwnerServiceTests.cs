@@ -54,6 +54,8 @@ public sealed class FieldOwnerServiceTests
         Assert.DoesNotContain("cmd.exe", source, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("job.Script", source, StringComparison.Ordinal);
         Assert.Contains("AssertExactPackageShape", source, StringComparison.Ordinal);
+        Assert.Contains("\"-OwnerPolicyAuthorized\"", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"-Confirm:$false\"", source, StringComparison.Ordinal);
     }
 
     [Fact]

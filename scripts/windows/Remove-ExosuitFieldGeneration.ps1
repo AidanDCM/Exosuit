@@ -15,6 +15,9 @@ param(
     [string]$TypedConfirmation,
 
     [Parameter()]
+    [switch]$OwnerPolicyAuthorized,
+
+    [Parameter()]
     [string]$EvidenceDirectory = "$env:ProgramData\Exosuit\Evidence"
 )
 
@@ -35,6 +38,11 @@ if ($config.contractVersion -ne 1) { throw 'Unsupported Field host configuration
 $fieldIdText = $FieldId.ToString()
 $expectedConfirmation = "DESTROY FIELD $fieldIdText GENERATION $FieldGeneration"
 if ($TypedConfirmation -cne $expectedConfirmation) { throw "Exact typed confirmation required: $expectedConfirmation" }
+if ($OwnerPolicyAuthorized) {
+    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    if ($currentSid -cne 'S-1-5-18') { throw 'Owner-policy noninteractive destruction requires LocalSystem.' }
+    $ConfirmPreference = 'None'
+}
 
 $storageRoot = [System.IO.Path]::GetFullPath([string]$config.storageRoot)
 if ([System.IO.Path]::GetPathRoot($storageRoot) -eq $storageRoot) { throw 'Field storage root cannot be an entire drive.' }

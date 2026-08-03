@@ -226,6 +226,8 @@ describe("Windows Field administration scripts", () => {
   it("requires exact confirmation and a disposable differencing overlay before apply", async () => {
     const content = await script("Invoke-ExosuitFieldProvisioning.ps1");
     expect(content).toContain("CREATE FIELD $fieldId GENERATION $generation");
+    expect(content).toContain("Owner-policy noninteractive apply requires LocalSystem.");
+    expect(content.indexOf("Apply requires exact typed confirmation")).toBeLessThan(content.indexOf("$ConfirmPreference = 'None'"));
     expect(content).toContain("runtimeOverlay.differencing");
     expect(content).toContain("New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing");
     expect(content).toContain("Filtered NAT apply is held");
@@ -313,6 +315,17 @@ describe("Windows Field administration scripts", () => {
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
+  });
+
+  it("allows the fixed owner service to suppress prompts only as LocalSystem after exact confirmation", async () => {
+    const provision = await script("Invoke-ExosuitFieldProvisioning.ps1");
+    const destroy = await script("Remove-ExosuitFieldGeneration.ps1");
+    for (const content of [provision, destroy]) {
+      expect(content).toContain("[switch]$OwnerPolicyAuthorized");
+      expect(content).toContain("$currentSid -cne 'S-1-5-18'");
+      expect(content.indexOf("TypedConfirmation")).toBeLessThan(content.indexOf("$ConfirmPreference = 'None'"));
+    }
+    expect(destroy).toContain("Owner-policy noninteractive destruction requires LocalSystem.");
   });
 
   it("keeps offline guest inspection bounded, private-content-free, and read-only", async () => {

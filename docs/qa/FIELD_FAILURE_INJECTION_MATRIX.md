@@ -92,6 +92,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Owner-service package has unexpected entry or reparse point | deny; do not traverse or execute | .NET command/static tests | NTFS reparse W/H |
 | Active Field bound reached | deny provisioning | .NET source test | multiple-generation H |
 | Owner service stops during lifecycle child | cancel and kill exact process tree; preserve terminal result | .NET source test | live cancellation H |
+| Windows PowerShell 5.1 receives a string-valued common `Confirm` switch through the native `-File` boundary | lifecycle command fails before mutation; fixed service uses a LocalSystem-only noninteractive flag after exact typed confirmation | S/U plus installed-service pre-effect failure | successful installed provision/destroy H |
 
 ## Teach and visual recording
 
