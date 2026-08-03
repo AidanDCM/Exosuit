@@ -619,6 +619,19 @@ describe("Windows Field administration scripts", () => {
     }
   });
 
+  it("keeps the compiled protection receipt and launcher on one exact digest field", async () => {
+    const launcher = await script("Start-ExosuitFieldGuest.ps1");
+    const converter = await readFile("apps/windows-agent/FieldChannelSecretSeedConverter.cs", "utf8");
+    const commandTests = await readFile("apps/windows-agent.Tests/FieldChannelSecretProtectionCommandTests.cs", "utf8");
+
+    expect(launcher).toContain("ciphertextEnvelopeSha256");
+    expect(converter).toContain("string CiphertextEnvelopeSha256");
+    expect(commandTests).toContain(
+      '["ciphertextEnvelopeSha256", "completedAt", "contractVersion", "field", "keyId", "status"]',
+    );
+    expect(launcher).not.toContain("protectedEnvelopeSha256");
+  });
+
   const windowsIt = process.platform === "win32" ? it : it.skip;
   windowsIt("executes the protected-secret startup transaction and never starts the guest after denial", async () => {
     for (const scenario of ["converted", "already_protected"] as const) {

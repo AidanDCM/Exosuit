@@ -329,6 +329,21 @@ This closes only the bounded development L1 provision/destroy/replacement accept
 slice. L3 guest readiness remains failed, no production lifecycle matrix has passed,
 and production remains denied.
 
+### 2026-08-03 protected-secret receipt mismatch diagnosis
+
+Source/evidence comparison located the first missing-handshake transition. The
+compiled secret-protection command emitted `protectedEnvelopeSha256`, while the
+fixed launcher accepted only `ciphertextEnvelopeSha256`; its harness had supplied a
+hand-authored receipt using the launcher spelling. The live protected envelope,
+all-pass bootstrap report, empty child runtime log, and absent handshake are
+consistent with receipt rejection before emitter start.
+
+Source now uses `ciphertextEnvelopeSha256` end to end. The .NET serializer test
+asserts the complete exact receipt schema, and the Windows suite binds the compiled
+property, serializer assertion, and launcher. This is a source repair only. A new
+immutable base and fresh disposable generation must prove authenticated KVP before
+L3 promotion; v24 is unchanged and remains negative evidence.
+
 The exact Field head `e10e921` passed the complete local L0 evidence runner on 2026-07-28. Hardened consolidated commit `7a7c435` then passed all 15 L0 runner steps, including 284 TypeScript tests, 44 .NET tests, builds, both pulses, locked dependency install, and the read-only host capability check. Clean-checkout parity passed 12/12 on each published security slice.
 
 GitHub-hosted CI and Security Audit jobs report no allocated steps because of the account billing state. This is neither a repository pass nor a repository failure.

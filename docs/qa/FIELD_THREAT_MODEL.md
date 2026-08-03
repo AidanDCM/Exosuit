@@ -71,6 +71,7 @@
 | Heartbeat spoof/staleness | signed channel, expected agent/boot, sequence, time thresholds | tests | guest crash, pause, sleep, and network interruption |
 | Secure Desktop/lock operation | scene and heartbeat reject ready input state | tests | actual lock/UAC acceptance |
 | Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20/v21 SYSTEM/Audit receipts and authenticated development canaries | production-authenticated repeated lifecycle matrix |
+| Protection command and launcher receipt schemas drift | exact six-property serialized schema plus cross-layer compiled/launcher contract; mismatch denies before emitter | v23/v24 negative live diagnosis and source tests | rebuilt-image authenticated KVP and restart matrix |
 | Diagnostic privacy leak | Field support bundle accepts only hashes and aggregate counts; forbidden fields/values | tests | support bundle manual inspection |
 | Emergency-stop failure | recovery marks release blocking and denies automated recovery | tests | physical end-to-end stop test |
 

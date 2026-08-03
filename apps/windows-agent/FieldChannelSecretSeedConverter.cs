@@ -13,7 +13,7 @@ public sealed record FieldChannelSecretSeedConversionResult(
     FieldReference Field,
     string KeyId,
     FieldChannelSecretSeedConversionStatus Status,
-    string ProtectedEnvelopeSha256,
+    string CiphertextEnvelopeSha256,
     DateTimeOffset CompletedAt);
 
 public interface IFieldChannelSecretPathInspector

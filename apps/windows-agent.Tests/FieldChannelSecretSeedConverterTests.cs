@@ -24,8 +24,8 @@ public sealed class FieldChannelSecretSeedConverterTests
 
         Assert.Equal(FieldChannelSecretSeedConversionStatus.Converted, converted.Status);
         Assert.Equal(FieldChannelSecretSeedConversionStatus.AlreadyProtected, restarted.Status);
-        Assert.Equal(converted.ProtectedEnvelopeSha256, restarted.ProtectedEnvelopeSha256);
-        Assert.Equal(64, converted.ProtectedEnvelopeSha256.Length);
+        Assert.Equal(converted.CiphertextEnvelopeSha256, restarted.CiphertextEnvelopeSha256);
+        Assert.Equal(64, converted.CiphertextEnvelopeSha256.Length);
         Assert.Equal(protectedBytes, File.ReadAllBytes(fixture.Path));
         Assert.DoesNotContain(secret, File.ReadAllText(fixture.Path), StringComparison.Ordinal);
         Assert.Equal(completedAt, converted.CompletedAt);

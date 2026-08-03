@@ -109,8 +109,17 @@ public sealed class FieldChannelSecretProtectionCommandTests
 
         var serialized = FieldChannelSecretProtectionCommand.SerializeResult(result);
 
-        Assert.Contains("\"status\":\"converted\"", serialized, StringComparison.Ordinal);
-        Assert.Contains(new string('a', 64), serialized, StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(serialized);
+        var propertyNames = document.RootElement.EnumerateObject()
+            .Select(property => property.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(
+            ["ciphertextEnvelopeSha256", "completedAt", "contractVersion", "field", "keyId", "status"],
+            propertyNames);
+        Assert.Equal("converted", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal(new string('a', 64), document.RootElement.GetProperty("ciphertextEnvelopeSha256").GetString());
+        Assert.False(document.RootElement.TryGetProperty("protectedEnvelopeSha256", out _));
         Assert.DoesNotContain("secretPath", serialized, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("plaintext", serialized, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(@"C:\Exosuit\Config", FieldChannelSecretProtectionCommand.ProductionConfigRoot);
