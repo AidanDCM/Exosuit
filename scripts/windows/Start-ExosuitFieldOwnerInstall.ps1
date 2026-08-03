@@ -67,6 +67,8 @@ try {
     & `$installer -InstallPlanPath $(Quote-PowerShellLiteral $planPath) -ExpectedInstallPlanSha256 '$planDigest' -PublishDirectory $(Quote-PowerShellLiteral $publish) -ObserverPublishDirectory $(Quote-PowerShellLiteral $observerPublish) -HostConfigPath $(Quote-PowerShellLiteral ([IO.Path]::GetFullPath($HostConfigPath))) -RepositoryRoot $(Quote-PowerShellLiteral $repository) -Confirm:`$false
 } catch {
     `$stage = `$global:ExosuitFieldOwnerInstallStage
+    `$native = `$global:ExosuitFieldOwnerNativeExitCode
+    if (`$stage -is [int] -and `$stage -ge 10 -and `$stage -le 60 -and `$native -is [int] -and `$native -gt 0 -and `$native -lt 10000) { exit ((`$stage * 10000) + `$native) }
     if (`$stage -is [int] -and `$stage -ge 10 -and `$stage -le 60) { exit `$stage }
     exit 1
 }

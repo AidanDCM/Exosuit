@@ -157,6 +157,8 @@ describe("Windows Field administration scripts", () => {
     expect(start).toContain("-EncodedCommand");
     expect(start).toContain("Elevated installer changed after owner review.");
     expect(start).toContain("$global:ExosuitFieldOwnerInstallStage");
+    expect(start).toContain("$global:ExosuitFieldOwnerNativeExitCode");
+    expect(start).toContain("(`$stage * 10000) + `$native");
     expect(start).toContain("`$stage -ge 10 -and `$stage -le 60");
     expect(start).toContain("-p:PublishSingleFile=true");
 
@@ -170,6 +172,7 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("FileSystemRights]::Modify");
     expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
     expect(install).toContain("$global:ExosuitFieldOwnerInstallStage = $script:InstallStage");
+    expect(install).toContain("$global:ExosuitFieldOwnerNativeExitCode = $LASTEXITCODE");
     for (const stage of [10, 11, 12, 20, 21, 22, 23, 31, 32, 33, 40, 41, 42, 50, 60]) {
       expect(install).toContain(`$script:InstallStage = ${stage}`);
     }

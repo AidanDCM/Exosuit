@@ -24,7 +24,10 @@ function Read-Json([string]$Path, [int]$Depth) {
 function Get-Digest([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
 function Invoke-Sc([string[]]$Arguments) {
     & "$env:SystemRoot\System32\sc.exe" @Arguments | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "Service Control Manager command failed: $($Arguments[0])" }
+    if ($LASTEXITCODE -ne 0) {
+        $global:ExosuitFieldOwnerNativeExitCode = $LASTEXITCODE
+        throw "Service Control Manager command failed: $($Arguments[0])"
+    }
 }
 function Invoke-Icacls([string[]]$Arguments) {
     & "$env:SystemRoot\System32\icacls.exe" @Arguments | Out-Null

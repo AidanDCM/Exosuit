@@ -37,6 +37,9 @@ Live stage evidence then isolated a repeatable SCM creation failure at stage 40.
 create call now follows Microsoft's minimal documented form: service name, fixed
 `binpath=`, and automatic start. LocalSystem remains the SCM default; delayed start and
 the display name are applied in the subsequent config stage.
+Because stage 40 remained repeatable with the minimal form, SCM failures now return a
+bounded composite integer (`stage * 10000 + nativeCode`). This preserves exact native
+diagnostics without logging command output or machine data.
 
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those
