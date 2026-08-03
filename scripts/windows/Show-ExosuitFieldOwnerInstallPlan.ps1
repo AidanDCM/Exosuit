@@ -25,10 +25,11 @@ $repository = [IO.Path]::GetFullPath($RepositoryRoot)
 $hostConfig = [IO.Path]::GetFullPath($HostConfigPath)
 $serviceBinary = Join-Path $publish 'Exosuit.FieldOwner.Service.exe'
 $provisionScript = Join-Path $repository 'scripts\windows\Invoke-ExosuitFieldProvisioning.ps1'
+$hostCheckScript = Join-Path $repository 'scripts\windows\Test-ExosuitFieldHost.ps1'
 $destroyScript = Join-Path $repository 'scripts\windows\Remove-ExosuitFieldGeneration.ps1'
 $observeScript = Join-Path $repository 'scripts\windows\Read-ExosuitFieldGuestKvp.ps1'
 $observerAgent = Join-Path $observerPublish 'Exosuit.Agent.exe'
-foreach ($path in @($serviceBinary, $hostConfig, $provisionScript, $destroyScript, $observeScript, $observerAgent)) {
+foreach ($path in @($serviceBinary, $hostConfig, $provisionScript, $hostCheckScript, $destroyScript, $observeScript, $observerAgent)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Required installation input is missing: $path" }
 }
 $config = Read-Json $hostConfig
@@ -46,6 +47,7 @@ $plan = [ordered]@{
     storageRoot = $storageRoot
     hostConfigSha256 = Get-Digest $hostConfig
     provisionScriptSha256 = Get-Digest $provisionScript
+    hostCheckScriptSha256 = Get-Digest $hostCheckScript
     destroyScriptSha256 = Get-Digest $destroyScript
     observeScriptSha256 = Get-Digest $observeScript
     observerAgentSha256 = Get-Digest $observerAgent

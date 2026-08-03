@@ -143,6 +143,7 @@ describe("Windows Field administration scripts", () => {
     const uninstall = await script("Uninstall-ExosuitFieldOwnerService.ps1");
 
     expect(show).toContain("arbitraryCommandExecution = $false");
+    expect(show).toContain("hostCheckScriptSha256 = Get-Digest $hostCheckScript");
     expect(show).toContain("pilotMayChangePolicy = $false");
     expect(show).toContain("recordingAuthority = $false");
     expect(show).toContain("keyAuthority = $false");
@@ -167,6 +168,8 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("Get-Digest $pair.Key");
     expect(install).toContain("Field owner installation plan changed after owner review.");
     expect(install).toContain("Installed Field owner input digest is invalid");
+    expect(install).toContain("Copy-Item -LiteralPath $hostCheckScript -Destination (Join-Path $scriptsRoot 'Test-ExosuitFieldHost.ps1')");
+    expect(install).toContain("hostCheckScriptSha256 = [string]$plan.hostCheckScriptSha256");
     expect(install).toContain("*S-1-5-18:(OI)(CI)F");
     expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
     expect(install).toContain("FileSystemRights]::Modify");

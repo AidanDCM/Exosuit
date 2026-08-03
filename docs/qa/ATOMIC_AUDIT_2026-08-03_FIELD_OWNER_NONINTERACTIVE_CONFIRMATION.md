@@ -40,3 +40,12 @@ restores the PowerShell 5.1 invocation failure.
 - one reviewed service upgrade;
 - successful exact-generation destruction and provisioning through the service;
 - unchanged base-image digests and confined generation removal.
+
+## Subsequent fixed-dependency finding
+
+After the confirmation repair was installed, destruction succeeded but provisioning
+failed before mutation because its fixed sibling `Test-ExosuitFieldHost.ps1` had not
+been installed. The exact generation root remained absent. The installation plan,
+policy contract, installer copy/verification set, and service startup digest validation
+now include that script. This adds no selectable command or job input; it closes the
+fixed provisioning dependency under the existing hash-bound authority.

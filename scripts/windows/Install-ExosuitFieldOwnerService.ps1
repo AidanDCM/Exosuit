@@ -73,6 +73,7 @@ $repository = [IO.Path]::GetFullPath($RepositoryRoot)
 $hostConfig = [IO.Path]::GetFullPath($HostConfigPath)
 $serviceBinary = Join-Path $publish 'Exosuit.FieldOwner.Service.exe'
 $provisionScript = Join-Path $repository 'scripts\windows\Invoke-ExosuitFieldProvisioning.ps1'
+$hostCheckScript = Join-Path $repository 'scripts\windows\Test-ExosuitFieldHost.ps1'
 $destroyScript = Join-Path $repository 'scripts\windows\Remove-ExosuitFieldGeneration.ps1'
 $observeScript = Join-Path $repository 'scripts\windows\Read-ExosuitFieldGuestKvp.ps1'
 $observerAgent = Join-Path $observerPublish 'Exosuit.Agent.exe'
@@ -80,6 +81,7 @@ $expected = @{
     $serviceBinary = [string]$plan.serviceBinarySha256
     $hostConfig = [string]$plan.hostConfigSha256
     $provisionScript = [string]$plan.provisionScriptSha256
+    $hostCheckScript = [string]$plan.hostCheckScriptSha256
     $destroyScript = [string]$plan.destroyScriptSha256
     $observeScript = [string]$plan.observeScriptSha256
     $observerAgent = [string]$plan.observerAgentSha256
@@ -116,6 +118,7 @@ New-Item -ItemType Directory -Path $scriptsRoot, $observerRoot -Force | Out-Null
 $script:InstallStage = 22
 Copy-Item -LiteralPath $serviceBinary -Destination (Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe') -Force
 Copy-Item -LiteralPath $provisionScript -Destination (Join-Path $scriptsRoot 'Invoke-ExosuitFieldProvisioning.ps1') -Force
+Copy-Item -LiteralPath $hostCheckScript -Destination (Join-Path $scriptsRoot 'Test-ExosuitFieldHost.ps1') -Force
 Copy-Item -LiteralPath $destroyScript -Destination (Join-Path $scriptsRoot 'Remove-ExosuitFieldGeneration.ps1') -Force
 Copy-Item -LiteralPath $observeScript -Destination (Join-Path $scriptsRoot 'Read-ExosuitFieldGuestKvp.ps1') -Force
 Copy-Item -LiteralPath $observerAgent -Destination (Join-Path $observerRoot 'Exosuit.Agent.exe') -Force
@@ -124,6 +127,7 @@ Copy-Item -LiteralPath $hostConfig -Destination (Join-Path $dataRoot 'host-confi
 $installedExpected = @{
     (Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe') = [string]$plan.serviceBinarySha256
     (Join-Path $scriptsRoot 'Invoke-ExosuitFieldProvisioning.ps1') = [string]$plan.provisionScriptSha256
+    (Join-Path $scriptsRoot 'Test-ExosuitFieldHost.ps1') = [string]$plan.hostCheckScriptSha256
     (Join-Path $scriptsRoot 'Remove-ExosuitFieldGeneration.ps1') = [string]$plan.destroyScriptSha256
     (Join-Path $scriptsRoot 'Read-ExosuitFieldGuestKvp.ps1') = [string]$plan.observeScriptSha256
     (Join-Path $observerRoot 'Exosuit.Agent.exe') = [string]$plan.observerAgentSha256
@@ -143,6 +147,7 @@ $policy = [ordered]@{
     storageRoot = [string]$plan.storageRoot
     hostConfigSha256 = [string]$plan.hostConfigSha256
     provisionScriptSha256 = [string]$plan.provisionScriptSha256
+    hostCheckScriptSha256 = [string]$plan.hostCheckScriptSha256
     destroyScriptSha256 = [string]$plan.destroyScriptSha256
     observeScriptSha256 = [string]$plan.observeScriptSha256
     observerAgentSha256 = [string]$plan.observerAgentSha256

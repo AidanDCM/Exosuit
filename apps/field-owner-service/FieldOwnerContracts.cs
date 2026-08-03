@@ -19,6 +19,7 @@ internal static class FieldOwnerPaths
     internal const string ResultsRoot = DataRoot + @"\Results";
     internal const string EvidenceRoot = DataRoot + @"\Evidence";
     internal const string ProvisionScriptPath = InstallRoot + @"\Scripts\Invoke-ExosuitFieldProvisioning.ps1";
+    internal const string HostCheckScriptPath = InstallRoot + @"\Scripts\Test-ExosuitFieldHost.ps1";
     internal const string DestroyScriptPath = InstallRoot + @"\Scripts\Remove-ExosuitFieldGeneration.ps1";
     internal const string ObserveScriptPath = InstallRoot + @"\Scripts\Read-ExosuitFieldGuestKvp.ps1";
     internal const string ObserverAgentPath = InstallRoot + @"\Observer\Exosuit.Agent.exe";
@@ -36,6 +37,7 @@ internal sealed record FieldOwnerPolicy
     public required string StorageRoot { get; init; }
     public required string HostConfigSha256 { get; init; }
     public required string ProvisionScriptSha256 { get; init; }
+    public required string HostCheckScriptSha256 { get; init; }
     public required string DestroyScriptSha256 { get; init; }
     public required string ObserveScriptSha256 { get; init; }
     public required string ObserverAgentSha256 { get; init; }
@@ -132,7 +134,7 @@ internal static partial class FieldOwnerPolicyStore
         if (sid.IsWellKnown(WellKnownSidType.LocalSystemSid)) throw new InvalidOperationException("Field owner policy requires a non-SYSTEM Windows owner SID.");
         var storageRoot = Path.GetFullPath(policy.StorageRoot).TrimEnd(Path.DirectorySeparatorChar);
         if (Path.GetPathRoot(storageRoot) == storageRoot) throw new InvalidOperationException("Field storage root cannot be an entire drive.");
-        foreach (var digest in new[] { policy.HostConfigSha256, policy.ProvisionScriptSha256, policy.DestroyScriptSha256, policy.ObserveScriptSha256, policy.ObserverAgentSha256 })
+        foreach (var digest in new[] { policy.HostConfigSha256, policy.ProvisionScriptSha256, policy.HostCheckScriptSha256, policy.DestroyScriptSha256, policy.ObserveScriptSha256, policy.ObserverAgentSha256 })
             if (!Sha256Pattern().IsMatch(digest)) throw new InvalidOperationException("Field owner policy contains an invalid SHA-256 digest.");
         var operations = policy.AllowedOperations.Distinct(StringComparer.Ordinal).ToArray();
         if (operations.Length != policy.AllowedOperations.Length || operations.Length == 0 || operations.Any(op => op is not ("provision" or "observe" or "destroy")))
@@ -175,6 +177,7 @@ internal static partial class FieldOwnerPolicyStore
         {
             [FieldOwnerPaths.HostConfigPath] = policy.HostConfigSha256,
             [FieldOwnerPaths.ProvisionScriptPath] = policy.ProvisionScriptSha256,
+            [FieldOwnerPaths.HostCheckScriptPath] = policy.HostCheckScriptSha256,
             [FieldOwnerPaths.DestroyScriptPath] = policy.DestroyScriptSha256,
             [FieldOwnerPaths.ObserveScriptPath] = policy.ObserveScriptSha256,
             [FieldOwnerPaths.ObserverAgentPath] = policy.ObserverAgentSha256,

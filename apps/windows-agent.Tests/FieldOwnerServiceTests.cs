@@ -106,6 +106,7 @@ public sealed class FieldOwnerServiceTests
         StorageRoot = @"C:\ProgramData\Exosuit\Fields",
         HostConfigSha256 = new string('a', 64),
         ProvisionScriptSha256 = new string('b', 64),
+        HostCheckScriptSha256 = new string('f', 64),
         DestroyScriptSha256 = new string('c', 64),
         ObserveScriptSha256 = new string('d', 64),
         ObserverAgentSha256 = new string('e', 64),
