@@ -51,9 +51,18 @@ Commands actually run:
   protection-command suites: 12/12 passed.
 - `npm test -- --run tests/windowsFieldScripts.test.ts --reporter=verbose`: 13/13
   passed, including the exact cross-layer digest-field assertion and startup harness.
+- The first committed exact-head run reached the Field suite and failed one harness
+  assertion because `spawnSync` returned without starting PowerShell under full-suite
+  process pressure. No adapter call occurred, while five immediate focused repetitions
+  passed 13/13. The harness previously treated a null process status as an expected
+  product denial. It now retries only a pre-start infrastructure allocation failure,
+  at most twice, and explicitly requires no spawn error. Once a child starts, its
+  first result remains authoritative and is never retried.
+- `npm run test:field -- --reporter=verbose` after that harness repair: 162/162
+  passed under the full Field-suite load.
 
-Repository/full/exact-head gates and live rebuilt-image evidence remain pending at
-the time of this entry and must be appended only after they actually run.
+The final exact-head rerun and live rebuilt-image evidence remain pending at the time
+of this entry and must be claimed only after they actually run.
 
 ## Security, privacy, assumptions, and unvalidated areas
 
@@ -72,4 +81,3 @@ pre-emitter denial. Do not reuse or mutate v24. After exact-head validation, bui
 new immutable base from the reviewed commit, then provision a new disposable Field
 generation and require authenticated provisioning, ready transition, restart, exact
 destruction, and unchanged base digest before promotion.
-

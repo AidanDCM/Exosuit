@@ -106,29 +106,38 @@ $passed = if ($unlocked) { 'true' } else { 'false' }
     }),
     "utf8",
   );
-  const result = spawnSync(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      launcherPath,
-      "-LaunchConfigPath",
-      launchPath,
-      "-DesktopReadyTimeoutSeconds",
-      scenario === "locked_then_unlocked" ? "10" : "1",
-    ],
-    {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        EXOSUIT_HARNESS_CALLS: callsPath,
-        EXOSUIT_HARNESS_RECEIPT: receiptPath,
-        EXOSUIT_HARNESS_SCENARIO: scenario,
+  const spawnHarness = () =>
+    spawnSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        launcherPath,
+        "-LaunchConfigPath",
+        launchPath,
+        "-DesktopReadyTimeoutSeconds",
+        scenario === "locked_then_unlocked" ? "10" : "1",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXOSUIT_HARNESS_CALLS: callsPath,
+          EXOSUIT_HARNESS_RECEIPT: receiptPath,
+          EXOSUIT_HARNESS_SCENARIO: scenario,
+        },
       },
-    },
-  );
+    );
+  let result = spawnHarness();
+  // A saturated full-suite worker can fail to allocate powershell.exe before
+  // product code starts. Retry only that infrastructure condition; once a child
+  // starts, its first result is authoritative and is never retried.
+  for (let attempt = 1; result.status === null && result.error && attempt < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+    result = spawnHarness();
+  }
   const calls = await readFile(callsPath, "utf8").catch(() => "");
   await rm(root, { recursive: true, force: true });
   return { ...result, calls: calls.trim().split(/\r?\n/).filter(Boolean) };
@@ -636,13 +645,15 @@ describe("Windows Field administration scripts", () => {
   windowsIt("executes the protected-secret startup transaction and never starts the guest after denial", async () => {
     for (const scenario of ["converted", "already_protected"] as const) {
       const result = await runGuestStartupHarness(scenario);
+      expect(result.error, `${scenario}: ${result.error?.message}`).toBeUndefined();
       expect(result.status, `${scenario}: ${result.stderr}`).toBe(0);
       expect(result.calls).toEqual(["bootstrap", "protect", "guest", "wait"]);
     }
     for (const scenario of ["command_failure", "malformed_receipt", "post_publication_interruption"] as const) {
       const result = await runGuestStartupHarness(scenario);
+      expect(result.error, `${scenario}: ${result.error?.message}`).toBeUndefined();
       expect(result.status, scenario).not.toBe(0);
-      expect(result.calls).toEqual(["bootstrap", "protect"]);
+      expect(result.calls, `${scenario}: ${result.stderr}`).toEqual(["bootstrap", "protect"]);
     }
     const lockedThenUnlocked = await runGuestStartupHarness("locked_then_unlocked");
     expect(lockedThenUnlocked.status, lockedThenUnlocked.stderr).toBe(0);

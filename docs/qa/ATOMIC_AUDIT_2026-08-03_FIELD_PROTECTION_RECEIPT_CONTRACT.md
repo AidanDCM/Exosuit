@@ -26,6 +26,9 @@ protection and emitter start. Verdict: **DENY live promotion; source defect repa
   status, and absence of the obsolete spelling.
 - A cross-layer source contract binds the compiled property, serializer assertion,
   and PowerShell launcher spelling.
+- The Windows subprocess harness distinguishes failure to allocate its PowerShell
+  test process from a product denial. Only a pre-start allocation failure is retried;
+  a started product process is never retried.
 - The receipt remains metadata-only. It carries no plaintext secret or UI data.
 - Unknown, missing, duplicate, extra, stale, future, cross-Field, cross-generation,
   wrong-key, bad-status, and bad-digest receipts still stop before the emitter.
@@ -43,4 +46,3 @@ Focused and exact-head source gates must pass, followed by a reviewed immutable-
 build and fresh-generation Hyper-V proof of authenticated handshake, bootstrap,
 heartbeat, lock/Secure Desktop denial, restart behavior, destruction confinement,
 and unchanged base digest. Until then production remains denied.
-
