@@ -97,11 +97,12 @@ $resultsRoot = Join-Path $dataRoot 'Results'
 $evidenceRoot = Join-Path $dataRoot 'Evidence'
 $serviceName = 'ExosuitFieldOwner'
 $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+$serviceAlreadyInstalled = $null -ne $existing
 $script:InstallStage = 20
 if ($existing) {
     if ($existing.Status -ne 'Stopped') { Stop-Service -Name $serviceName -Force; $existing.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30)) }
-    Invoke-Sc @('delete', $serviceName)
-    Start-Sleep -Milliseconds 500
+    $existing.Dispose()
+    $existing = $null
 }
 
 $script:InstallStage = 21
@@ -160,7 +161,9 @@ Grant-OwnerPathAccess -Path $evidenceRoot -OwnerSid ([string]$plan.ownerSid) -Ri
 $script:InstallStage = 40
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'
 $binaryPath = '"' + $installedBinary + '" --service'
-New-Service -Name $serviceName -BinaryPathName $binaryPath -StartupType Automatic -DisplayName 'Exosuit Field Owner Authority' | Out-Null
+if (-not $serviceAlreadyInstalled) {
+    New-Service -Name $serviceName -BinaryPathName $binaryPath -StartupType Automatic -DisplayName 'Exosuit Field Owner Authority' | Out-Null
+}
 $script:InstallStage = 41
 Invoke-Sc @('config', $serviceName, 'start=', 'delayed-auto')
 $script:InstallStage = 42

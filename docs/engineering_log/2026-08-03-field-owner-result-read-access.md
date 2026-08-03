@@ -24,6 +24,11 @@ while Results and Evidence returned `UnauthorizedAccessException`, which would p
 `Submit-ExosuitFieldOwnerJob.ps1 -Wait` from reading its terminal result. Static tests,
 exact-head validation, and a replacement installation are required before closeout.
 
+Replacement installation stops and retains an existing SCM registration, disposes the
+temporary service-controller handle, replaces only reviewed files/policy/ACLs, reapplies
+configuration, and restarts. It does not delete and recreate the service in one process,
+avoiding Windows' marked-for-deletion race.
+
 ## Security, privacy, and rollback
 
 The owner receives no write/delete permission on Results or Evidence. These locations
