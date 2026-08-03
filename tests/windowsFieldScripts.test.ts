@@ -170,6 +170,9 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("*S-1-5-18:(OI)(CI)F");
     expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
     expect(install).toContain("FileSystemRights]::Modify");
+    expect(install).toContain("FileSystemRights]::ReadAndExecute");
+    expect(install).toContain("Grant-OwnerPathAccess -Path $resultsRoot");
+    expect(install).toContain("Grant-OwnerPathAccess -Path $evidenceRoot");
     expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
     expect(install).toContain("$global:ExosuitFieldOwnerInstallStage = $script:InstallStage");
     expect(install).toContain("$global:ExosuitFieldOwnerNativeExitCode = $LASTEXITCODE");

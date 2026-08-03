@@ -33,12 +33,12 @@ function Invoke-Icacls([string[]]$Arguments) {
     & "$env:SystemRoot\System32\icacls.exe" @Arguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to establish the Field owner service ACL.' }
 }
-function Grant-PendingQueueAccess([string]$Path, [string]$OwnerSid) {
+function Grant-OwnerPathAccess([string]$Path, [string]$OwnerSid, [Security.AccessControl.FileSystemRights]$Rights) {
     $identity = [Security.Principal.SecurityIdentifier]::new($OwnerSid)
     $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
     $rule = [Security.AccessControl.FileSystemAccessRule]::new(
         $identity,
-        [Security.AccessControl.FileSystemRights]::Modify,
+        $Rights,
         $inheritance,
         [Security.AccessControl.PropagationFlags]::None,
         [Security.AccessControl.AccessControlType]::Allow
@@ -153,7 +153,9 @@ Invoke-Icacls @($installRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F
 $script:InstallStage = 32
 Invoke-Icacls @($dataRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 $script:InstallStage = 33
-Grant-PendingQueueAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid)
+Grant-OwnerPathAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::Modify)
+Grant-OwnerPathAccess -Path $resultsRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)
+Grant-OwnerPathAccess -Path $evidenceRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)
 
 $script:InstallStage = 40
 $installedBinary = Join-Path $installRoot 'Exosuit.FieldOwner.Service.exe'

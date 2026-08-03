@@ -308,6 +308,9 @@ Destroy remains confined to the exact disposable generation:
 
 Stop `ExosuitFieldOwner` to disable new jobs immediately. To remove the service, use an
 elevated owner console and the exact uninstall phrase documented in the owner manual.
+The installing owner SID must be able to read `Results` and sanitized `Evidence` without
+elevation, but only SYSTEM/Administrators may write them. `Queue\Pending` remains the
+only owner-writable service path.
 
 ## Protected-secret startup preflight
 

@@ -47,6 +47,8 @@ job. Queue submission does not create policy or consent: the service independent
 enforces the fixed owner policy. Unknown operations, stale/replayed jobs, unexpected
 files, reparse points, and capacity overflow fail closed. The service cannot operate
 the desktop and is not part of the emergency-stop dependency chain.
+The exact owner SID may modify only the Pending queue and may read, but not modify,
+terminal Results and sanitized installation Evidence.
 
 ### Application-map storage
 
