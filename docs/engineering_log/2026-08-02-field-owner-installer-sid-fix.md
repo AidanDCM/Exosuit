@@ -33,6 +33,11 @@ rethrowing, and the hash-bound elevated bootstrap alone translates it into a pro
 exit code. This avoids both Windows PowerShell normalizing an `exit` inside a trap and
 stripping custom exception metadata at a script boundary.
 
+Live stage evidence then isolated a repeatable SCM creation failure at stage 40. The
+create call now follows Microsoft's minimal documented form: service name, fixed
+`binpath=`, and automatic start. LocalSystem remains the SCM default; delayed start and
+the display name are applied in the subsequent config stage.
+
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those
 checks pass.
