@@ -209,10 +209,16 @@ describe("Windows Field administration scripts", () => {
     expect(uninstall).not.toMatch(/Remove-Item[^\n]*(Fields|Images|base|personal)/i);
 
     const exactRunner = await script("Invoke-ExosuitFieldValidation.ps1");
+    const exactLauncher = await readFile("scripts/build-exact.mjs", "utf8");
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { scripts: Record<string, string> };
     expect(exactRunner).toContain("Resolve-DotnetSdk");
     expect(exactRunner).toContain("& $dotnet restore");
     expect(exactRunner).toContain("& $dotnet build");
     expect(exactRunner).toContain("& $dotnet test");
+    expect(packageJson.scripts["build:exact"]).toBe("node scripts/build-exact.mjs");
+    expect(exactLauncher).toContain('"-RepositoryRoot"');
+    expect(exactLauncher).toContain("repositoryRoot");
+    expect(exactLauncher).not.toContain("shell: true");
   });
 
   it("keeps the plan resolver non-mutating", async () => {
