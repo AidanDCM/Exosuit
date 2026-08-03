@@ -160,7 +160,8 @@ $script:InstallStage = 32
 Invoke-Icacls @($dataRoot, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F')
 $script:InstallStage = 33
 $directoryInheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
-Grant-OwnerPathAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::Modify) -Inheritance $directoryInheritance
+$pendingRights = [Security.AccessControl.FileSystemRights]::Modify -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles
+Grant-OwnerPathAccess -Path $pendingRoot -OwnerSid ([string]$plan.ownerSid) -Rights $pendingRights -Inheritance $directoryInheritance
 Grant-OwnerPathAccess -Path $resultsRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute) -Inheritance $directoryInheritance
 Grant-OwnerPathAccess -Path $evidenceRoot -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute) -Inheritance $directoryInheritance
 Grant-OwnerPathAccess -Path $policyPath -OwnerSid ([string]$plan.ownerSid) -Rights ([Security.AccessControl.FileSystemRights]::ReadAndExecute)

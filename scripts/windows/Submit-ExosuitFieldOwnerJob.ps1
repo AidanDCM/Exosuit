@@ -68,8 +68,12 @@ try {
     [IO.File]::WriteAllText((Join-Path $staging 'job.json'), ($job | ConvertTo-Json -Depth 20), [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $staging -Destination $destination
 } catch {
-    if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
-    throw
+    $submissionError = $_
+    if (Test-Path -LiteralPath $staging) {
+        try { Remove-Item -LiteralPath $staging -Recurse -Force }
+        catch { }
+    }
+    throw $submissionError
 }
 $submission = [ordered]@{ contractVersion = 1; jobId = $jobId.ToString('D'); status = 'submitted'; sourceHead = $head; operation = $Operation; field = @{ fieldId = $FieldId.ToString('D'); fieldGeneration = $FieldGeneration } }
 if ($Wait) {

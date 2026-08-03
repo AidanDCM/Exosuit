@@ -30,6 +30,12 @@ temporary service-controller handle, replaces only reviewed files/policy/ACLs, r
 configuration, and restarts. It does not delete and recreate the service in one process,
 avoiding Windows' marked-for-deletion race.
 
+The safe nonexistent-generation probe then proved same-parent staging rename lacked the
+Pending parent's `DeleteSubdirectoriesAndFiles` right. Pending now grants this narrow
+right in addition to Modify; it still grants no ACL/ownership administration. Submitter
+cleanup preserves and rethrows the original error even if best-effort staging cleanup
+also fails.
+
 ## Security, privacy, and rollback
 
 The owner receives no write/delete permission on Results or Evidence. These locations

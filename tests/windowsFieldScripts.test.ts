@@ -170,6 +170,7 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("*S-1-5-18:(OI)(CI)F");
     expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
     expect(install).toContain("FileSystemRights]::Modify");
+    expect(install).toContain("FileSystemRights]::DeleteSubdirectoriesAndFiles");
     expect(install).toContain("FileSystemRights]::ReadAndExecute");
     expect(install).toContain("Grant-OwnerPathAccess -Path $resultsRoot");
     expect(install).toContain("Grant-OwnerPathAccess -Path $evidenceRoot");
@@ -197,6 +198,8 @@ describe("Windows Field administration scripts", () => {
     expect(submit).toContain("Queue\\Pending");
     expect(submit).toContain(".staging-");
     expect(submit).toContain("Move-Item -LiteralPath $staging -Destination $destination");
+    expect(submit).toContain("$submissionError = $_");
+    expect(submit).toContain("throw $submissionError");
     expect(submit).not.toContain("Start-Process");
     expect(submit).not.toContain("Invoke-Expression");
 
