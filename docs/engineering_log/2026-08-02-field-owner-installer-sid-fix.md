@@ -24,6 +24,11 @@ to the exact reviewed owner SID. Static regression assertions require that typed
 Both failed attempts created protected install/data roots and failed closed before SCM
 service creation; read-only checks proved that no service existed.
 
+Because the elevated console is intentionally isolated from the non-elevated launcher,
+the installer now returns a deterministic non-secret stage code for any terminating
+failure. This identifies validation, copy, ACL, SCM, start, or receipt failure without
+writing an elevated diagnostic into a user-controlled path.
+
 Commands and final results will be captured by the exact-head validation artifact and
 the post-install acceptance checks. Live installation remains unvalidated until those
 checks pass.

@@ -167,6 +167,10 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
     expect(install).toContain("FileSystemRights]::Modify");
     expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
+    expect(install).toContain('[Console]::Error.WriteLine("Field owner installation failed at stage $script:InstallStage.")');
+    for (const stage of [10, 11, 12, 20, 21, 22, 23, 31, 32, 33, 40, 41, 42, 50, 60]) {
+      expect(install).toContain(`$script:InstallStage = ${stage}`);
+    }
     expect(install).toContain("*S-1-5-32-544:(OI)(CI)F");
     expect(install).toContain("@('provision', 'observe', 'destroy')");
     expect(install).not.toContain("Invoke-Expression");
