@@ -1,32 +1,36 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { createPersonaProfile } from "../src/personaBehavior.js";
+import { createPersonaProfile, type PersonaProfile } from "../src/personaBehavior.js";
 import type { PersonaEvaluation } from "../src/personaDerivation.js";
 import { fitTypingProcessModel } from "../src/personalBehaviorModels.js";
 import { createPersonaModelBundle, PersonaModelBundleRegistry } from "../src/personaModelBundle.js";
 
-const profile = createPersonaProfile({
-  contractVersion: 1,
-  profileId: "11111111-1111-4111-8111-111111111111",
-  ownerId: "owner-a",
-  version: 1,
-  createdAt: "2026-08-04T00:00:00.000Z",
-  status: "approved",
-  ownerApproved: true,
-  traits: { cautiousness: 0.2, patience: 0.1, exploration: 0, directness: 0.3, expressiveness: 0.2, thoroughness: 0.4 },
-  timing: {
-    minimumThinkingMs: 100, maximumThinkingMs: 10_000, baseReactionMs: 400, readingMsPer100Characters: 800,
-    uncertaintyMultiplier: 1.5, riskMultiplier: 1.5, familiarityDiscount: 0.8, urgencyDiscount: 0.75,
-    deterministicVariationFraction: 0,
-  },
-  imperfection: {
-    strategy: "observed_distribution_only", purpose: "personalization_not_evasion", maximumDraftTypoProbability: 0,
-    maximumDraftMisclickProbability: 0, maximumImperfectionsPerActionChunk: 0, immediateCorrectionRequired: true,
-    suppressAtOrAboveRisk: "medium", suppressDuringFinalSubmission: true,
-  },
-  habits: [],
-});
+function makeProfile(version = 1, status: PersonaProfile["status"] = "approved") {
+  return createPersonaProfile({
+    contractVersion: 1,
+    profileId: "11111111-1111-4111-8111-111111111111",
+    ownerId: "owner-a",
+    version,
+    ...(version > 1 ? { supersedesVersion: version - 1 } : {}),
+    createdAt: `2026-08-04T0${Math.min(version, 9)}:00:00.000Z`,
+    status,
+    ownerApproved: status === "approved",
+    traits: { cautiousness: 0.2, patience: 0.1, exploration: 0, directness: 0.3, expressiveness: 0.2, thoroughness: 0.4 },
+    timing: {
+      minimumThinkingMs: 100, maximumThinkingMs: 10_000, baseReactionMs: 400, readingMsPer100Characters: 800,
+      uncertaintyMultiplier: 1.5, riskMultiplier: 1.5, familiarityDiscount: 0.8, urgencyDiscount: 0.75,
+      deterministicVariationFraction: 0,
+    },
+    imperfection: {
+      strategy: "observed_distribution_only", purpose: "personalization_not_evasion", maximumDraftTypoProbability: 0,
+      maximumDraftMisclickProbability: 0, maximumImperfectionsPerActionChunk: 0, immediateCorrectionRequired: true,
+      suppressAtOrAboveRisk: "medium", suppressDuringFinalSubmission: true,
+    },
+    habits: [],
+  });
+}
 
+const profile = makeProfile();
 const stableEvaluation: PersonaEvaluation = {
   contractVersion: 1,
   trainingCandidateHash: "a".repeat(64),
@@ -43,15 +47,15 @@ const stableEvaluation: PersonaEvaluation = {
   actionAuthority: "none",
 };
 
-function typingModel() {
+function typingModel(boundProfile = profile, prefix = "1") {
   return fitTypingProcessModel({
-    ownerId: profile.ownerId,
-    profileId: profile.profileId,
-    profileVersion: profile.version,
+    ownerId: boundProfile.ownerId,
+    profileId: boundProfile.profileId,
+    profileVersion: boundProfile.version,
     trainedAt: "2026-08-04T08:00:00.000Z",
     observations: Array.from({ length: 5 }, (_, index) => ({
-      observationId: `10000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
-      sourceEpisodeId: index < 3 ? "20000000-0000-4000-8000-000000000001" : "20000000-0000-4000-8000-000000000002",
+      observationId: `${prefix}0000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      sourceEpisodeId: index < 3 ? `${prefix}0000000-0000-4000-8000-000000000001` : `${prefix}0000000-0000-4000-8000-000000000002`,
       observedAt: `2026-08-04T08:00:0${index}.000Z`,
       stage: "drafting" as const,
       risk: "low" as const,
@@ -124,7 +128,7 @@ describe("persona model bundle", () => {
     expect(registry.active()).toBeUndefined();
   });
 
-  it("blocks unstable evaluation, unapproved profiles, identity mismatch, tampering, and duplicate requests", () => {
+  it("blocks unstable evaluation, unapproved profiles, tampering, and duplicate requests", () => {
     const unstable = createPersonaModelBundle({
       profile,
       evaluation: { ...stableEvaluation, stableEnoughForOwnerReview: false, reasons: ["Unstable."] },
@@ -136,35 +140,11 @@ describe("persona model bundle", () => {
     expect(registry.decide({ request: activationRequest, profile }).rule).toBe("stable_evaluation_required");
     expect(() => registry.decide({ request: activationRequest, profile })).toThrow(/only once/i);
 
-    const unapproved = createPersonaProfile({
-      ...profile,
-      version: 2,
-      supersedesVersion: 1,
-      createdAt: "2026-08-04T09:00:00.000Z",
-      status: "evaluating",
-      ownerApproved: false,
-      profileHash: undefined as never,
-    });
-    const unapprovedBundle = createPersonaModelBundle({
-      profile: unapproved,
-      evaluation: stableEvaluation,
-      typing: fitTypingProcessModel({
-        ownerId: unapproved.ownerId,
-        profileId: unapproved.profileId,
-        profileVersion: unapproved.version,
-        observations: Array.from({ length: 5 }, (_, index) => ({
-          observationId: `50000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
-          sourceEpisodeId: index < 3 ? "60000000-0000-4000-8000-000000000001" : "60000000-0000-4000-8000-000000000002",
-          observedAt: `2026-08-04T09:00:0${index}.000Z`, stage: "drafting", risk: "low", protectedField: false,
-          finalTextMatchedIntent: true, submittedExternally: false, characterCount: 100, durationMs: 10_000,
-          pauseDurationsMs: [], typoCount: 0, correctionCount: 0, backspaceCount: 0, immediateCorrectionCount: 0,
-        })),
-      }),
-    });
+    const unapproved = makeProfile(2, "evaluating");
+    const unapprovedBundle = createPersonaModelBundle({ profile: unapproved, evaluation: stableEvaluation, typing: typingModel(unapproved, "5") });
     const secondRegistry = new PersonaModelBundleRegistry();
     secondRegistry.register(unapprovedBundle);
-    expect(secondRegistry.decide({ request: { ...request(unapprovedBundle, "activate"), currentVersion: undefined } as never, profile: unapproved }).status).toBe("blocked");
-
+    expect(secondRegistry.decide({ request: request(unapprovedBundle, "activate"), profile: unapproved }).rule).toBe("approved_profile_required");
     expect(() => registry.register({ ...unstable, mayInjectInput: true as never })).toThrow();
   });
 });
