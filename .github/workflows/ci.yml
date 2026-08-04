@@ -90,6 +90,8 @@ jobs:
             src/fieldRecovery.ts
             src/fieldAdminAuthority.ts
             src/fieldSupportBundle.ts
+            src/personaBehavior.ts
+            tests/personaBehavior.test.ts
             tests/fieldSystemPulse.test.ts
             tests/windowsFieldScripts.test.ts
             tests/fixtures/field-contract-v1.json
@@ -229,6 +231,7 @@ jobs:
             docs/FIELD_DEVELOPER_MANUAL.md
             docs/FIELD_TEST_PLAN.md
             docs/FIELD_WINDOWS_RUNBOOK.md
+            docs/PERSONA_BEHAVIORAL_DYNAMICS.md
             docs/qa/MASTER_PLAN_COVERAGE_MATRIX.md
             docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md
             docs/qa/FIELD_THREAT_MODEL.md
@@ -237,11 +240,16 @@ jobs:
             docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md
             docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md
             docs/qa/ATOMIC_AUDIT_2026-07-22_COMPLETE_MASTER_PLAN.md
+            docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md
+            docs/engineering_log/2026-08-03-persona-behavior-foundation.md
             vm/field-host-config.example.json
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing or empty required file: $path"; exit 1; }; done
+          # This focused test intentionally contains synthetic secret-shaped strings to
+          # prove that privacy-safe support bundles reject them. The source/config scan
+          # remains active for every other non-Markdown file.
           ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' \
-            --exclude-dir=.git --exclude='*.md' . || {
+            --exclude-dir=.git --exclude='*.md' --exclude='supportBundle.test.ts' . || {
               echo 'Potential committed secret shape detected outside documentation.'
               exit 1
             }
