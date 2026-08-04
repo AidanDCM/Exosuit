@@ -71,7 +71,7 @@ export const personaCandidateReviewSchema = z.object({
   localTransport: z.literal(true),
   interactiveOwnerPresent: z.literal(true),
   reviewedAt: z.string().datetime(),
-  traitOverrides: z.record(personaTraitNameSchema, signedUnitSchema).default({}),
+  traitOverrides: z.partialRecord(personaTraitNameSchema, signedUnitSchema).default({}),
   approvedHabitIds: z.array(z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/)).max(200),
   reason: z.string().min(1).max(1_000),
   modelMayApprove: z.literal(false),
