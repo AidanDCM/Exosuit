@@ -107,11 +107,12 @@ describe("durable MCP server startup", () => {
       workflowPersistenceMode: "file",
       hydratedWorkflows: 1,
       hydratedAgents: 1,
+      hydratedProductTasks: 0,
       mcpSurface: "core",
     });
   });
 
-  it("reports the composed surface and still hydrates state when the coordinator is enabled", async () => {
+  it("reports the composed full surface and still hydrates state", async () => {
     const directory = await root();
     const workflowDirectory = join(directory, "workflows");
     const agentPath = join(directory, "agents.json");
@@ -129,6 +130,24 @@ describe("durable MCP server startup", () => {
     });
     expect(result.startup.mcpSurface).toBe("full");
     expect(result.startup.hydratedWorkflows).toBe(1);
+    expect(result.startup.hydratedProductTasks).toBe(0);
+  });
+
+  it("reports the product surface independently of the coordinator", async () => {
+    const orchestrator = new ExosuitOrchestrator({
+      agent: new FakeDesktopAgent({ mode: "sandbox" }),
+      ledger: new HashChainLedger(),
+    });
+    const result = await createExosuitMcpServerWithState(orchestrator, {
+      EXOSUIT_MCP_SURFACE: "product",
+    });
+    expect(result.startup).toMatchObject({
+      workflowPersistenceMode: "memory",
+      hydratedWorkflows: 0,
+      hydratedAgents: 0,
+      hydratedProductTasks: 0,
+      mcpSurface: "product",
+    });
   });
 
   it("fails startup on an unrecognized surface rather than defaulting", async () => {
@@ -138,7 +157,7 @@ describe("durable MCP server startup", () => {
     });
     await expect(
       createExosuitMcpServerWithState(orchestrator, { EXOSUIT_MCP_SURFACE: "everything" }),
-    ).rejects.toThrow(/must be "core" or "full"/);
+    ).rejects.toThrow(/must be "core", "product", or "full"/);
   });
 
   it("fails closed when persisted state is corrupt", async () => {
