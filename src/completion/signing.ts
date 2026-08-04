@@ -8,7 +8,7 @@
  * live evidence — it does not hold the authority to do so.
  */
 
-import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import { canonicalJson } from "../fieldContracts.js";
 import {
   keyRegistrySchema,
@@ -16,6 +16,7 @@ import {
   type SigningKey,
   type SigningKeyRole,
 } from "./contracts.js";
+import { pinnedRootKeyFingerprints, type RegistryPurpose } from "./policy.js";
 
 /** Records are signed over their canonical form with `signature` removed. */
 export function signingPayload(record: Record<string, unknown>): string {
@@ -35,6 +36,77 @@ export function signRecord<T extends Record<string, unknown>>(
     .toString("base64url");
 }
 
+export function rootKeyFingerprint(rootPublicKeyBase64: string): string {
+  return createHash("sha256").update(Buffer.from(rootPublicKeyBase64, "base64")).digest("hex");
+}
+
+/**
+ * Verifies the registry envelope against the offline root key.
+ *
+ * The root private key never enters the repository. Only the fingerprint of
+ * its public half is pinned, so swapping in an attacker-controlled root shows
+ * up as a diff to `pinnedRootKeyFingerprints`. A verifier may pin the root
+ * public key outside the repository entirely via EXOSUIT_COMPLETION_ROOT_PUBKEY.
+ */
+export function verifyKeyRegistry(
+  registry: KeyRegistry,
+  now: string,
+  acceptedRootFingerprints?: readonly string[],
+): string[] {
+  const failures: string[] = [];
+  const fingerprint = rootKeyFingerprint(registry.rootPublicKey);
+
+  const externalPin = process.env["EXOSUIT_COMPLETION_ROOT_PUBKEY"];
+  const accepted = acceptedRootFingerprints
+    ?? (externalPin === undefined || externalPin.trim() === ""
+      ? pinnedRootKeyFingerprints
+      : [rootKeyFingerprint(externalPin.trim())]);
+  if (!accepted.includes(fingerprint)) {
+    failures.push(`registry root key ${fingerprint.slice(0, 12)} is not pinned`);
+  }
+
+  let rootPublic;
+  try {
+    rootPublic = createPublicKey({
+      key: Buffer.from(registry.rootPublicKey, "base64"),
+      format: "der",
+      type: "spki",
+    });
+  } catch {
+    return [...failures, "registry root public key is unreadable"];
+  }
+
+  const { signature, ...core } = registry;
+  const valid = verify(
+    null,
+    Buffer.from(canonicalJson(core), "utf8"),
+    rootPublic,
+    Buffer.from(signature, "base64url"),
+  );
+  if (!valid) failures.push("registry envelope signature does not verify against the root key");
+
+  const nowMs = Date.parse(now);
+  if (nowMs < Date.parse(registry.issuedAt)) failures.push("registry is not yet valid");
+  if (nowMs > Date.parse(registry.expiresAt)) failures.push("registry has expired");
+
+  // Revocations are themselves root-signed, so deleting the marker on a key is
+  // not enough to un-revoke it.
+  for (const revocation of registry.revocations) {
+    const { signature: revocationSignature, ...revocationCore } = revocation;
+    const revocationValid = verify(
+      null,
+      Buffer.from(canonicalJson(revocationCore), "utf8"),
+      rootPublic,
+      Buffer.from(revocationSignature, "base64url"),
+    );
+    if (!revocationValid) {
+      failures.push(`revocation of ${revocation.keyId} does not verify against the root key`);
+    }
+  }
+
+  return failures;
+}
+
 export interface KeyVerificationRequest {
   readonly registry: KeyRegistry;
   readonly keyId: string;
@@ -43,6 +115,8 @@ export interface KeyVerificationRequest {
   readonly signedAt: string;
   /** Required for host-bound keys: the machine the record claims to come from. */
   readonly machineId?: string;
+  /** When set, the registry must have this purpose (live evidence needs `live`). */
+  readonly requiredPurpose?: RegistryPurpose;
 }
 
 export function resolveSigningKey(request: KeyVerificationRequest): { key?: SigningKey; failures: string[] } {
@@ -51,8 +125,18 @@ export function resolveSigningKey(request: KeyVerificationRequest): { key?: Sign
   if (key === undefined) {
     return { failures: [`unknown signing key ${request.keyId}`] };
   }
+  if (request.requiredPurpose !== undefined && request.registry.purpose !== request.requiredPurpose) {
+    failures.push(
+      `registry ${request.registry.registryId} has purpose ${request.registry.purpose}; `
+      + `${request.requiredPurpose} evidence cannot be attested by it`,
+    );
+  }
   if (key.revokedAt !== undefined) {
     failures.push(`signing key ${key.keyId} is revoked${key.revocationReason ? ` (${key.revocationReason})` : ""}`);
+  }
+  const revocation = request.registry.revocations.find((entry) => entry.keyId === key.keyId);
+  if (revocation !== undefined) {
+    failures.push(`signing key ${key.keyId} is revoked (${revocation.reason})`);
   }
   if (!key.roles.includes(request.role)) {
     failures.push(`signing key ${key.keyId} is not authorised for role ${request.role}`);

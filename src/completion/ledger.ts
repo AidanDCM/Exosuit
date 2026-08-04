@@ -10,8 +10,9 @@
 
 import { createHash } from "node:crypto";
 import { canonicalJson } from "../fieldContracts.js";
-import { isTransitionAllowed, type CompletionStatus } from "./policy.js";
+import { isTransitionAllowed, requiredApprovalRole, type CompletionStatus } from "./policy.js";
 import { verifyRecordSignature } from "./signing.js";
+import type { ApprovalRole } from "./policy.js";
 import type {
   CompletionEvidence,
   CompletionLedger,
@@ -106,6 +107,16 @@ export function verifyCompletionLedger(request: LedgerVerificationRequest): Ledg
       } else if (event.reviewer === event.issuer) {
         failures.push(`${label}: reviewer and issuer must be different principals`);
       }
+      // Engineering review, owner acceptance, and release approval are distinct
+      // authorities; the gate decides which one it demands.
+      const required = requiredApprovalRole(event.testId);
+      if (event.reviewerRole === undefined) {
+        failures.push(`${label}: promotion to passed requires reviewerRole ${required}`);
+      } else if (event.reviewerRole !== required) {
+        failures.push(
+          `${label}: gate ${event.testId} requires ${required} but the transition claims ${event.reviewerRole}`,
+        );
+      }
     }
 
     // ---- cited evidence must be valid and bound to this very test ----
@@ -154,6 +165,7 @@ export function nextLedgerEvent(input: {
   readonly evidenceIds: readonly string[];
   readonly issuer: string;
   readonly reviewer?: string;
+  readonly reviewerRole?: ApprovalRole;
   readonly reason: string;
   readonly recordedAt: string;
   readonly signingKeyId: string;
@@ -171,6 +183,7 @@ export function nextLedgerEvent(input: {
     evidenceIds: [...input.evidenceIds],
     issuer: input.issuer,
     ...(input.reviewer === undefined ? {} : { reviewer: input.reviewer }),
+    ...(input.reviewerRole === undefined ? {} : { reviewerRole: input.reviewerRole }),
     reason: input.reason,
     recordedAt: input.recordedAt,
     signingKeyId: input.signingKeyId,

@@ -15,7 +15,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { createHash, generateKeyPairSync, randomBytes } from "node:crypto";
+import { createHash, createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname, release, type as osType } from "node:os";
 import { join, resolve } from "node:path";
@@ -35,12 +35,15 @@ import {
 import {
   completionTargets,
   liveEvidenceClasses,
+  requiredApprovalRole,
   TEST_DEFINITION_VERSION,
+  type ApprovalRole,
   type CompletionEvidenceClass,
   type CompletionStatus,
   type CompletionTarget,
+  type RegistryPurpose,
 } from "./policy.js";
-import { signRecord } from "./signing.js";
+import { rootKeyFingerprint, signRecord } from "./signing.js";
 import { nextLedgerEvent } from "./ledger.js";
 import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
@@ -119,11 +122,39 @@ const KEY_ROLES: Readonly<Record<string, readonly SigningKeyRole[]>> = {
   "completion-host-1": ["host"],
 };
 
+/**
+ * Generates the offline root key. Run once, on an offline machine if possible.
+ * The printed fingerprint must be added to `pinnedRootKeyFingerprints`, which is
+ * what makes a substituted root visible as a reviewable diff.
+ */
+function commandRootKey(): void {
+  const outDir = privateKeyDir();
+  mkdirSync(outDir, { recursive: true });
+  const keyId = arg("--root-key-id") ?? "completion-root-1";
+  const { publicKey, privateKey: secret } = generateKeyPairSync("ed25519");
+  writeFileSync(join(outDir, `${keyId}.pem`), secret.export({ format: "pem", type: "pkcs8" }).toString(), {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  const publicBase64 = publicKey.export({ format: "der", type: "spki" }).toString("base64");
+  console.log(`Root key ${keyId} written to ${outDir} — keep this offline.`);
+  console.log(`Root public key (base64 DER):\n${publicBase64}`);
+  console.log(`\nPin this fingerprint in src/completion/policy.ts:\n${rootKeyFingerprint(publicBase64)}`);
+}
+
 function commandKeys(): void {
   const outDir = privateKeyDir();
   mkdirSync(outDir, { recursive: true });
+  const purpose = (arg("--purpose") ?? "development") as RegistryPurpose;
+  if (purpose !== "development" && purpose !== "live") {
+    throw new Error("--purpose must be development or live");
+  }
+  const registryId = arg("--registry-id") ?? `${purpose}-${new Date().toISOString().slice(0, 10)}`;
+  const rootKeyId = arg("--root-key-id") ?? "completion-root-1";
   const now = new Date();
-  const notAfter = new Date(now.getTime() + 3 * 365 * 86_400_000);
+  // Live registries are deliberately short-lived; development fixtures are not.
+  const lifetimeDays = purpose === "live" ? 365 : 3 * 365;
+  const notAfter = new Date(now.getTime() + lifetimeDays * 86_400_000);
 
   const keys = Object.entries(KEY_ROLES).map(([keyId, roles]) => {
     const { publicKey, privateKey: secret } = generateKeyPairSync("ed25519");
@@ -144,9 +175,107 @@ function commandKeys(): void {
     };
   });
 
-  writeJson(PATHS.keys, keyRegistrySchema.parse({ contractVersion: 2, keys }));
-  console.log(`Wrote public key registry to ${PATHS.keys}`);
+  const rootPem = privateKey(rootKeyId);
+  const rootPublicKey = createPublicKey(rootPem).export({ format: "der", type: "spki" }).toString("base64");
+  const previous = existsSync(PATHS.keys)
+    ? (readJson<KeyRegistry>(PATHS.keys))
+    : undefined;
+
+  const core = {
+    contractVersion: 2 as const,
+    registryId,
+    purpose,
+    // Registry versions chain, so a key set cannot be silently rolled back.
+    version: previous === undefined || previous.registryId !== registryId ? 1 : previous.version + 1,
+    previousRegistryHash: previous === undefined
+      ? "0".repeat(64)
+      : createHash("sha256").update(JSON.stringify(previous)).digest("hex"),
+    issuedAt: now.toISOString(),
+    expiresAt: notAfter.toISOString(),
+    keys,
+    revocations: [],
+    rootKeyId,
+    rootPublicKey,
+  };
+
+  writeJson(PATHS.keys, keyRegistrySchema.parse({
+    ...core,
+    signature: signRecord(core, rootPem),
+  }));
+  console.log(`Wrote ${purpose} registry ${registryId} (v${core.version}) to ${PATHS.keys}`);
   console.log(`Wrote ${keys.length} private keys to ${outDir} (keep outside the repository).`);
+  if (purpose === "development") {
+    console.log("This is a DEVELOPMENT registry: it can never attest live evidence.");
+  }
+}
+
+/**
+ * Wraps an EXISTING key set in the signed envelope without regenerating any
+ * keypair. Used to bring a pre-envelope registry forward, so signatures already
+ * made by those keys keep verifying.
+ */
+function commandSealRegistry(): void {
+  const existing = readJson<Record<string, unknown>>(PATHS.keys);
+  const keys = existing["keys"];
+  if (!Array.isArray(keys)) throw new Error("Existing registry has no key array to seal.");
+
+  const purpose = (arg("--purpose") ?? "development") as RegistryPurpose;
+  const registryId = arg("--registry-id") ?? `${purpose}-sealed`;
+  const rootKeyId = arg("--root-key-id") ?? "completion-root-1";
+  const rootPem = privateKey(rootKeyId);
+  const now = new Date();
+
+  const core = {
+    contractVersion: 2 as const,
+    registryId,
+    purpose,
+    version: typeof existing["version"] === "number" ? existing["version"] + 1 : 1,
+    previousRegistryHash: existing["signature"] === undefined
+      ? "0".repeat(64)
+      : createHash("sha256").update(JSON.stringify(existing)).digest("hex"),
+    issuedAt: typeof existing["issuedAt"] === "string" ? existing["issuedAt"] : now.toISOString(),
+    expiresAt: arg("--expires")
+      ?? new Date(now.getTime() + (purpose === "live" ? 365 : 3 * 365) * 86_400_000).toISOString(),
+    keys,
+    revocations: Array.isArray(existing["revocations"]) ? existing["revocations"] : [],
+    rootKeyId,
+    rootPublicKey: createPublicKey(rootPem).export({ format: "der", type: "spki" }).toString("base64"),
+  };
+
+  writeJson(PATHS.keys, keyRegistrySchema.parse({
+    ...core,
+    signature: signRecord(core, rootPem),
+  }));
+  console.log(`Sealed existing ${keys.length}-key set as ${purpose} registry ${registryId} (v${core.version}).`);
+  console.log("No keypair was regenerated; existing signatures remain valid.");
+}
+
+/** Revokes a key with a root-signed record, so deleting a field cannot undo it. */
+function commandRevoke(): void {
+  const keyId = requireArg("--key");
+  const registry = readJson<KeyRegistry>(PATHS.keys);
+  const rootPem = privateKey(registry.rootKeyId);
+  const revocationCore = {
+    keyId,
+    revokedAt: new Date().toISOString(),
+    reason: requireArg("--reason"),
+    rootKeyId: registry.rootKeyId,
+  };
+  const { signature: _signature, ...core } = registry;
+  const updated = {
+    ...core,
+    version: registry.version + 1,
+    previousRegistryHash: createHash("sha256").update(JSON.stringify(registry)).digest("hex"),
+    revocations: [...registry.revocations, {
+      ...revocationCore,
+      signature: signRecord(revocationCore, rootPem),
+    }],
+  };
+  writeJson(PATHS.keys, keyRegistrySchema.parse({
+    ...updated,
+    signature: signRecord(updated, rootPem),
+  }));
+  console.log(`Revoked ${keyId} in registry ${registry.registryId} (now v${updated.version}).`);
 }
 
 /* --------------------------------------------------------------- migrate */
@@ -176,7 +305,8 @@ const MIGRATABLE: readonly CompletionStatus[] = ["source_validated", "ready_for_
 
 function commandMigrate(): void {
   const legacy = readJson<LegacyManifest>(join(ROOT, "docs", "qa", "build-completion-manifest.json"));
-  const baselineCommit = git("rev-parse", "HEAD");
+  // --baseline keeps an existing evidence set valid across a ledger reissue.
+  const baselineCommit = arg("--baseline") ?? git("rev-parse", "HEAD");
   const baselineCommittedAt = new Date(git("show", "-s", "--format=%cI", baselineCommit)).toISOString();
   const generatedAt = new Date().toISOString();
 
@@ -380,6 +510,9 @@ function commandTransition(): void {
     evidenceIds,
     issuer: requireArg("--issuer"),
     ...(arg("--reviewer") === undefined ? {} : { reviewer: requireArg("--reviewer") }),
+    ...(arg("--reviewer-role") === undefined
+      ? { reviewerRole: requiredApprovalRole(testId) }
+      : { reviewerRole: requireArg("--reviewer-role") as ApprovalRole }),
     reason: requireArg("--reason"),
     recordedAt,
     signingKeyId: "completion-ledger-1",
@@ -445,13 +578,16 @@ function commandEvaluate(): void {
 function main(): void {
   const command = process.argv[2];
   switch (command) {
+    case "root-key": return commandRootKey();
     case "keys": return commandKeys();
+    case "seal-registry": return commandSealRegistry();
+    case "revoke": return commandRevoke();
     case "migrate": return commandMigrate();
     case "record": return commandRecord();
     case "transition": return commandTransition();
     case "evaluate": return commandEvaluate();
     default:
-      console.error("Usage: completion-gate <keys|migrate|record|transition|evaluate> [options]");
+      console.error("Usage: completion-gate <root-key|keys|seal-registry|revoke|migrate|record|transition|evaluate> [options]");
       process.exitCode = 2;
   }
 }

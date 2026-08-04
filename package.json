@@ -46,7 +46,10 @@
     "completion:transition": "tsx src/completion/cli.ts transition",
     "validate:completion": "tsx src/completion/cli.ts evaluate",
     "assess:mvp2": "tsx src/completion/cli.ts evaluate --target personal_mvp",
-    "test:completion": "vitest run tests/completionGateV2.test.ts tests/security/buildCompletionPlanV2.adversarial.test.ts tests/buildCompletionPlan.test.ts"
+    "test:completion": "vitest run tests/completionGateV2.test.ts tests/security/buildCompletionPlanV2.adversarial.test.ts tests/security/liveAttestation.adversarial.test.ts tests/buildCompletionPlan.test.ts",
+    "completion:root-key": "tsx src/completion/cli.ts root-key",
+    "completion:seal-registry": "tsx src/completion/cli.ts seal-registry",
+    "completion:revoke": "tsx src/completion/cli.ts revoke"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

@@ -155,6 +155,10 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
       role: isLiveClass ? requiredRoleForLiveEvidence() : "evidence",
       signedAt: record.observedAt,
       machineId: record.environment.machineId,
+      // Live evidence may only be attested under a live registry; the
+      // development key set exists for fixtures and can never stand in for a
+      // real host.
+      ...(isLiveClass ? { requiredPurpose: "live" as const } : {}),
     }));
 
     if (reasons.length === 0) valid.set(record.evidenceId, record);

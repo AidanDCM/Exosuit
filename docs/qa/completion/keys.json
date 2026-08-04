@@ -1,5 +1,11 @@
 {
   "contractVersion": 2,
+  "registryId": "development-fixtures-2026-08-04",
+  "purpose": "development",
+  "version": 1,
+  "previousRegistryHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "issuedAt": "2026-08-04T19:11:33.307Z",
+  "expiresAt": "2029-08-03T19:11:33.307Z",
   "keys": [
     {
       "keyId": "completion-manifest-1",
@@ -42,5 +48,9 @@
       "notBefore": "2026-08-04T17:53:40.813Z",
       "notAfter": "2029-08-03T17:53:40.813Z"
     }
-  ]
+  ],
+  "revocations": [],
+  "rootKeyId": "completion-root-1",
+  "rootPublicKey": "MCowBQYDK2VwAyEAJlYPt2KJc0XLZp+n8TXiDn0qPFadtkZNwvMlI9g4iuM=",
+  "signature": "0zFZn3UqIu4Jde_U56Uq_j1pBWKpbilCbor2h8h6CvdERU6ti-ITeajTQmpyiuPCZTcRKxNM0xe_QERH6cUxCg"
 }

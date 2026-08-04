@@ -207,6 +207,7 @@ describe("v2 adversarial — status transitions and the ledger", () => {
       evidenceIds: [record.evidenceId],
       issuer: "a",
       reviewer: "b",
+      reviewerRole: "technical_review",
     });
     const result = fixture.evaluate("personal_mvp");
     expect(result.integrityFailures).toEqual([]);
@@ -340,34 +341,31 @@ describe("v2 adversarial — signatures, keys, and tampering", () => {
   it("revoked key: every record it signed is rejected", () => {
     const fixture = createCompletionFixture();
     fixture.promote("SRC-001");
-    fixture.registry = {
-      contractVersion: 2,
+    fixture.registry = fixture.sealRegistry({
       keys: fixture.registry.keys.map((key) => key.keyId === "k-evidence"
         ? { ...key, revokedAt: "2026-08-05T00:00:00.000Z", revocationReason: "compromised" }
         : key),
-    };
+    });
     expect(allFailures(fixture.evaluate("personal_mvp"))).toMatch(/is revoked \(compromised\)/);
   });
 
   it("key rotation: a record signed outside the key validity window is rejected", () => {
     const fixture = createCompletionFixture();
     fixture.promote("SRC-001");
-    fixture.registry = {
-      contractVersion: 2,
+    fixture.registry = fixture.sealRegistry({
       keys: fixture.registry.keys.map((key) => key.keyId === "k-evidence"
         ? { ...key, notAfter: "2026-08-02T00:00:00.000Z" }
         : key),
-    };
+    });
     expect(allFailures(fixture.evaluate("personal_mvp"))).toMatch(/used after notAfter/);
   });
 
   it("unknown signing key is rejected rather than ignored", () => {
     const fixture = createCompletionFixture();
     fixture.promote("SRC-001");
-    fixture.registry = {
-      contractVersion: 2,
+    fixture.registry = fixture.sealRegistry({
       keys: fixture.registry.keys.filter((key) => key.keyId !== "k-evidence"),
-    };
+    });
     expect(allFailures(fixture.evaluate("personal_mvp"))).toMatch(/unknown signing key k-evidence/);
   });
 

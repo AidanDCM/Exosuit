@@ -174,6 +174,44 @@ export function isBenchmarkGate(testId: string): testId is BenchmarkGateId {
   return Object.hasOwn(benchmarkGates, testId);
 }
 
+/**
+ * Registry purpose. Development registries exist so the adversarial suite has
+ * reproducible fixtures; they may never attest live evidence.
+ */
+export const registryPurposes = ["development", "live"] as const;
+export type RegistryPurpose = (typeof registryPurposes)[number];
+
+/**
+ * SHA-256 fingerprints of the DER public halves of accepted offline root keys.
+ *
+ * The root PRIVATE key is held offline and never touches the repository. Only
+ * the fingerprint is pinned here, so substituting a different root registry is
+ * visible in review as a diff to this list. A verifier may additionally pin the
+ * root public key outside the repository via EXOSUIT_COMPLETION_ROOT_PUBKEY.
+ */
+export const pinnedRootKeyFingerprints: readonly string[] = [
+  // development root — fixtures only, may never sign a live registry
+  "95ec3b180ab30f94d5dc86f28c439b2f7f366e87a1b89c938463c7eac66ba426",
+];
+
+/**
+ * Approval kinds. These are distinct authorities and are never interchangeable:
+ * an engineering review is not owner acceptance, and neither is a release
+ * approval.
+ */
+export const approvalRoles = ["technical_review", "owner_acceptance", "release_approval"] as const;
+export type ApprovalRole = (typeof approvalRoles)[number];
+
+/** Gates that only the owner can accept, and gates that require release sign-off. */
+const ownerAcceptanceGates = new Set(["TCH-001", "RCP-001", "CPK-001", "OWN-001", "PERF-001"]);
+const releaseApprovalGates = new Set(["INS-001", "COMP-001", "REL-001", "PRD-001"]);
+
+export function requiredApprovalRole(testId: string): ApprovalRole {
+  if (ownerAcceptanceGates.has(testId)) return "owner_acceptance";
+  if (releaseApprovalGates.has(testId)) return "release_approval";
+  return "technical_review";
+}
+
 /** Freshness policy, in days, by evidence class. */
 export const evidenceMaximumAgeDays: Readonly<Record<CompletionEvidenceClass, number>> = {
   source: 180,

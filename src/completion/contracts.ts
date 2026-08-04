@@ -10,10 +10,12 @@
 
 import { z } from "zod";
 import {
+  approvalRoles,
   COMPLETION_CONTRACT_VERSION,
   completionEvidenceClasses,
   completionStatuses,
   completionTargets,
+  registryPurposes,
 } from "./policy.js";
 
 const sha256Hex = z.string().regex(/^[a-f0-9]{64}$/);
@@ -51,9 +53,42 @@ export const signingKeySchema = z.object({
 }).strict();
 export type SigningKey = z.infer<typeof signingKeySchema>;
 
+/**
+ * A revocation, signed by the offline root key. Stronger than the `revokedAt`
+ * marker on a key: a registry editor cannot un-revoke by deleting a field,
+ * because the revocation carries its own root signature.
+ */
+export const keyRevocationSchema = z.object({
+  keyId: identifier,
+  revokedAt: z.string().datetime(),
+  reason: z.string().min(1).max(300),
+  rootKeyId: identifier,
+  signature: signatureValue,
+}).strict();
+export type KeyRevocation = z.infer<typeof keyRevocationSchema>;
+
+/**
+ * The key registry envelope, signed by the offline root key.
+ *
+ * `purpose` separates development fixtures from live attestation authority;
+ * live evidence is rejected unless it is signed under a `live` registry.
+ * `version` and `previousRegistryHash` chain registry changes, so a registry
+ * cannot be silently rolled back to an earlier key set.
+ */
 export const keyRegistrySchema = z.object({
   contractVersion: z.literal(COMPLETION_CONTRACT_VERSION),
+  registryId: identifier,
+  purpose: z.enum(registryPurposes),
+  version: z.number().int().positive(),
+  previousRegistryHash: sha256Hex,
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
   keys: z.array(signingKeySchema).min(1),
+  revocations: z.array(keyRevocationSchema),
+  rootKeyId: identifier,
+  /** DER SPKI, base64. Its SHA-256 must match a pinned root fingerprint. */
+  rootPublicKey: z.string().min(1).max(1000),
+  signature: signatureValue,
 }).strict();
 export type KeyRegistry = z.infer<typeof keyRegistrySchema>;
 
@@ -161,6 +196,12 @@ export const completionLedgerEventSchema = z.object({
   issuer: identifier,
   /** Promotion into `passed` requires a reviewer distinct from the issuer. */
   reviewer: identifier.optional(),
+  /**
+   * Which authority the reviewer exercised. Engineering review, owner
+   * acceptance, and release approval are distinct and never interchangeable;
+   * policy decides which one a given gate demands.
+   */
+  reviewerRole: z.enum(approvalRoles).optional(),
   reason: z.string().min(1).max(500),
   recordedAt: z.string().datetime(),
   signingKeyId: identifier,

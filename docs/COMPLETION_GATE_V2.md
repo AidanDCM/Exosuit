@@ -124,6 +124,33 @@ only in `src/completion/policy.ts`. The CI validator executes that module
 through the CLI rather than reimplementing it, so the evaluator and the
 validator cannot drift apart.
 
+## Registry trust root (v2.1)
+
+Code review alone is sufficient for development, not for live evidence. The key
+registry is therefore a root-signed envelope:
+
+- **Offline Ed25519 root key.** Held outside the repository and off the signing
+  machine. Only the SHA-256 fingerprint of its public half is pinned, in
+  `pinnedRootKeyFingerprints`, so a substituted root is a reviewable diff. A
+  verifier may pin externally instead via `EXOSUIT_COMPLETION_ROOT_PUBKEY`.
+- **`registryId` and `purpose`.** A `development` registry may never attest live
+  evidence — enforced in `resolveSigningKey`, not by convention. Live registries
+  expire after one year; development fixtures after three.
+- **Signed registry versions.** `version` and `previousRegistryHash` chain
+  registry changes so a key set cannot be silently rolled back.
+- **Signed revocation records.** Revocations carry their own root signature, so
+  deleting a `revokedAt` field does not un-revoke a key.
+- **CODEOWNERS.** Policy, verifier, registry, recorded state, and the
+  adversarial suites all require owner review.
+
+Approval authorities are separated and never interchangeable:
+`technical_review`, `owner_acceptance`, and `release_approval`. Policy decides
+which one a gate demands; claiming the wrong one fails the transition.
+
+For a personal MVP one offline root key is sufficient. Commercial production
+should move to a two-of-three threshold model so no single key holder can
+rewrite the completion state.
+
 ## Trust roots and residual risk
 
 Stated plainly, because the version 1 report overclaimed:

@@ -13,6 +13,8 @@ import {
   evaluateBuildCompletion,
   gateEvidenceAllowlist,
   isBenchmarkGate,
+  requiredApprovalRole,
+  rootKeyFingerprint,
   liveEvidenceClasses,
   nextLedgerEvent,
   signRecord,
@@ -25,7 +27,10 @@ import {
   type CompletionStatus,
   type CompletionTarget,
   type EvidenceStore,
+  type ApprovalRole,
   type KeyRegistry,
+  type KeyRevocation,
+  type RegistryPurpose,
   type SigningKey,
 } from "../../src/completion/index.js";
 import { artifactSourceFromMap } from "../../src/completion/evidence.js";
@@ -51,6 +56,12 @@ export interface CompletionFixture {
   evidence: EvidenceStore;
   artifacts: Map<string, Uint8Array>;
   secrets: Record<string, string>;
+  /** PEM of the fixture's offline root key. */
+  rootPem: string;
+  /** Fingerprint the evaluator is told to accept for this fixture. */
+  rootFingerprint: string;
+  /** Rebuilds and root-seals the registry after a mutation. */
+  sealRegistry(input: { keys: SigningKey[]; revocations?: KeyRevocation[]; purpose?: RegistryPurpose }): KeyRegistry;
   /** Signs and appends an evidence record, storing its artifact. */
   addEvidence(input: EvidenceInput): CompletionEvidence;
   /** Signs and appends one ledger transition. */
@@ -87,11 +98,17 @@ export interface TransitionInput {
   evidenceIds?: string[];
   issuer?: string;
   reviewer?: string;
+  reviewerRole?: ApprovalRole;
   recordedAt?: string;
 }
 
 export function createCompletionFixture(manifestPath = "docs/qa/completion/manifest.json"): CompletionFixture {
   const secrets: Record<string, string> = {};
+  // The fixture mints its own offline root so tests never depend on the
+  // repository's pinned production root.
+  const root = generateKeyPairSync("ed25519");
+  const rootPublicKey = root.publicKey.export({ format: "der", type: "spki" }).toString("base64");
+  const rootPem = root.privateKey.export({ format: "pem", type: "pkcs8" }).toString();
   const keys: SigningKey[] = KEY_SPECS.map((spec) => {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
     secrets[spec.keyId] = privateKey.export({ format: "pem", type: "pkcs8" }).toString();
@@ -109,8 +126,28 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
   const source = JSON.parse(readFileSync(manifestPath, "utf8")) as BuildCompletionManifest;
   let ledgerClock = Date.parse(LEDGER_START);
 
+  const sealRegistry = (input: { keys: SigningKey[]; revocations?: KeyRevocation[]; purpose?: RegistryPurpose }): KeyRegistry => {
+    const core = {
+      contractVersion: 2 as const,
+      registryId: "fixture-registry",
+      purpose: input.purpose ?? ("live" as RegistryPurpose),
+      version: 1,
+      previousRegistryHash: "0".repeat(64),
+      issuedAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2027-01-01T00:00:00.000Z",
+      keys: input.keys,
+      revocations: input.revocations ?? [],
+      rootKeyId: "fixture-root",
+      rootPublicKey,
+    };
+    return { ...core, signature: signRecord(core, rootPem) } as KeyRegistry;
+  };
+
   const fixture: CompletionFixture = {
-    registry: { contractVersion: 2, keys },
+    registry: sealRegistry({ keys }),
+    rootPem,
+    rootFingerprint: rootKeyFingerprint(rootPublicKey),
+    sealRegistry,
     manifest: buildCompletionManifestSchema.parse({ ...source }),
     ledger: { contractVersion: 2, events: [] },
     evidence: { contractVersion: 2, records: [] },
@@ -175,6 +212,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         evidenceIds: input.evidenceIds ?? [],
         issuer: input.issuer ?? "fixture-issuer",
         ...(input.reviewer === undefined ? {} : { reviewer: input.reviewer }),
+        ...(input.reviewerRole === undefined ? {} : { reviewerRole: input.reviewerRole }),
         reason: `fixture transition to ${input.to}`,
         recordedAt: input.recordedAt ?? new Date((ledgerClock += 1000)).toISOString(),
         signingKeyId: "k-ledger",
@@ -209,6 +247,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         evidenceIds: [record.evidenceId],
         issuer: "fixture-issuer",
         reviewer: "fixture-reviewer",
+        reviewerRole: requiredApprovalRole(testId),
       });
       return record;
     },
@@ -237,6 +276,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         artifacts: artifactSourceFromMap(fixture.artifacts),
         target,
         now,
+        acceptedRootFingerprints: [fixture.rootFingerprint],
       });
     },
   };

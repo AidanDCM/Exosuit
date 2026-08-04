@@ -1,6 +1,6 @@
 {
   "contractVersion": 2,
-  "generatedAt": "2026-08-04T18:10:13.668Z",
+  "generatedAt": "2026-08-04T19:15:48.694Z",
   "branch": "codex/completion-gate-v2",
   "baselineCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
   "baselineCommittedAt": "2026-08-04T18:09:30.000Z",
@@ -531,5 +531,5 @@
     }
   ],
   "signingKeyId": "completion-manifest-1",
-  "signature": "s_Qrex5jM8hCmmpaYQTJe_RWyMgid9u6n_n3hhNEgVv2bOZ5nix6Vc9sASmDlKjguBB5zQaNoruUgM8tdLW3Ag"
+  "signature": "Oow7IqTdi8K9uXkdJoyYI7eBk4Ums7ttTcemjMCW-S2RORuojMNkOShsNU7Ibf7Do-cuoqA49h0Lx_lc-ZGjCQ"
 }

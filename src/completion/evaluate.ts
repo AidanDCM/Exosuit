@@ -44,7 +44,7 @@ import {
 } from "./evidence.js";
 import { verifyCompletionLedger } from "./ledger.js";
 import { evaluateBenchmark, parseTrialBundle } from "./benchmark.js";
-import { verifyRecordSignature } from "./signing.js";
+import { verifyKeyRegistry, verifyRecordSignature } from "./signing.js";
 
 export interface CompletionEvaluationRequest {
   readonly manifest: BuildCompletionManifest;
@@ -54,6 +54,8 @@ export interface CompletionEvaluationRequest {
   readonly artifacts: EvidenceArtifactSource;
   readonly target: CompletionTarget;
   readonly now?: string;
+  /** Overrides the in-repo pinned root fingerprints. Used by fixtures. */
+  readonly acceptedRootFingerprints?: readonly string[];
 }
 
 const targetLabels: Record<CompletionTarget, string> = {
@@ -69,6 +71,10 @@ export function evaluateBuildCompletion(request: CompletionEvaluationRequest): B
   const now = request.now ?? new Date().toISOString();
 
   const integrityFailures: string[] = [];
+
+  // ---- the key registry must be sealed by the pinned offline root key ----
+  integrityFailures.push(...verifyKeyRegistry(request.registry, now, request.acceptedRootFingerprints)
+    .map((reason) => `key registry: ${reason}`));
 
   // ---- the manifest itself must be signed by a manifest-role key ----
   integrityFailures.push(...verifyRecordSignature(manifest, {
