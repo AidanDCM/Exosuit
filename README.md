@@ -4,9 +4,12 @@ Exosuit is a private, model-independent computer embodiment platform for owner-a
 
 ## Planning authority
 
-- [`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — complete system plan;
-- [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md) — practical build waves;
-- [`docs/PRODUCT_PARITY_ROADMAP.md`](docs/PRODUCT_PARITY_ROADMAP.md) — seamless personal-agent product direction.
+- [`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — complete architecture and production authority;
+- [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md) — broad production build waves;
+- [`docs/PRODUCT_PARITY_ROADMAP.md`](docs/PRODUCT_PARITY_ROADMAP.md) — seamless personal-agent direction;
+- [`docs/BUILD_COMPLETION_PLAN.md`](docs/BUILD_COMPLETION_PLAN.md) — exact path from the current source foundation to personal MVP, daily driver, and production;
+- [`docs/qa/BUILD_COMPLETION_TEST_MATRIX.md`](docs/qa/BUILD_COMPLETION_TEST_MATRIX.md) — required live, failure-injection, owner, security, and release tests;
+- [`docs/qa/build-completion-manifest.json`](docs/qa/build-completion-manifest.json) — integrity-bound machine-readable phases, gates, evidence classes, and current status.
 
 > ChatGPT or an API model handles intent, judgment, and conversation. Exosuit handles state, execution, safety, memory, recovery, and evidence.
 
@@ -66,15 +69,34 @@ Implemented repository-side foundations include:
 
 The product task layer cannot report execution success through MCP. A future trusted local adapter must re-observe, apply ordinary policy, execute, verify, and record a bounded result. Cockpit and release-lifecycle implementations are contracts, not finished graphical interfaces or host-changing executors. Release plans retain `executionAllowed: false`.
 
+### Build-completion control
+
+The repository now contains a machine-validated completion graph:
+
+| Phase | Finish line |
+|---|---|
+| M0 | exact source baseline |
+| M1 | real host and disposable Field |
+| M2 | live scenes and trusted execution |
+| M3 | consented Teach, isolated Shadow, and personal models |
+| M4 | five Assisted recipes |
+| M5 | ChatGPT/API connection, cockpit, and resume |
+| M6 | installable personal MVP |
+| P1 | strong daily-driver reliability |
+| P2 | production security and release engineering |
+| P3 | exact production candidate and operations |
+
+The completion contract distinguishes source, unit, fake integration, Windows guest, Hyper-V, ChatGPT MCP, owner acceptance, security review, and release-operation evidence. Live gates cannot pass with synthetic-only evidence. Dependency cycles, missing gate IDs, missing rollback procedures, tampering, and unsupported promotion claims fail validation.
+
 ## Validation posture
 
-Validated source head:
+Validated source head before the completion-plan addition:
 
 ```text
 d91a9701d8faab4220441de9553eb1647c0164b8
 ```
 
-Hosted evidence:
+Hosted evidence for that source head:
 
 - Exosuit CI run `30926779304` passed;
 - Security Audit run `30926782740` passed for supported jobs;
@@ -92,7 +114,7 @@ Hosted evidence:
 - npm audit reported zero vulnerabilities;
 - NuGet reported no vulnerable direct or transitive packages.
 
-See [`docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md`](docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md) for artifact IDs, hashes, repaired validation defects, and exact promotion boundaries.
+See [`docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md`](docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md) for artifact IDs, hashes, repaired validation defects, and exact promotion boundaries. The completion-plan branch tip must receive its own exact-head CI evidence before these counts are updated.
 
 These are repository and fake-provider results. Live Windows, Hyper-V, Teach, owner-derived calibration, process-level Shadow isolation, credential insertion, Assisted execution, ChatGPT-to-Field acceptance, graphical cockpit, installer execution, MVP, and production remain denied.
 
@@ -222,6 +244,23 @@ Promotion requires at least 10 trials across five recipes, 90% completion, zero 
 
 The stronger daily-driver gate requires at least 100 trials, 97% completion, 95% recovery where attempted, 99% resumption, and no more than 0.1 non-required interventions per trial. The evaluator cannot approve production.
 
+### Completion assessment
+
+```bash
+npm run validate:mvp-plan
+npm run assess:mvp
+```
+
+`validate:mvp-plan` checks the manifest structure, integrity hash, required phases/gates, dependency graph, evidence classes, rollback procedures, and synthetic/live separation. `assess:mvp` reports weighted source/live completion, blockers, and the next executable phase without claiming readiness.
+
+The stricter command:
+
+```bash
+npm run validate:mvp
+```
+
+is expected to fail until every personal-MVP gate has qualifying live evidence.
+
 ## Safety defaults
 
 | Capability | Default |
@@ -248,8 +287,10 @@ The stronger daily-driver gate requires at least 100 trials, 97% completion, 95%
 npm ci --ignore-scripts
 npm run validate:repository
 npm run validate:plan
+npm run validate:mvp-plan
 npm run validate:field-contract
 npm run typecheck
+npm run test:mvp-plan -- --reporter=verbose
 npm run test:product -- --reporter=verbose
 npm run test:field -- --reporter=verbose
 npm run test:field-pulse -- --reporter=verbose
@@ -270,6 +311,8 @@ For live Windows evidence, use the guarded Field validator only on an authentica
 ./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
+The Windows validator now records both informational personal-MVP and production-readiness reports. Neither report is a promotion unless its exact evidence requirements pass.
+
 ## Remaining live and production holds
 
 - production-authenticated repeated Hyper-V lifecycle/channel/readiness failure injection;
@@ -279,11 +322,13 @@ For live Windows evidence, use the guarded Field validator only on an authentica
 - DPAPI/TPM key handling and secure erasure;
 - process-level Shadow no-input proof;
 - trusted credential insertion;
-- live Assisted execution;
-- synthetic Pilot and normal ChatGPT MCP acceptance;
+- trusted local task-chunk executor;
+- live Assisted execution for all five recipes;
+- normal ChatGPT MCP acceptance;
 - graphical cockpit and human-factors acceptance;
 - signed Windows binaries and installer/service execution;
 - repair, update, rollback, and uninstall execution;
+- daily-driver reliability and compatibility matrix;
 - full release provenance, .NET SBOM, private code scanning or equivalent, penetration testing, privacy review, incident response, and support operations.
 
 ## Explicit exclusions
@@ -296,5 +341,6 @@ Exosuit must not implement or claim stealth or undetectable automation, anti-bot
 - Real-account or consequential autonomous use is denied.
 - Real owner-derived persona activation is denied until live evidence and owner approval.
 - Live Assisted, Pilot, and ChatGPT-to-Field promotion are denied.
-- Personal-use MVP is denied until the live benchmark gate passes.
-- Production is denied.
+- Personal-use MVP is denied until M0–M6 and the live benchmark gate pass.
+- Daily-driver readiness is denied until P1 passes.
+- Production is denied until P2–P3 and every production-readiness gate pass.
