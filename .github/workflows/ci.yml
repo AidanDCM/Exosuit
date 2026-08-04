@@ -98,32 +98,73 @@ jobs:
             tests/fixtures/field-channel-v1.json
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
-      - name: Install dependencies without lifecycle scripts
+      - name: Refresh candidate cross-platform lock metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --fund=false
+          npm audit fix --package-lock-only --ignore-scripts --fund=false
+      - name: Install dependencies from refreshed lock
         run: npm ci --ignore-scripts --fund=false
+      - name: Capture post-refresh dependency audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit-after-lock-refresh.json
+          exit 0
       - name: Repository contract
-        run: npm run validate:repository 2>&1 | tee repository-contract.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:repository 2>&1 | tee repository-contract.log
       - name: Complete master plan contract
-        run: npm run validate:plan 2>&1 | tee master-plan.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:plan 2>&1 | tee master-plan.log
       - name: Field contract and script invariants
-        run: npm run validate:field-contract 2>&1 | tee field-contract.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:field-contract 2>&1 | tee field-contract.log
       - name: Strict TypeScript typecheck
-        run: npm run typecheck 2>&1 | tee typecheck.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
       - name: Focused Field unit and integration tests
-        run: npm run test:field -- --reporter=verbose 2>&1 | tee field-tests.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:field -- --reporter=verbose 2>&1 | tee field-tests.log
       - name: Full fake Field system pulse
-        run: npm run test:field-pulse -- --reporter=verbose 2>&1 | tee field-pulse.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:field-pulse -- --reporter=verbose 2>&1 | tee field-pulse.log
       - name: Full TypeScript test suite
-        run: npm test -- --reporter=verbose 2>&1 | tee typescript-tests.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- --reporter=verbose 2>&1 | tee typescript-tests.log
       - name: Production TypeScript build
-        run: npm run build 2>&1 | tee typescript-build.log
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee typescript-build.log
       - name: Existing Glove system pulse
-        run: npm run test:pulse -- --reporter=verbose 2>&1 | tee glove-pulse.log
-      - name: Upload TypeScript and Field evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:pulse -- --reporter=verbose 2>&1 | tee glove-pulse.log
+      - name: Upload TypeScript, Field, and candidate lock evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: typescript-field-validation
           path: |
+            package-lock.json
+            npm-audit-after-lock-refresh.json
             repository-contract.log
             master-plan.log
             field-contract.log
