@@ -37,6 +37,9 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.4.3"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.62.2"
+  },
   "devDependencies": {
     "@types/node": "^22.10.7",
     "tsx": "^4.19.2",
