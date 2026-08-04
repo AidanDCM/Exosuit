@@ -40,6 +40,16 @@ const expectedTools = [
   "desktop_refresh_workspace",
   "desktop_resume_workflow",
   "desktop_run_next_workflow_step",
+  "exosuit_cancel_task",
+  "exosuit_create_task",
+  "exosuit_get_task",
+  "exosuit_list_recipes",
+  "exosuit_list_tasks",
+  "exosuit_pause_task",
+  "exosuit_plan_next_chunk",
+  "exosuit_resume_task",
+  "exosuit_route_brain",
+  "exosuit_start_task",
 ].sort();
 
 describe("MCP protocol boundary", () => {
@@ -48,7 +58,7 @@ describe("MCP protocol boundary", () => {
       agent: new FakeDesktopAgent(),
       applicationMaps: new ApplicationMapStore(),
     });
-    // This test asserts the complete surface, so it opts into the coordinator explicitly.
+    // This test asserts the complete surface, so it opts into product and coordinator tools explicitly.
     // The default composition is `core`; see tests/documentedToolSurface.test.ts.
     const server = createExosuitMcpServer(orchestrator, { EXOSUIT_MCP_SURFACE: "full" });
     const client = new Client({ name: "exosuit-test-client", version: "1.0.0" });
@@ -78,6 +88,12 @@ describe("MCP protocol boundary", () => {
         destructiveHint: true,
         idempotentHint: false,
       });
+      const taskChunkTool = tools.tools.find((tool) => tool.name === "exosuit_plan_next_chunk");
+      expect(taskChunkTool?.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+      });
 
       const statusResult = await client.callTool({ name: "desktop_get_status", arguments: {} });
       expect(statusResult.isError).not.toBe(true);
@@ -99,6 +115,10 @@ describe("MCP protocol boundary", () => {
       expect(workspaceResult.structuredContent).toMatchObject({
         workspace: { workspaceId: "local-workspace" },
       });
+
+      const recipeResult = await client.callTool({ name: "exosuit_list_recipes", arguments: {} });
+      expect(recipeResult.isError).not.toBe(true);
+      expect(recipeResult.structuredContent).toMatchObject({ recipes: expect.any(Array) });
 
       const mapResult = await client.callTool({
         name: "desktop_build_application_map",
@@ -164,10 +184,5 @@ describe("MCP protocol boundary", () => {
       await client.close();
       await server.close();
     }
-    // Integration test, not a unit test: a real client/server handshake plus roughly ten
-    // tool invocations including an application-map build and match. It normally finishes
-    // in well under a second, but it exceeded the 10s global timeout once on a loaded
-    // machine. The wider budget here is for scheduling contention on a shared CI runner;
-    // the global 10s still applies to every unit test.
   }, 30_000);
 });
