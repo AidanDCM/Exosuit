@@ -1,15 +1,7 @@
 name: Exosuit CI
 
-# Triggers are deliberately non-overlapping. `push` covered `build/**` as well as `main`,
-# so every push to the canonical branch fired a push run AND a pull_request run for the
-# same commit through PR #1 — identical work, billed twice, on a private repo where
-# Windows minutes count double against the allowance.
-#
-# `push` now validates post-merge on main only; `pull_request` validates pre-merge. A
-# commit is therefore checked exactly once.
-#
-# Trade-off: a `build/**` branch with no open PR gets no automatic run. Open the PR (the
-# documented workflow here) or use workflow_dispatch.
+# Triggers are deliberately non-overlapping. Pull requests validate pre-merge;
+# pushes validate main after merge. Branch work without an open PR may use workflow_dispatch.
 on:
   push:
     branches: [main]
@@ -64,7 +56,7 @@ jobs:
   typescript:
     name: TypeScript Glove and Field validation
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -81,6 +73,7 @@ jobs:
             scripts/validate-repository.mjs
             scripts/validate-master-plan.mjs
             scripts/validate-field.mjs
+            scripts/generate-sbom.mjs
             src/fieldContracts.ts
             src/fieldChannel.ts
             src/fieldHeartbeat.ts
@@ -92,7 +85,26 @@ jobs:
             src/fieldAdminAuthority.ts
             src/fieldSupportBundle.ts
             src/personaBehavior.ts
+            src/personaProfileVault.ts
+            src/personaGovernanceStore.ts
+            src/personaDerivation.ts
+            src/personalBehaviorModels.ts
+            src/languageAttentionModels.ts
+            src/personaModelBundle.ts
+            src/personaModelStore.ts
+            src/shadowIsolation.ts
+            src/assistedMode.ts
+            src/credentialBroker.ts
             tests/personaBehavior.test.ts
+            tests/personaProfileVault.test.ts
+            tests/personaGovernanceStore.test.ts
+            tests/personaDerivation.test.ts
+            tests/personalBehaviorModels.test.ts
+            tests/languageAttentionModels.test.ts
+            tests/personaModelBundle.test.ts
+            tests/personaModelStore.test.ts
+            tests/safeModeBoundaries.test.ts
+            tests/sbomGenerator.test.ts
             tests/fieldSystemPulse.test.ts
             tests/windowsFieldScripts.test.ts
             tests/fixtures/field-contract-v1.json
@@ -101,6 +113,14 @@ jobs:
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
       - name: Install exact locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --fund=false
+      - name: Generate deterministic npm SBOM
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/generate-sbom.mjs \
+            --output exosuit-npm-sbom.cdx.json \
+            --commit "$(git rev-parse HEAD)" \
+            --timestamp "$(git show -s --format=%cI HEAD)" 2>&1 | tee sbom.log
       - name: Repository contract
         shell: bash
         run: |
@@ -152,6 +172,8 @@ jobs:
         with:
           name: typescript-field-validation
           path: |
+            exosuit-npm-sbom.cdx.json
+            sbom.log
             repository-contract.log
             master-plan.log
             field-contract.log
@@ -260,6 +282,7 @@ jobs:
             docs/FIELD_TEST_PLAN.md
             docs/FIELD_WINDOWS_RUNBOOK.md
             docs/PERSONA_BEHAVIORAL_DYNAMICS.md
+            docs/PERSONA_MODEL_LIFECYCLE.md
             docs/qa/MASTER_PLAN_COVERAGE_MATRIX.md
             docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md
             docs/qa/FIELD_THREAT_MODEL.md
@@ -269,7 +292,9 @@ jobs:
             docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md
             docs/qa/ATOMIC_AUDIT_2026-07-22_COMPLETE_MASTER_PLAN.md
             docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md
+            docs/qa/ATOMIC_AUDIT_2026-08-04_PERSONA_OPERATIONAL_FOUNDATIONS.md
             docs/engineering_log/2026-08-03-persona-behavior-foundation.md
+            docs/engineering_log/2026-08-04-persona-operational-foundations.md
             vm/field-host-config.example.json
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing or empty required file: $path"; exit 1; }; done
