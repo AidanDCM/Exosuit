@@ -153,7 +153,7 @@ describe("product benchmark gates", () => {
       sessionResumeSucceeded: false,
       emergencyStopSucceeded: false,
     });
-    trials[1] = trial(2, { completed: false });
+    trials[1] = trial(2, { completed: false, sessionResumeSucceeded: false });
     const result = evaluateProductBenchmark(trials);
     expect(result.mvpThresholdPassed).toBe(false);
     expect(result.blockingReasons).toEqual(expect.arrayContaining([
