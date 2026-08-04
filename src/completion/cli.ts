@@ -16,7 +16,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname, release, type as osType } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,8 +85,70 @@ function privateKeyDir(): string {
   return resolved;
 }
 
+/**
+ * Reads a private key, preferring a DPAPI-protected vault file over plaintext.
+ *
+ * DPAPI binds the ciphertext to this Windows user on this machine, so a copied
+ * vault file is useless elsewhere. It is a local-vault fallback for the case
+ * where no BitLocker removable drive is available; it is not equivalent to an
+ * offline root held off the signing machine.
+ */
 function privateKey(keyId: string): string {
-  return readFileSync(join(privateKeyDir(), `${keyId}.pem`), "utf8");
+  const dir = privateKeyDir();
+  const vaultPath = join(dir, `${keyId}.pem.dpapi`);
+  if (existsSync(vaultPath)) return dpapiUnprotect(vaultPath);
+  return readFileSync(join(dir, `${keyId}.pem`), "utf8");
+}
+
+function powershell(script: string): string {
+  return execFileSync(
+    "powershell",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
+  );
+}
+
+function psPath(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function dpapiProtect(plaintextPath: string, vaultPath: string): void {
+  powershell(
+    "Add-Type -AssemblyName System.Security; "
+    + `$b=[IO.File]::ReadAllBytes(${psPath(plaintextPath)}); `
+    + "$p=[Security.Cryptography.ProtectedData]::Protect($b,$null,'CurrentUser'); "
+    + `[IO.File]::WriteAllBytes(${psPath(vaultPath)},$p)`,
+  );
+}
+
+function dpapiUnprotect(vaultPath: string): string {
+  const output = powershell(
+    "Add-Type -AssemblyName System.Security; "
+    + `$b=[IO.File]::ReadAllBytes(${psPath(vaultPath)}); `
+    + "$u=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,'CurrentUser'); "
+    + "[Console]::Out.Write([Convert]::ToBase64String($u))",
+  );
+  return Buffer.from(output.trim(), "base64").toString("utf8");
+}
+
+/**
+ * Moves a plaintext private key into the DPAPI vault and removes the plaintext.
+ * Used immediately after generating the provisional live root.
+ */
+function commandProtectKey(): void {
+  const keyId = requireArg("--key-id");
+  const dir = privateKeyDir();
+  const plaintextPath = join(dir, `${keyId}.pem`);
+  const vaultPath = join(dir, `${keyId}.pem.dpapi`);
+  if (!existsSync(plaintextPath)) throw new Error(`No plaintext key at ${plaintextPath}`);
+
+  dpapiProtect(plaintextPath, vaultPath);
+  // Verify the vault round-trips before destroying the only plaintext copy.
+  if (dpapiUnprotect(vaultPath).trim() !== readFileSync(plaintextPath, "utf8").trim()) {
+    throw new Error("DPAPI vault did not round-trip; refusing to delete the plaintext key.");
+  }
+  rmSync(plaintextPath, { force: true });
+  console.log(`Protected ${keyId} to ${vaultPath} and removed the plaintext copy.`);
 }
 
 export function machineIdentity(): string {
@@ -633,6 +695,7 @@ function main(): void {
   const command = process.argv[2];
   switch (command) {
     case "root-key": return commandRootKey();
+    case "protect-key": return commandProtectKey();
     case "keys": return commandKeys();
     case "seal-registry": return commandSealRegistry();
     case "revoke": return commandRevoke();
