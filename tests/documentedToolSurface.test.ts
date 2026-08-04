@@ -14,11 +14,10 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 /**
  * Documents that publish the reviewed MCP surface. Local acceptance treats an
  * undocumented discovered tool as a stop condition, so a stale list here
- * produces a false positive that halts Phase 1 for no real safety reason.
+ * produces a false positive that halts acceptance for no real safety reason.
  *
- * The runbook governs what a tunnel session may discover, and Phase 1 runs the
- * default `core` surface, so it is checked against the core tools. The README
- * documents both groups, so it is checked against the full surface.
+ * The tunnel runbook governs the default Phase 1 core surface. The README
+ * documents every opt-in group and is checked against the complete full surface.
  */
 const surfaceDocuments = [
   { path: "README.md", heading: "## Current MCP surface", surface: "full" as const },
@@ -27,6 +26,19 @@ const surfaceDocuments = [
     heading: "## Exact expected tool allowlist",
     surface: "core" as const,
   },
+];
+
+const PRODUCT_TOOLS = [
+  "exosuit_route_brain",
+  "exosuit_list_recipes",
+  "exosuit_create_task",
+  "exosuit_list_tasks",
+  "exosuit_get_task",
+  "exosuit_start_task",
+  "exosuit_plan_next_chunk",
+  "exosuit_pause_task",
+  "exosuit_resume_task",
+  "exosuit_cancel_task",
 ];
 
 const COORDINATOR_TOOLS = [
@@ -46,7 +58,7 @@ const COORDINATOR_TOOLS = [
   "desktop_list_agents",
 ];
 
-/** Collects `- \`desktop_x\`` bullets between a heading and the next heading of the same or higher level. */
+/** Collects MCP tool bullets between a heading and the next heading of the same or higher level. */
 async function readDocumentedTools(documentPath: string, heading: string): Promise<string[]> {
   const contents = await readFile(join(repositoryRoot, documentPath), "utf8");
   const lines = contents.split(/\r?\n/);
@@ -58,7 +70,7 @@ async function readDocumentedTools(documentPath: string, heading: string): Promi
   for (const line of lines.slice(start + 1)) {
     const nextHeading = /^(#+)\s/.exec(line);
     if (nextHeading && nextHeading[1]!.length <= level) break;
-    const bullet = /^-\s+`(desktop_[a-z_]+)`\s*$/.exec(line);
+    const bullet = /^-\s+`((?:desktop|exosuit)_[a-z_]+)`\s*$/.exec(line);
     if (bullet) tools.push(bullet[1]!);
   }
   return tools;
@@ -117,8 +129,10 @@ describe("MCP surface composition flag", () => {
     expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: "  " })).toBe("core");
   });
 
-  it("accepts either mode case-insensitively", () => {
+  it("accepts all three modes case-insensitively", () => {
     expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: "core" })).toBe("core");
+    expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: "PRODUCT" })).toBe("product");
+    expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: " Product " })).toBe("product");
     expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: "FULL" })).toBe("full");
     expect(resolveMcpSurface({ EXOSUIT_MCP_SURFACE: " Full " })).toBe("full");
   });
@@ -126,29 +140,40 @@ describe("MCP surface composition flag", () => {
   it("fails closed on an unrecognized value rather than guessing", () => {
     for (const value of ["all", "coordinator", "true", "1", "cor", "core,full"]) {
       expect(() => resolveMcpSurface({ EXOSUIT_MCP_SURFACE: value })).toThrow(
-        /must be "core" or "full"/,
+        /must be "core", "product", or "full"/,
       );
     }
   });
 
-  it("excludes every coordinator tool from the core surface", async () => {
+  it("keeps product and coordinator tools outside the default core surface", async () => {
     const coreTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "core" });
-    for (const tool of COORDINATOR_TOOLS) {
+    for (const tool of [...PRODUCT_TOOLS, ...COORDINATOR_TOOLS]) {
       expect(coreTools, `${tool} must not be reachable on the core surface.`).not.toContain(tool);
     }
   });
 
-  it("exposes the coordinator only when explicitly opted in", async () => {
-    const fullTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "full" });
-    for (const tool of COORDINATOR_TOOLS) expect(fullTools).toContain(tool);
+  it("exposes only the high-level product tools on the product surface", async () => {
+    const productTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "product" });
+    for (const tool of PRODUCT_TOOLS) expect(productTools).toContain(tool);
+    for (const tool of COORDINATOR_TOOLS) expect(productTools).not.toContain(tool);
   });
 
-  it("treats full as a strict superset of core", async () => {
-    const coreTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "core" });
+  it("exposes the coordinator only on the full surface", async () => {
     const fullTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "full" });
-    // Enabling the coordinator may add tools; it must never remove or rename a core one.
-    for (const tool of coreTools) expect(fullTools).toContain(tool);
+    for (const tool of [...PRODUCT_TOOLS, ...COORDINATOR_TOOLS]) expect(fullTools).toContain(tool);
+  });
+
+  it("treats product and full as strict supersets without removing lower-level tools", async () => {
+    const coreTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "core" });
+    const productTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "product" });
+    const fullTools = await registeredTools({ EXOSUIT_MCP_SURFACE: "full" });
+    for (const tool of coreTools) {
+      expect(productTools).toContain(tool);
+      expect(fullTools).toContain(tool);
+    }
+    for (const tool of productTools) expect(fullTools).toContain(tool);
     expect(coreTools).toHaveLength(13);
-    expect(fullTools).toHaveLength(27);
+    expect(productTools).toHaveLength(23);
+    expect(fullTools).toHaveLength(37);
   });
 });
