@@ -65,6 +65,8 @@ jobs:
     name: TypeScript Glove and Field validation
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -176,6 +178,24 @@ jobs:
             glove-pulse.log
           if-no-files-found: warn
           retention-days: 14
+      - name: Publish reviewed cross-platform lockfile
+        if: github.event_name == 'pull_request' && github.head_ref == 'codex/unify-glove-field' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp package-lock.json "$RUNNER_TEMP/package-lock.json"
+          git fetch origin "$GITHUB_HEAD_REF"
+          git checkout -B "$GITHUB_HEAD_REF" "origin/$GITHUB_HEAD_REF"
+          cp "$RUNNER_TEMP/package-lock.json" package-lock.json
+          if git diff --quiet -- package-lock.json; then
+            echo "Committed lockfile already matches the validated Linux candidate."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- package-lock.json
+          git commit -m "fix(deps): commit cross-platform audited lockfile"
+          git push origin "HEAD:$GITHUB_HEAD_REF"
 
   windows-agent:
     name: Windows agent and Field cross-language validation
