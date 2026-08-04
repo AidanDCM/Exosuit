@@ -4,19 +4,15 @@ Exosuit is a private, model-independent computer embodiment platform for owner-a
 
 ## Planning authority
 
-The complete architecture, implementation order, evidence gates, failure cases, rollback rules, security controls, privacy requirements, and production criteria are defined in:
-
 - [`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — complete system plan;
 - [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md) — practical build waves;
 - [`docs/PRODUCT_PARITY_ROADMAP.md`](docs/PRODUCT_PARITY_ROADMAP.md) — seamless personal-agent product direction.
 
-The product rule is:
-
 > ChatGPT or an API model handles intent, judgment, and conversation. Exosuit handles state, execution, safety, memory, recovery, and evidence.
 
-MCP is the tool protocol, not the AI brain. ChatGPT MCP is the preferred interactive route. A configured API route is a bounded fallback for unattended continuation, recovery, local-cockpit initiation, or temporary MCP unavailability. Both routes must use the same local policy, approvals, task state, persona, audit, and execution adapters.
+MCP is the tool protocol, not the AI brain. ChatGPT MCP is the preferred interactive route. A configured API route is a bounded fallback for unattended continuation, recovery, local-cockpit initiation, or temporary MCP unavailability. Both routes use the same local policy, approvals, task state, persona, audit, and execution adapters.
 
-## One repository, two separate systems
+## Glove and Field
 
 | System | Meaning | Responsibility |
 |---|---|---|
@@ -29,100 +25,76 @@ They share one repository but retain separate identities, generations, lifecycle
 
 ## Product modes
 
-### Observe
-
-Read and summarize current state. No physical-input authority.
-
-### Teach
-
-Record an explicitly consented owner demonstration with visible recording state, immediate stop, privacy controls, and exact provenance.
-
-### Shadow
-
-Predict likely next actions without network, credential, command, administration, or input authority. Compare predictions with actual owner behavior.
-
-### Correction
-
-Capture structured differences when the owner corrects a prediction or takes over a task.
-
-### Assisted
-
-Execute only approved low-risk chunks through ordinary local policy, fresh observation, verification, checkpointing, and recovery. Consequential effects remain immediately owner-approved.
-
-### Pilot
-
-Remain denied until synthetic trials, repeated low-risk acceptance, process isolation, emergency-stop evidence, and explicit owner promotion are complete.
+- **Observe:** read and summarize current state with no physical-input authority.
+- **Teach:** record an explicitly consented demonstration with visible recording state, privacy controls, provenance, and immediate stop.
+- **Shadow:** predict likely actions without network, credential, command, administration, or input authority.
+- **Correction:** capture structured differences when the owner corrects a prediction or takes over.
+- **Assisted:** execute only approved low-risk chunks through ordinary policy, fresh observation, verification, checkpointing, and recovery.
+- **Pilot:** denied until synthetic trials, repeated low-risk acceptance, process isolation, emergency-stop evidence, and explicit owner promotion are complete.
 
 ## Current implementation
 
-### Glove
+### Glove and Field foundations
 
-Implemented foundations include:
-
-- MCP contracts and real client/server protocol tests;
-- fake desktop providers and guarded Windows provider foundations;
-- Windows UI Automation observation and semantic actions;
-- restart-gated, allowlisted physical-input foundations;
-- local policy, approvals, fresh re-observation, verification, audit, deadlines, recovery, and emergency stop;
-- workflow DAGs, window generations, locks, focus leases, queues, artifacts, checkpoints, and durable coordinator state.
-
-### Field
-
-Implemented foundations include:
-
-- Field identity, generation, policy, attestation, lifecycle, and Field Manager;
-- Hyper-V desired state, immutable base, disposable overlay, versioned personal state, and task disks;
-- authenticated channel, canonical timestamps/origins, replay controls, heartbeat, bootstrap, readiness, and guest service;
-- scene observation, Teach/storage/privacy foundations, demonstration processing, encrypted derived storage, retrieval-backed Shadow, and Correction foundations;
-- path confinement, artifact manifests, recovery, diagnostics, guarded PowerShell tooling, manuals, tests, and audits.
+Implemented foundations include MCP protocol tests, fake and guarded Windows providers, UI Automation observation and semantic actions, restart-gated physical-input foundations, local policy and approvals, verification, audit, deadlines, recovery, emergency stop, durable workflow coordination, Field identity and lifecycle, Hyper-V desired state, authenticated channels, readiness, guest service, scene/Teach/storage foundations, demonstration processing, encrypted derived storage, Shadow retrieval, Correction, artifact transfer, recovery, diagnostics, guarded scripts, manuals, tests, and audits.
 
 ### Owner-governed persona
 
-Implemented foundations include:
+Implemented foundations include integrity-bound profile versions; AES-256-GCM profile, governance, model, bundle, and activation storage; owner-only approval, revocation, rollback, deletion, activation, and deactivation; evidence-bound derivation and held-out evaluation; separate typing, motor, language, attention, timing, habit, and verification models; and fixed advisory-only authority.
 
-- integrity-bound, consecutively versioned persona profiles;
-- AES-256-GCM profile, governance, model, bundle, and activation storage;
-- owner-only approval, retirement, revocation, rollback, deletion, activation, and deactivation;
-- evidence/provenance-bound candidate derivation and held-out stability evaluation;
-- separate typing, motor, language, attention, timing, habit, and verification models;
-- fixed advisory-only authority with no text, coordinate, input, credential, approval, or Field-administration authority.
+### Product task and convenience layer
 
-### Product task layer
+Implemented repository-side foundations include:
 
-Implemented source-only foundations include:
-
-- deterministic ChatGPT MCP/API brain routing with API task-budget ceilings;
-- integrity-bound, resumable product task sessions;
-- file-backed checkpoint persistence and tamper rejection;
+- deterministic ChatGPT MCP/API brain routing with task-level API budget ceilings;
+- integrity-bound resumable task sessions and short-lived chunks;
+- AES-256-GCM durable task state with hashed filenames, atomic writes, wrong-key rejection, and authenticated ciphertext;
 - automatic, grouped, and immediate approval classes;
-- one automatic retry followed by explicit recovery state;
-- short-lived, non-executable task chunks bound to task hash and checkpoint version;
+- one automatic retry followed by explicit recovery escalation;
 - trusted-local-adapter-only outcome recording;
-- five initial reviewed recipes:
+- privacy-safe cockpit state and hash-chained events without raw goals, variables, screenshots, credentials, or persona text;
+- deterministic host installation preflight contracts;
+- quantitative personal-MVP and strong daily-driver benchmark gates requiring live evidence;
+- Ed25519 release-manifest verification and non-executing install/update/repair/rollback/uninstall plans;
+- diagnostic redaction;
+- five reviewed initial recipes:
   - gather approved information;
-  - research, normalize, and organize;
+  - research, normalize, deduplicate, and organize;
   - fill a form and stop before submission;
   - prepare a message and stop before sending;
-  - download and organize approved files;
-- a separate opt-in product MCP surface that exposes goals and recipes rather than raw pointer operations.
+  - download and organize approved files.
 
-The product task layer cannot claim execution success through MCP. A future trusted local adapter must re-observe, apply ordinary policy, execute, verify, and then record a bounded outcome.
+The product task layer cannot report execution success through MCP. A future trusted local adapter must re-observe, apply ordinary policy, execute, verify, and record a bounded result. Cockpit and release-lifecycle implementations are contracts, not finished graphical interfaces or host-changing executors. Release plans retain `executionAllowed: false`.
 
-## Current validation posture
+## Validation posture
 
-Hosted CI is operating. The owner-governed persona implementation baseline previously passed:
+Validated source head:
 
-- 194 focused Field/persona/safety/release tests;
-- 366 full TypeScript tests;
-- 48 .NET tests;
-- strict TypeScript typecheck and production build;
-- Glove and Field system pulses;
-- PowerShell parsing;
-- .NET build with zero warnings and errors;
-- npm and NuGet supported dependency audits;
-- deterministic npm SBOM generation.
+```text
+d91a9701d8faab4220441de9553eb1647c0164b8
+```
 
-The newer product-task layer is undergoing exact-head hosted validation. Its focused brain-routing, persistence, approval, recovery, and MCP-boundary tests have passed. Live Windows, Hyper-V, Teach, Shadow, Assisted, credential insertion, ChatGPT-to-Field, packaging, and production promotion remain denied until their own evidence gates pass.
+Hosted evidence:
+
+- Exosuit CI run `30926779304` passed;
+- Security Audit run `30926782740` passed for supported jobs;
+- repository validator: 71 required artifacts;
+- master-plan validator: all 22 phased sections;
+- Field validator: 84 required artifacts and 26 source modules;
+- 47 focused files and **230 focused tests** passed;
+- 79 full TypeScript files and **406 tests** passed;
+- **48 .NET tests** passed with zero failures;
+- TypeScript typecheck and production build passed;
+- Glove and Field system pulses passed;
+- PowerShell parsing passed;
+- .NET build passed with zero warnings and errors;
+- CycloneDX npm SBOM generated with **149 components**;
+- npm audit reported zero vulnerabilities;
+- NuGet reported no vulnerable direct or transitive packages.
+
+See [`docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md`](docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md) for artifact IDs, hashes, repaired validation defects, and exact promotion boundaries.
+
+These are repository and fake-provider results. Live Windows, Hyper-V, Teach, owner-derived calibration, process-level Shadow isolation, credential insertion, Assisted execution, ChatGPT-to-Field acceptance, graphical cockpit, installer execution, MVP, and production remain denied.
 
 ## Current MCP surface
 
@@ -134,7 +106,7 @@ The exposed tool set is selected by `EXOSUIT_MCP_SURFACE`:
 | `product` | desktop core plus high-level product tasks, 23 tools |
 | `full` | desktop core, high-level product tasks, and coordinator, 37 tools |
 
-`core` remains the default. `product` and `full` are explicit opt-ins. An unrecognized value fails startup rather than guessing. The gateway reports the selected surface and hydrated state on startup.
+`core` remains the default. `product` and `full` are explicit opt-ins. Unknown values fail startup.
 
 ### Desktop core
 
@@ -152,8 +124,6 @@ The exposed tool set is selected by `EXOSUIT_MCP_SURFACE`:
 - `desktop_propose_physical_input`
 - `desktop_execute_physical_proposal`
 
-Both execution tools use the authoritative local execution and policy path. The physical-input proposal cannot supply an approval token.
-
 ### High-level product tools
 
 Requires `EXOSUIT_MCP_SURFACE=product` or `full`.
@@ -169,7 +139,7 @@ Requires `EXOSUIT_MCP_SURFACE=product` or `full`.
 - `exosuit_resume_task`
 - `exosuit_cancel_task`
 
-These tools plan and checkpoint work. They do not expose an execution-success or trusted-outcome tool. Product task start and resume use a trusted local Field-readiness provider rather than a model-supplied readiness argument. Until live readiness is integrated, only an explicitly enabled fake development process may report ready.
+These tools plan and checkpoint work. They do not expose an execution-success tool. Start and resume use a trusted local readiness provider instead of a model-supplied argument.
 
 ### Coordinator tools
 
@@ -195,9 +165,12 @@ Requires `EXOSUIT_MCP_SURFACE=full`.
 | Variable | Meaning | Default |
 |---|---|---|
 | `EXOSUIT_MCP_SURFACE` | `core`, `product`, or `full` | `core` |
-| `EXOSUIT_PRODUCT_TASK_DIR` | optional persistent product-task directory | memory only |
+| `EXOSUIT_PRODUCT_TASK_DIR` | encrypted persistent task directory; must be paired with a key | memory only |
+| `EXOSUIT_PRODUCT_TASK_KEY` | exact 32-byte task key encoded as hex or base64url; must be paired with a directory | unset |
 | `EXOSUIT_PRODUCT_FIELD_READINESS` | development-only fake readiness switch | not ready |
 | `EXOSUIT_AGENT_MODE` | `fake` or `http` desktop provider | `fake` |
+
+Supplying only the task directory or only the key fails startup. Environment-supplied keys are not the final production key-management path; DPAPI/TPM sealing, rotation, recovery, and secure erasure remain required.
 
 The only current positive task-readiness combination is:
 
@@ -206,37 +179,23 @@ EXOSUIT_PRODUCT_FIELD_READINESS=development_fake
 EXOSUIT_AGENT_MODE=fake
 ```
 
-This is for fake development acceptance only. Real/http agent mode remains not ready until the authenticated Field-readiness service is connected and tested.
+Real/http mode remains not ready until the authenticated Field-readiness service is connected and tested.
 
-## Approval policy
+## Approval and recovery
 
 ### Automatic
 
-- observing and reading;
-- opening approved local applications;
-- navigating approved interfaces without external effects;
-- collecting information;
-- drafting locally;
-- creating temporary local artifacts.
+Observing, reading, approved navigation, collecting information, drafting locally, and temporary local artifacts.
 
 ### Grouped owner approval
 
-- filling multiple non-sensitive fields without submission;
-- reversible file organization;
-- editing a local draft;
-- running a known reversible recipe chunk.
+Reversible non-sensitive form filling, file organization, draft editing, and known reversible recipe chunks.
 
 ### Immediate owner approval
 
-- sending, posting, submitting, purchasing, uploading, or sharing;
-- deleting or changing account settings;
-- financial, legal, destructive, identity-sensitive, or external commitments;
-- credential release;
-- human-verification challenges, which Exosuit must not solve for the owner.
+Sending, posting, submitting, purchasing, uploading, sharing, deleting, account changes, credential release, and financial, legal, destructive, identity-sensitive, or external commitments. Exosuit must not solve human-verification challenges for the owner.
 
-## Recovery contract
-
-Every trusted execution chunk must end in one of:
+Every trusted chunk ends in one of:
 
 - `verified`;
 - `retryable`;
@@ -244,46 +203,24 @@ Every trusted execution chunk must end in one of:
 - `safely_aborted`;
 - `rolled_back`.
 
-The ordinary low-risk recovery sequence is:
+Ordinary low-risk recovery is: re-observe, compare, retry once only when safe, try one reviewed alternate, restore a checkpoint when possible, then ask the owner with evidence.
 
-1. Re-observe.
-2. Compare actual and expected state.
-3. Retry once only when idempotent or proven not applied.
-4. Try one reviewed alternate method.
-5. Restore the latest safe checkpoint when possible.
-6. Ask the owner with clear evidence.
+## Readiness contracts
 
-## Architecture summary
+### Host preflight
+
+The source-level evaluator covers supported Windows edition/build, x64, administrator access, firmware virtualization, Hyper-V, CPU, memory, disk, Node.js, .NET, encrypted task state, Field-image integrity, and brain-route configuration. It does not probe or change the real computer. A passing result still retains:
 
 ```text
-Owner
-  |
-  v
-ChatGPT MCP or bounded API fallback
-  |
-  v
-High-level Exosuit task surface
-  |
-  +---------------- Product task state / approvals / recovery
-  |
-  v
-Glove policy and execution path
-  |
-  +---------------- authenticated channel ----------------+
-  |                                                        |
-  v                                                        v
-Local supervisor                                      Field Manager
-                                                           |
-                                                           v
-                                                   Exosuit Field VM
-                                            +----------------------------+
-                                            | guest-local Glove agent    |
-                                            | scene / Teach / verification|
-                                            | normal Windows applications |
-                                            +----------------------------+
+productionCandidate: false
+requiresLiveValidation: true
 ```
 
-The host must not operate the guest by treating VMConnect or an RDP viewer as the guest desktop. One Glove agent runs inside every controlled Windows session.
+### Personal-use MVP benchmark
+
+Promotion requires at least 10 trials across five recipes, 90% completion, zero unapproved consequential actions, 100% successful emergency stops in attempted acceptance trials, 90% session-resume success, no more than 0.3 non-required interventions per trial, and live evidence. Synthetic-only evidence cannot promote the MVP.
+
+The stronger daily-driver gate requires at least 100 trials, 97% completion, 95% recovery where attempted, 99% resumption, and no more than 0.1 non-required interventions per trial. The evaluator cannot approve production.
 
 ## Safety defaults
 
@@ -293,20 +230,17 @@ The host must not operate the guest by treating VMConnect or an RDP viewer as th
 | fake mode | sandbox |
 | Windows mode | observe |
 | MCP surface | `core` |
-| product task Field readiness | false except explicit fake development mode |
-| bind address | `127.0.0.1` |
+| product task readiness | false except explicit fake development mode |
+| durable task state | memory unless encrypted directory and key are paired |
 | physical input | disabled |
 | Field provisioning | dry-run unless exact local confirmation |
 | host clipboard, broad drive mapping, host input | disabled |
-| base image | immutable parent only |
-| runtime OS state | disposable differencing overlay |
 | recording | disabled until consented live acceptance |
 | Shadow execution | structurally false |
 | Pilot autonomy | denied |
 | model Field administration | blocked |
 | arbitrary shell through MCP | excluded |
-| credentials in demonstrations or model context | prohibited |
-| sensitive or untrusted ordinary export | blocked |
+| lifecycle plans | non-executing |
 
 ## Validation commands
 
@@ -330,82 +264,37 @@ dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-On an authenticated Windows checkout, use the guarded Field validator for live evidence:
+For live Windows evidence, use the guarded Field validator only on an authenticated disposable acceptance environment:
 
 ```powershell
 ./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
-Do not enable the Windows provider or physical input outside the documented disposable acceptance procedure.
-
-## Personal-use MVP acceptance
-
-A real personal-use MVP requires evidence that the target Windows machine can repeatedly:
-
-- cold-start and authenticate the Field;
-- produce reliable live scenes;
-- record consented Teach demonstrations;
-- run no-input Shadow predictions;
-- complete at least five bounded low-risk recipes in Assisted Mode;
-- stop before consequential effects unless immediately approved;
-- survive interruption and resume from checkpoints;
-- execute emergency stop and Field reset reliably;
-- provide complete task evidence through ChatGPT and the local cockpit.
-
-Initial targets are at least 90% completion on supported recipes, zero unapproved consequential actions, 100% emergency-stop activation in acceptance trials, at least 90% session-resume success, and under 30% non-required owner intervention.
-
 ## Remaining live and production holds
 
-- production-authenticated, repeated Hyper-V lifecycle/channel/readiness failure injection;
-- live Windows scene production and consented Teach privacy/recording acceptance;
-- real owner demonstrations and held-out owner-similarity evaluation;
-- DPAPI/TPM-backed keys, rotation, recovery, and secure-erasure evidence;
-- process-level Shadow sandbox/no-input proof;
-- trusted credential insertion and external-vault integration;
-- live low-risk Assisted execution with downstream reauthorization;
+- production-authenticated repeated Hyper-V lifecycle/channel/readiness failure injection;
+- real host-preflight collection;
+- live scenes and consented Teach acceptance;
+- real owner demonstrations and held-out similarity evaluation;
+- DPAPI/TPM key handling and secure erasure;
+- process-level Shadow no-input proof;
+- trusted credential insertion;
+- live Assisted execution;
 - synthetic Pilot and normal ChatGPT MCP acceptance;
-- local cockpit and human-factors acceptance;
-- signed installer, repair, update, rollback, and uninstall;
-- complete release SBOM/provenance, private code scanning, penetration testing, privacy review, incident response, and support operations.
-
-## Primary documents
-
-- [Complete Master System Plan](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Product parity roadmap](docs/PRODUCT_PARITY_ROADMAP.md)
-- [Glove/Field boundary](docs/GLOVE_FIELD_BOUNDARY.md)
-- [Field implementation status](docs/FIELD_IMPLEMENTATION_STATUS.md)
-- [Implemented Glove architecture](docs/ARCHITECTURE.md)
-- [Field architecture](docs/FIELD_ARCHITECTURE.md)
-- [Security model](docs/SECURITY_MODEL.md)
-- [Shared/Glove test plan](docs/TEST_PLAN.md)
-- [Field test plan](docs/FIELD_TEST_PLAN.md)
-- [Windows and Hyper-V runbook](docs/FIELD_WINDOWS_RUNBOOK.md)
-- [Field owner manual](docs/FIELD_OWNER_MANUAL.md)
-- [Field developer manual](docs/FIELD_DEVELOPER_MANUAL.md)
-- [Field threat model](docs/qa/FIELD_THREAT_MODEL.md)
-- [Field failure-injection matrix](docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md)
-- [Execution issue index](docs/qa/FIELD_EXECUTION_ISSUE_INDEX.md)
+- graphical cockpit and human-factors acceptance;
+- signed Windows binaries and installer/service execution;
+- repair, update, rollback, and uninstall execution;
+- full release provenance, .NET SBOM, private code scanning or equivalent, penetration testing, privacy review, incident response, and support operations.
 
 ## Explicit exclusions
 
-Exosuit must not implement or claim:
-
-- stealth or undetectable automation;
-- anti-bot or anti-cheat evasion;
-- kernel or hardware concealment;
-- credential harvesting;
-- privilege escalation;
-- arbitrary remote shell execution;
-- recording without owner consent;
-- covert surveillance;
-- bypassing platform security controls;
-- guaranteed indistinguishability from a person;
-- that behavioral imitation proves a human acted.
+Exosuit must not implement or claim stealth or undetectable automation, anti-bot or anti-cheat evasion, kernel or hardware concealment, credential harvesting, privilege escalation, arbitrary remote shell execution, recording without consent, covert surveillance, bypassing security controls, guaranteed indistinguishability from a person, or that behavioral imitation proves a human acted.
 
 ## Current holds
 
-- PR #26 remains draft and merge to `main` remains denied pending exact release-candidate reconciliation and live acceptance.
-- Real-account or consequential autonomous use remains denied.
-- Real owner-derived persona activation remains denied until live evidence and owner approval.
-- Live Assisted, Pilot, and ChatGPT-to-Field promotion remain denied.
-- Production remains denied.
+- PR #26 remains draft; merge to `main` is denied pending release-candidate reconciliation and live acceptance.
+- Real-account or consequential autonomous use is denied.
+- Real owner-derived persona activation is denied until live evidence and owner approval.
+- Live Assisted, Pilot, and ChatGPT-to-Field promotion are denied.
+- Personal-use MVP is denied until the live benchmark gate passes.
+- Production is denied.
