@@ -1,10 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerCoordinatorMcpTools } from "./coordinatorMcp.js";
+import { EncryptedProductTaskStore, parseProductTaskEncryptionKey } from "./encryptedProductTaskStore.js";
 import { createMcpServer } from "./mcp.js";
 import { registerMotorMcpTools } from "./motorMcp.js";
 import type { ExosuitOrchestrator } from "./orchestrator.js";
 import { OrchestratorWorkflowExecutor } from "./orchestratorWorkflowExecutor.js";
-import { FileProductTaskStore, PersonalTaskController } from "./personalTaskControl.js";
+import { PersonalTaskController } from "./personalTaskControl.js";
 import { registerProductMcpTools } from "./productMcp.js";
 import {
   createWorkflowRuntimeFromEnvironment,
@@ -91,9 +92,16 @@ export async function createExosuitMcpServerWithState(
   }
 
   const productTaskDirectory = environment.EXOSUIT_PRODUCT_TASK_DIR?.trim();
+  const productTaskKey = parseProductTaskEncryptionKey(environment.EXOSUIT_PRODUCT_TASK_KEY);
+  if (productTaskDirectory && !productTaskKey) {
+    throw new Error("EXOSUIT_PRODUCT_TASK_KEY is required when EXOSUIT_PRODUCT_TASK_DIR enables durable product tasks.");
+  }
+  if (productTaskKey && !productTaskDirectory) {
+    throw new Error("EXOSUIT_PRODUCT_TASK_DIR is required when EXOSUIT_PRODUCT_TASK_KEY is configured.");
+  }
   const tasks = new PersonalTaskController({
-    store: productTaskDirectory
-      ? new FileProductTaskStore({ directory: productTaskDirectory })
+    store: productTaskDirectory && productTaskKey
+      ? new EncryptedProductTaskStore({ directory: productTaskDirectory, key: productTaskKey })
       : undefined,
   });
   const hydratedProductTasks = await tasks.hydrate();
