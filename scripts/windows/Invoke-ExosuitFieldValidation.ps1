@@ -101,6 +101,7 @@ try {
     }
     Invoke-ValidationStep -Name 'repository-contract' -Action { npm run validate:repository }
     Invoke-ValidationStep -Name 'master-plan-contract' -Action { npm run validate:plan }
+    Invoke-ValidationStep -Name 'build-completion-plan-contract' -Action { npm run validate:mvp-plan }
     Invoke-ValidationStep -Name 'field-contract' -Action { npm run validate:field-contract }
     Invoke-ValidationStep -Name 'typescript-typecheck' -Action { npm run typecheck }
     Invoke-ValidationStep -Name 'field-tests' -Action { npm run test:field -- --reporter=verbose }
@@ -112,6 +113,7 @@ try {
     Invoke-ValidationStep -Name 'dotnet-build' -Action { dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror }
     Invoke-ValidationStep -Name 'dotnet-tests' -Action { dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=field-validation.trx" --collect:"XPlat Code Coverage" }
     Invoke-ValidationStep -Name 'host-capability-check' -Action { & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" }
+    Invoke-ValidationStep -Name 'personal-mvp-readiness-report' -NonBlocking -Action { npm run assess:mvp }
     Invoke-ValidationStep -Name 'production-readiness-report' -NonBlocking -Action { npm run assess:production }
     $overallStatus = 'passed'
 } catch {
@@ -128,9 +130,10 @@ try {
         evidenceRoot = $runRoot
         steps = $steps
         error = $overallError
-        productionReadiness = 'The production-readiness report is informational during L0 and is expected to remain denied until every release gate has exact evidence and owner approval.'
+        mvpReadiness = 'The personal-MVP report is informational until every M0-M6 gate has qualifying live evidence and explicit owner acceptance.'
+        productionReadiness = 'The production-readiness report is informational during development and is expected to remain denied until every release gate has exact evidence and owner approval.'
         claimBoundary = if ($overallStatus -eq 'passed') {
-            'This proves repository, plan, TypeScript, .NET pure logic, PowerShell parse/runtime entrypoints, and host capability checks on this machine. It does not prove interactive Hyper-V, Teach hooks, visual capture, learning, ChatGPT Field operation, or Pilot execution.'
+            'This proves repository, plans, TypeScript, .NET pure logic, PowerShell parse/runtime entrypoints, and host capability checks on this machine. It does not by itself prove interactive Hyper-V lifecycle, Teach hooks, visual capture, owner-model quality, ChatGPT-to-Field operation, Assisted execution, installer acceptance, personal MVP, or production.'
         } else {
             'Validation did not complete. No passing claim may be made.'
         }
