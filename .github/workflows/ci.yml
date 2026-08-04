@@ -65,8 +65,6 @@ jobs:
     name: TypeScript Glove and Field validation
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,6 +76,7 @@ jobs:
           set -euo pipefail
           required=(
             package.json
+            package-lock.json
             tsconfig.json
             scripts/validate-repository.mjs
             scripts/validate-master-plan.mjs
@@ -100,20 +99,8 @@ jobs:
             tests/fixtures/field-channel-v1.json
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
-      - name: Refresh candidate cross-platform lock metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install --package-lock-only --ignore-scripts --fund=false
-          npm audit fix --package-lock-only --ignore-scripts --fund=false
-      - name: Install dependencies from refreshed lock
+      - name: Install exact locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --fund=false
-      - name: Capture post-refresh dependency audit
-        shell: bash
-        run: |
-          set +e
-          npm audit --json > npm-audit-after-lock-refresh.json
-          exit 0
       - name: Repository contract
         shell: bash
         run: |
@@ -159,14 +146,12 @@ jobs:
         run: |
           set -o pipefail
           npm run test:pulse -- --reporter=verbose 2>&1 | tee glove-pulse.log
-      - name: Upload TypeScript, Field, and candidate lock evidence
+      - name: Upload TypeScript and Field evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: typescript-field-validation
           path: |
-            package-lock.json
-            npm-audit-after-lock-refresh.json
             repository-contract.log
             master-plan.log
             field-contract.log
@@ -178,24 +163,6 @@ jobs:
             glove-pulse.log
           if-no-files-found: warn
           retention-days: 14
-      - name: Publish reviewed cross-platform lockfile
-        if: github.event_name == 'pull_request' && github.head_ref == 'codex/unify-glove-field' && github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp package-lock.json "$RUNNER_TEMP/package-lock.json"
-          git fetch origin "$GITHUB_HEAD_REF"
-          git checkout -B "$GITHUB_HEAD_REF" "origin/$GITHUB_HEAD_REF"
-          cp "$RUNNER_TEMP/package-lock.json" package-lock.json
-          if git diff --quiet -- package-lock.json; then
-            echo "Committed lockfile already matches the validated Linux candidate."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- package-lock.json
-          git commit -m "fix(deps): commit cross-platform audited lockfile"
-          git push origin "HEAD:$GITHUB_HEAD_REF"
 
   windows-agent:
     name: Windows agent and Field cross-language validation
