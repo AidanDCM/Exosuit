@@ -1,67 +1,122 @@
 {
   "contractVersion": 1,
-  "candidateCommit": "7a7c43578c603c981aad8f3cf844efb7b0b25242",
+  "candidateCommit": null,
   "candidateVersion": null,
-  "generatedAt": "2026-07-28T19:17:27.396Z",
+  "generatedAt": "2026-08-04T01:20:00.000Z",
   "ownerApproved": false,
   "productionDecision": "denied",
   "developmentAccessEnabled": true,
   "developmentUnattendedSetupEnabled": true,
   "unresolvedBlockers": [
     "All live Field evidence was gathered with development access and unattended disposable setup enabled, which is non-production by contract",
-    "GitHub-hosted CI is blocked before checkout by account billing; local clean parity is not independent hosted attestation",
-    "Live evidence is a single successful run per gate, with no repeatability, negative-case, or failure-injection coverage",
-    "No live scene, Teach, cross-VM artifact, Shadow, personal-model, Assisted, Pilot, ChatGPT, packaging, penetration-test, or operations acceptance evidence"
+    "Live Field evidence remains limited and does not yet provide repeated production-authenticated failure-injection coverage",
+    "No live consented Teach capture, full visual pipeline, calibrated Shadow runtime, trained owner persona, Assisted, Pilot, ChatGPT, packaging, penetration-test, or operations acceptance evidence",
+    "Persona and Behavioral Dynamics has hosted source/unit validation only; encrypted persistence, owner controls, real demonstration derivation, live Glove integration, and held-out owner-similarity evidence remain absent"
   ],
   "gates": [
-    { "gate": "source_validation", "status": "pass", "evidence": [
-      "artifacts/field-validation/20260728T191511Z/summary.json",
-      "artifacts/field-validation/20260728T191511Z/environment.json"
-    ] },
-    { "gate": "dependency_reproducibility", "status": "pass", "evidence": [
-      "package-lock.json",
-      "artifacts/field-validation/20260728T191511Z/summary.json"
-    ] },
-    { "gate": "glove_windows_acceptance", "status": "evidence_recorded", "evidence": [
-      "docs/qa/CODEX_WINDOWS_ACCEPTANCE.md",
-      "docs/qa/CODEX_WINDOWS_ACCEPTANCE_2026-07-19.md"
-    ] },
+    {
+      "gate": "source_validation",
+      "status": "pass",
+      "evidence": [
+        "GitHub Actions Exosuit CI run 30868262475",
+        "GitHub Actions Security Audit run 30868262468",
+        "docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md"
+      ]
+    },
+    {
+      "gate": "dependency_reproducibility",
+      "status": "pass",
+      "evidence": [
+        "package-lock.json",
+        "GitHub Actions Exosuit CI run 30868262475",
+        "GitHub Actions Security Audit run 30868262468"
+      ]
+    },
+    {
+      "gate": "glove_windows_acceptance",
+      "status": "evidence_recorded",
+      "evidence": [
+        "docs/qa/CODEX_WINDOWS_ACCEPTANCE.md",
+        "docs/qa/CODEX_WINDOWS_ACCEPTANCE_2026-07-19.md"
+      ]
+    },
     { "gate": "glove_multiwindow_acceptance", "status": "not_run", "evidence": [] },
-    { "gate": "field_hyperv_lifecycle", "status": "evidence_recorded", "evidence": [
-      "artifacts/field-l4-base-build/v13/base-build-result.json",
-      "artifacts/field-l4-v13-boot/generation-1/provision-attempt.json",
-      "artifacts/field-l4-base-build/dead-generation-cleanup.json"
-    ] },
-    { "gate": "field_authenticated_channel", "status": "evidence_recorded", "evidence": [
-      "artifacts/field-l4-v13-boot/generation-1/live-readiness.json"
-    ] },
-    { "gate": "field_guest_readiness", "status": "evidence_recorded", "evidence": [
-      "artifacts/field-l4-v13-boot/generation-1/live-readiness.json",
-      "artifacts/field-l4-v13-boot/generation-1/readiness-monitor.json",
-      "artifacts/field-l4-v13-boot/generation-1/field-plan.json"
-    ] },
+    {
+      "gate": "field_hyperv_lifecycle",
+      "status": "evidence_recorded",
+      "evidence": [
+        "artifacts/field-l4-base-build/v13/base-build-result.json",
+        "artifacts/field-l4-v13-boot/generation-1/provision-attempt.json",
+        "artifacts/field-l4-base-build/dead-generation-cleanup.json"
+      ]
+    },
+    {
+      "gate": "field_authenticated_channel",
+      "status": "evidence_recorded",
+      "evidence": [
+        "artifacts/field-l4-v13-boot/generation-1/live-readiness.json",
+        "GitHub Actions Exosuit CI run 30868262475"
+      ]
+    },
+    {
+      "gate": "field_guest_readiness",
+      "status": "evidence_recorded",
+      "evidence": [
+        "artifacts/field-l4-v13-boot/generation-1/live-readiness.json",
+        "artifacts/field-l4-v13-boot/generation-1/readiness-monitor.json",
+        "artifacts/field-l4-v13-boot/generation-1/field-plan.json"
+      ]
+    },
     { "gate": "field_scene_production", "status": "not_run", "evidence": [] },
     { "gate": "teach_privacy_and_recording", "status": "not_run", "evidence": [] },
     { "gate": "artifact_transfer", "status": "not_run", "evidence": [] },
     { "gate": "shadow_no_input", "status": "not_run", "evidence": [] },
-    { "gate": "correction_mode", "status": "not_run", "evidence": [] },
-    { "gate": "personal_models", "status": "not_run", "evidence": [] },
+    {
+      "gate": "correction_mode",
+      "status": "source_validated",
+      "evidence": [
+        "src/correctionMode.ts",
+        "tests/correctionMode.test.ts",
+        "GitHub Actions Exosuit CI run 30868262475"
+      ]
+    },
+    {
+      "gate": "personal_models",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/personaBehavior.ts",
+        "tests/personaBehavior.test.ts",
+        "docs/PERSONA_BEHAVIORAL_DYNAMICS.md",
+        "docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md",
+        "GitHub Actions Exosuit CI run 30868262475"
+      ]
+    },
     { "gate": "assisted_mode", "status": "not_run", "evidence": [] },
     { "gate": "synthetic_pilot", "status": "not_run", "evidence": [] },
     { "gate": "chatgpt_mcp_acceptance", "status": "not_run", "evidence": [] },
     { "gate": "owner_acceptance", "status": "not_run", "evidence": [] },
-    { "gate": "reliability_and_performance", "status": "evidence_recorded", "evidence": [
-      "docs/qa/evidence/2026-07-28-phase10-benchmark-baseline.md",
-      "artifacts/field-validation/20260728T191511Z/summary.json"
-    ] },
+    {
+      "gate": "reliability_and_performance",
+      "status": "evidence_recorded",
+      "evidence": [
+        "docs/qa/evidence/2026-07-28-phase10-benchmark-baseline.md",
+        "GitHub Actions Exosuit CI run 30868262475"
+      ]
+    },
     { "gate": "cockpit_and_human_factors", "status": "not_run", "evidence": [] },
     { "gate": "packaging_signing_update_rollback", "status": "not_run", "evidence": [] },
-    { "gate": "security_privacy_penetration", "status": "evidence_recorded", "evidence": [
-      "docs/qa/2026-07-28-SECURITY-REVIEW-UNGATED-COMMITS.md",
-      "docs/qa/ATOMIC_AUDIT_2026-07-28_AGENT_AUTH_ORDERING.md",
-      "docs/qa/ATOMIC_AUDIT_2026-07-28_VISUAL_REDACTION_CONTAINMENT.md",
-      "docs/qa/ATOMIC_AUDIT_2026-07-28_BROWSER_UNCERTAIN_EFFECTS.md"
-    ] },
+    {
+      "gate": "security_privacy_penetration",
+      "status": "evidence_recorded",
+      "evidence": [
+        "docs/qa/2026-07-28-SECURITY-REVIEW-UNGATED-COMMITS.md",
+        "docs/qa/ATOMIC_AUDIT_2026-07-28_AGENT_AUTH_ORDERING.md",
+        "docs/qa/ATOMIC_AUDIT_2026-07-28_VISUAL_REDACTION_CONTAINMENT.md",
+        "docs/qa/ATOMIC_AUDIT_2026-07-28_BROWSER_UNCERTAIN_EFFECTS.md",
+        "docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md",
+        "GitHub Actions Security Audit run 30868262468"
+      ]
+    },
     { "gate": "operations_incident_response", "status": "not_run", "evidence": [] }
   ]
 }
