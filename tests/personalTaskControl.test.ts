@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -157,9 +157,7 @@ describe("personal task control", () => {
     expect(await restored.hydrate()).toBe(1);
     expect(restored.get(created.taskId).taskHash).toBe(created.taskHash);
 
-    const [file] = (await import("node:fs/promises")).then
-      ? await (await import("node:fs/promises")).readdir(directory)
-      : [];
+    const [file] = await readdir(directory);
     expect(file).toBeTruthy();
     const location = path.join(directory, file!);
     const parsed = JSON.parse(await readFile(location, "utf8")) as { goal: string };
