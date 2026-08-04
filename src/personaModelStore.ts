@@ -53,54 +53,54 @@ export class EncryptedPersonaModelStore {
     }
   }
 
-  saveTyping(model: TypingProcessModel): Promise<void> {
+  async saveTyping(model: TypingProcessModel): Promise<void> {
     const value = verifyHashedRecord(typingProcessModelSchema.parse(structuredClone(model)), "modelHash", "Typing model");
-    return this.#save("typing", value.modelHash, value);
+    await this.#save("typing", value.modelHash, value);
   }
 
   loadTyping(modelHash: string): Promise<TypingProcessModel | undefined> {
     return this.#load("typing", modelHash, (value) => verifyHashedRecord(typingProcessModelSchema.parse(value), "modelHash", "Typing model"));
   }
 
-  saveMotor(model: MotorPreferenceModel): Promise<void> {
+  async saveMotor(model: MotorPreferenceModel): Promise<void> {
     const value = verifyHashedRecord(motorPreferenceModelSchema.parse(structuredClone(model)), "modelHash", "Motor model");
-    return this.#save("motor", value.modelHash, value);
+    await this.#save("motor", value.modelHash, value);
   }
 
   loadMotor(modelHash: string): Promise<MotorPreferenceModel | undefined> {
     return this.#load("motor", modelHash, (value) => verifyHashedRecord(motorPreferenceModelSchema.parse(value), "modelHash", "Motor model"));
   }
 
-  saveLanguage(model: LanguageStyleModel): Promise<void> {
+  async saveLanguage(model: LanguageStyleModel): Promise<void> {
     const value = verifyHashedRecord(languageStyleModelSchema.parse(structuredClone(model)), "modelHash", "Language model");
-    return this.#save("language", value.modelHash, value);
+    await this.#save("language", value.modelHash, value);
   }
 
   loadLanguage(modelHash: string): Promise<LanguageStyleModel | undefined> {
     return this.#load("language", modelHash, (value) => verifyHashedRecord(languageStyleModelSchema.parse(value), "modelHash", "Language model"));
   }
 
-  saveAttention(model: AttentionVerificationModel): Promise<void> {
+  async saveAttention(model: AttentionVerificationModel): Promise<void> {
     const value = verifyHashedRecord(attentionVerificationModelSchema.parse(structuredClone(model)), "modelHash", "Attention model");
-    return this.#save("attention", value.modelHash, value);
+    await this.#save("attention", value.modelHash, value);
   }
 
   loadAttention(modelHash: string): Promise<AttentionVerificationModel | undefined> {
     return this.#load("attention", modelHash, (value) => verifyHashedRecord(attentionVerificationModelSchema.parse(value), "modelHash", "Attention model"));
   }
 
-  saveBundle(bundle: PersonaModelBundle): Promise<void> {
+  async saveBundle(bundle: PersonaModelBundle): Promise<void> {
     const value = verifyHashedRecord(personaModelBundleSchema.parse(structuredClone(bundle)), "bundleHash", "Persona model bundle");
-    return this.#save("bundle", value.bundleHash, value);
+    await this.#save("bundle", value.bundleHash, value);
   }
 
   loadBundle(bundleHash: string): Promise<PersonaModelBundle | undefined> {
     return this.#load("bundle", bundleHash, (value) => verifyHashedRecord(personaModelBundleSchema.parse(value), "bundleHash", "Persona model bundle"));
   }
 
-  saveActivation(activation: PersonaBundleActivation): Promise<void> {
+  async saveActivation(activation: PersonaBundleActivation): Promise<void> {
     const value = verifyHashedRecord(personaBundleActivationSchema.parse(structuredClone(activation)), "activationHash", "Persona bundle activation");
-    return this.#save("activation", value.activationHash, value);
+    await this.#save("activation", value.activationHash, value);
   }
 
   loadActivation(activationHash: string): Promise<PersonaBundleActivation | undefined> {
