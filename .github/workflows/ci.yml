@@ -72,9 +72,11 @@ jobs:
             tsconfig.json
             scripts/validate-repository.mjs
             scripts/validate-master-plan.mjs
+            scripts/validate-build-completion-plan.mjs
             scripts/validate-field.mjs
             scripts/generate-sbom.mjs
             src/fieldContracts.ts
+            src/buildCompletionPlan.ts
             src/fieldChannel.ts
             src/fieldHeartbeat.ts
             src/fieldBootstrap.ts
@@ -95,6 +97,7 @@ jobs:
             src/shadowIsolation.ts
             src/assistedMode.ts
             src/credentialBroker.ts
+            tests/buildCompletionPlan.test.ts
             tests/personaBehavior.test.ts
             tests/personaProfileVault.test.ts
             tests/personaGovernanceStore.test.ts
@@ -109,6 +112,9 @@ jobs:
             tests/windowsFieldScripts.test.ts
             tests/fixtures/field-contract-v1.json
             tests/fixtures/field-channel-v1.json
+            docs/BUILD_COMPLETION_PLAN.md
+            docs/qa/BUILD_COMPLETION_TEST_MATRIX.md
+            docs/qa/build-completion-manifest.json
           )
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
       - name: Install exact locked dependencies without lifecycle scripts
@@ -131,6 +137,11 @@ jobs:
         run: |
           set -o pipefail
           npm run validate:plan 2>&1 | tee master-plan.log
+      - name: Build completion plan contract
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:mvp-plan 2>&1 | tee completion-plan.log
       - name: Field contract and script invariants
         shell: bash
         run: |
@@ -176,6 +187,7 @@ jobs:
             sbom.log
             repository-contract.log
             master-plan.log
+            completion-plan.log
             field-contract.log
             typecheck.log
             field-tests.log
@@ -271,6 +283,9 @@ jobs:
             OWNER_MANUAL.md
             DEVELOPER_OPERATING_SYSTEM.md
             docs/MASTER_SYSTEM_ROADMAP.md
+            docs/PRODUCTION_BUILD_PHASES.md
+            docs/BUILD_COMPLETION_PLAN.md
+            docs/PRODUCT_PARITY_ROADMAP.md
             docs/ARCHITECTURE.md
             docs/SECURITY_MODEL.md
             docs/TEST_PLAN.md
@@ -284,6 +299,8 @@ jobs:
             docs/PERSONA_BEHAVIORAL_DYNAMICS.md
             docs/PERSONA_MODEL_LIFECYCLE.md
             docs/qa/MASTER_PLAN_COVERAGE_MATRIX.md
+            docs/qa/BUILD_COMPLETION_TEST_MATRIX.md
+            docs/qa/build-completion-manifest.json
             docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md
             docs/qa/FIELD_THREAT_MODEL.md
             docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md
