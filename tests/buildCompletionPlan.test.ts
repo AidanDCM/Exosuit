@@ -107,11 +107,16 @@ function manifest(statuses: Record<string, CompletionStatus> = {}): BuildComplet
   });
 }
 
+function rebuild(value: BuildCompletionManifest): BuildCompletionManifest {
+  const { manifestHash: _manifestHash, ...input } = structuredClone(value);
+  return createBuildCompletionManifest(input);
+}
+
 describe("build completion plan", () => {
   it("creates and verifies an integrity-bound manifest", () => {
     const value = manifest();
     expect(verifyBuildCompletionManifest(value)).toBe(true);
-    expect(() => verifyBuildCompletionManifest({ ...value, branch: "tampered" })).toThrow();
+    expect(verifyBuildCompletionManifest({ ...value, branch: "tampered" })).toBe(false);
   });
 
   it("reports the next live phase and blocks MVP promotion", () => {
@@ -124,19 +129,20 @@ describe("build completion plan", () => {
   });
 
   it("allows MVP promotion only after live non-synthetic evidence", () => {
-    const value = manifest({ "FLD-001": "passed" });
+    const value = manifest();
+    value.tests[1]!.status = "passed";
     value.tests[1]!.evidence = [evidence("hyperv_host_guest", false)];
-    const rebuilt = createBuildCompletionManifest({ ...value, manifestHash: undefined } as never);
-    const result = evaluateBuildCompletion(rebuilt, "personal_mvp", observedAt);
+    const result = evaluateBuildCompletion(rebuild(value), "personal_mvp", observedAt);
     expect(result.promotionAllowed).toBe(true);
     expect(result.weightedCompletionPercent).toBe(100);
   });
 
   it("rejects synthetic-only evidence for a passed live gate", () => {
     expect(() => {
-      const value = manifest({ "FLD-001": "passed" });
+      const value = manifest();
+      value.tests[1]!.status = "passed";
       value.tests[1]!.evidence = [evidence("hyperv_host_guest", true)];
-      createBuildCompletionManifest({ ...value, manifestHash: undefined } as never);
+      rebuild(value);
     }).toThrow(/synthetic-only/);
   });
 
@@ -144,7 +150,7 @@ describe("build completion plan", () => {
     expect(() => {
       const value = manifest();
       value.tests[0]!.evidence = [evidence("unit")];
-      createBuildCompletionManifest({ ...value, manifestHash: undefined } as never);
+      rebuild(value);
     }).toThrow(/qualifying evidence/);
   });
 
@@ -152,7 +158,7 @@ describe("build completion plan", () => {
     expect(() => {
       const value = manifest();
       value.tests[1]!.prerequisites = ["BAD-999"];
-      createBuildCompletionManifest({ ...value, manifestHash: undefined } as never);
+      rebuild(value);
     }).toThrow(/Unknown test prerequisite/);
   });
 
@@ -160,7 +166,7 @@ describe("build completion plan", () => {
     expect(() => {
       const value = manifest();
       value.phases[0]!.dependencies = ["P1"];
-      createBuildCompletionManifest({ ...value, manifestHash: undefined } as never);
+      rebuild(value);
     }).toThrow(/cycle/);
   });
 
