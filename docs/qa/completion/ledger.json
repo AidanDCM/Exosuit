@@ -362,7 +362,7 @@
       "signature": "pcGn0h6bEJf1zjp4Jwzw5woYedYZmcVSjCmjZhH82K8zVJGcU9SB2gd_mHRfWbkhFHykXKSI92Xkgy3I0iMaAA"
     },
     {
-      "eventId": "src-001-passed-1785870953035",
+      "eventId": "src-001-passed-1785873934734",
       "sequence": 24,
       "testId": "SRC-001",
       "previousStatus": "ready_for_live",
@@ -375,18 +375,20 @@
       "issuer": "ci-local",
       "reviewer": "completion-review-2026-08-04",
       "reviewerRole": "technical_review",
-      "reason": "M0 re-attested under contract 2.1: full validate:typescript chain recorded as content-addressed evidence",
-      "recordedAt": "2026-08-04T19:16:13.694Z",
+      "reviewerKeyId": "completion-technical-review-1",
+      "reviewerSignature": "pVOGA_yWjhXAgT4thkv1kvCOXoCuhNWx3mB3sXmWG_qccYGmxMAh9TxcIK04bWuDq0e6oMogPEeBOhG-dJXmCQ",
+      "reason": "M0 re-attested under contract 2.1: full-validate-typescript-chain, independently approved.",
+      "recordedAt": "2026-08-04T20:05:34.731Z",
       "signingKeyId": "completion-ledger-1",
-      "signature": "UOnBM3xPh1vrrUVbrZNXkzYiYGsrCiVRog7R6-rq1QABw_js3EkYOxMohxkZFwrsl-OJw8IkNMrf8aoI498gDg"
+      "signature": "-mG788W0Dhc7-u2b5jsFY7K6w7jKbGhJhAZtqYBGzPJO3a0gXaiXYtVOmmzRharR6rEA2_5YCherDkNEK8vHAg"
     },
     {
-      "eventId": "src-002-passed-1785870957057",
+      "eventId": "src-002-passed-1785873938723",
       "sequence": 25,
       "testId": "SRC-002",
       "previousStatus": "ready_for_live",
       "newStatus": "passed",
-      "previousEventHash": "c099ac146bb137f18444605e38ac0f95ae606723f6c44c8edaba233e231166d4",
+      "previousEventHash": "b6126216428865f7608c5f0884966cefeedddefb5eb0318640ae8ed87a54091d",
       "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
       "evidenceIds": [
         "src-002-0fc5f127be6d"
@@ -394,18 +396,20 @@
       "issuer": "ci-local",
       "reviewer": "completion-review-2026-08-04",
       "reviewerRole": "technical_review",
-      "reason": "M0 re-attested under contract 2.1: SBOM generation and dependency audit recorded",
-      "recordedAt": "2026-08-04T19:16:14.694Z",
+      "reviewerKeyId": "completion-technical-review-1",
+      "reviewerSignature": "iHyVmRTAWfxr0t0ytZhEQZ8x7HztqOKhxOvj25qHANqTTKzbEEtQiVI6BGZ5bsjxV0gBH6TsGUC8bDI3PE5eAw",
+      "reason": "M0 re-attested under contract 2.1: SBOM-and-dependency-audit, independently approved.",
+      "recordedAt": "2026-08-04T20:05:38.722Z",
       "signingKeyId": "completion-ledger-1",
-      "signature": "RwPIJw8foW1vdLw4owLr8G0veNa14TZFyFhvbMgyof3DEAMcF6XKWq2u95DVj-YFdaUv36NrHxk9DhUKDkQ9BA"
+      "signature": "_2NXX1ju14QhOhIotHwcqsUtLYKVcKWycb2Bni3LGJVOllGUzHmYuszSRKwf_ukPHiT5tOjpR6-qYu7ocME_AA"
     },
     {
-      "eventId": "src-003-passed-1785870961193",
+      "eventId": "src-003-passed-1785873942709",
       "sequence": 26,
       "testId": "SRC-003",
       "previousStatus": "ready_for_live",
       "newStatus": "passed",
-      "previousEventHash": "2b84976e3fd015041315e5803df2df869790df0bda00f34c9f95f2b1626b42c7",
+      "previousEventHash": "e77f4f5f98eb1181370d4c0a6a9e6656bd2a6bf115067b32325b1c061a7be5ee",
       "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
       "evidenceIds": [
         "src-003-a6d4fa59b131"
@@ -413,10 +417,12 @@
       "issuer": "ci-local",
       "reviewer": "completion-review-2026-08-04",
       "reviewerRole": "technical_review",
-      "reason": "M0 re-attested under contract 2.1: completion gate contract and adversarial suites recorded",
-      "recordedAt": "2026-08-04T19:16:15.694Z",
+      "reviewerKeyId": "completion-technical-review-1",
+      "reviewerSignature": "gd6E6Ffe0R_EYwOx3ToXA_JndGjH8SPmgwk1o67LFPw4RtwHS4xwtlSNz3AdZASI82LmY3nhNEKcIPGCqO_7CA",
+      "reason": "M0 re-attested under contract 2.1: completion-gate-and-adversarial-suites, independently approved.",
+      "recordedAt": "2026-08-04T20:05:42.707Z",
       "signingKeyId": "completion-ledger-1",
-      "signature": "d_JknOOXmDTP3GE53Ccm8TEYaihVE4_T30PjYveg766qSLBXBV_Lzu5iCBKZ_viJ3QooHMNC4U16GdazjUJ1AQ"
+      "signature": "ywx_54w3F5o9zRcTtUTJg2P9plxz1hI4LnOUG0FrlTCrOL5kDolCj7ka-LT0SVLFS3otRwoFZFidfLcOv1d5AQ"
     }
   ]
 }

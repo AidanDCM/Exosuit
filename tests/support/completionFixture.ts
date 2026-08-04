@@ -17,6 +17,7 @@ import {
   rootKeyFingerprint,
   liveEvidenceClasses,
   nextLedgerEvent,
+  signAsReviewer,
   signRecord,
   TEST_DEFINITION_VERSION,
   type BuildCompletionEvaluation,
@@ -47,7 +48,19 @@ const KEY_SPECS = [
   { keyId: "k-ledger", roles: ["ledger"] as const },
   { keyId: "k-evidence", roles: ["evidence"] as const },
   { keyId: "k-host", roles: ["host"] as const, machineId: MACHINE_ID },
+  // Approval authorities are separate keys, held by people rather than by the
+  // automation that seals transitions.
+  { keyId: "k-tech-review", roles: ["technical_review"] as const },
+  { keyId: "k-owner", roles: ["owner_acceptance"] as const },
+  { keyId: "k-release", roles: ["release_approval"] as const },
 ];
+
+/** The approval key that holds each authority. */
+const APPROVAL_KEYS: Record<string, string> = {
+  technical_review: "k-tech-review",
+  owner_acceptance: "k-owner",
+  release_approval: "k-release",
+};
 
 export interface CompletionFixture {
   registry: KeyRegistry;
@@ -87,6 +100,7 @@ export interface EvidenceInput {
   nonce?: string;
   machineId?: string;
   fieldGeneration?: number;
+  fieldBootId?: string;
   artifactBytes?: number;
   storeArtifact?: boolean;
 }
@@ -99,6 +113,9 @@ export interface TransitionInput {
   issuer?: string;
   reviewer?: string;
   reviewerRole?: ApprovalRole;
+  reviewerKeyId?: string;
+  /** Set false to omit the reviewer co-signature entirely. */
+  reviewerSigns?: boolean;
   recordedAt?: string;
 }
 
@@ -181,7 +198,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
             ? {
               fieldId: "field-fixture-1",
               fieldGeneration: input.fieldGeneration ?? 1,
-              fieldBootId: "boot-fixture-1",
+              fieldBootId: input.fieldBootId ?? "boot-fixture-1",
             }
             : {}),
         },
@@ -202,6 +219,8 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
     },
 
     addTransition(input: TransitionInput): void {
+      const reviewerKeyId = input.reviewerKeyId
+        ?? (input.reviewerRole === undefined ? undefined : APPROVAL_KEYS[input.reviewerRole]);
       const unsigned = nextLedgerEvent({
         ledger: fixture.ledger,
         eventId: `ev-${input.testId}-${input.to}-${fixture.ledger.events.length}`,
@@ -213,15 +232,26 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         issuer: input.issuer ?? "fixture-issuer",
         ...(input.reviewer === undefined ? {} : { reviewer: input.reviewer }),
         ...(input.reviewerRole === undefined ? {} : { reviewerRole: input.reviewerRole }),
+        ...(reviewerKeyId === undefined ? {} : { reviewerKeyId }),
         reason: `fixture transition to ${input.to}`,
         recordedAt: input.recordedAt ?? new Date((ledgerClock += 1000)).toISOString(),
         signingKeyId: "k-ledger",
       });
+
+      // The reviewer signs first; the issuer's signature then covers that
+      // approval, matching the real two-party flow.
+      const approved = reviewerKeyId !== undefined && input.reviewerSigns !== false
+        ? {
+          ...unsigned,
+          reviewerSignature: signAsReviewer(unsigned, secrets[reviewerKeyId] ?? secrets["k-tech-review"]!),
+        }
+        : unsigned;
+
       fixture.ledger = {
         contractVersion: 2,
         events: [...fixture.ledger.events, {
-          ...unsigned,
-          signature: signRecord(unsigned, secrets["k-ledger"]!),
+          ...approved,
+          signature: signRecord(approved, secrets["k-ledger"]!),
         }],
       };
     },

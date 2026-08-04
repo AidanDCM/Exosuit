@@ -31,7 +31,17 @@ export const completionStatusSchema = z.enum(completionStatuses);
 
 /* ------------------------------------------------------------------ keys */
 
-export const signingKeyRoleSchema = z.enum(["manifest", "ledger", "evidence", "host"]);
+export const signingKeyRoleSchema = z.enum([
+  "manifest",
+  "ledger",
+  "evidence",
+  "host",
+  // Approval authorities. These are held by people, never by host automation,
+  // so a transition's approval cannot be minted by whoever holds the ledger key.
+  "technical_review",
+  "owner_acceptance",
+  "release_approval",
+]);
 export type SigningKeyRole = z.infer<typeof signingKeyRoleSchema>;
 
 /**
@@ -202,6 +212,18 @@ export const completionLedgerEventSchema = z.object({
    * policy decides which one a given gate demands.
    */
   reviewerRole: z.enum(approvalRoles).optional(),
+  /**
+   * The reviewer's own key, which must be distinct from `signingKeyId` and
+   * must itself hold the approval role being claimed. Without this the holder
+   * of the ledger key could name any reviewer and claim any authority.
+   */
+  reviewerKeyId: identifier.optional(),
+  /**
+   * The reviewer's independent signature, taken over the approval content
+   * before the issuer seals the event. The issuer signature covers this value,
+   * so the issuer cannot alter an approval after it is given.
+   */
+  reviewerSignature: signatureValue.optional(),
   reason: z.string().min(1).max(500),
   recordedAt: z.string().datetime(),
   signingKeyId: identifier,

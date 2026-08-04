@@ -24,6 +24,57 @@ export function signingPayload(record: Record<string, unknown>): string {
   return canonicalJson(rest);
 }
 
+/**
+ * The reviewer signs before the issuer seals, so the reviewer payload also
+ * omits `reviewerSignature`. The issuer's signature then covers the reviewer's,
+ * which means an approval cannot be moved onto a different transition or
+ * altered after it was given.
+ */
+export function reviewerSigningPayload(record: Record<string, unknown>): string {
+  const { signature: _signature, reviewerSignature: _reviewerSignature, ...rest } = record;
+  return canonicalJson(rest);
+}
+
+export function signAsReviewer(
+  record: Record<string, unknown>,
+  privateKeyPem: string,
+): string {
+  const key = createPrivateKey(privateKeyPem);
+  if (key.asymmetricKeyType !== "ed25519") {
+    throw new Error("Completion approvals must be signed with an ed25519 key.");
+  }
+  return sign(null, Buffer.from(reviewerSigningPayload(record), "utf8"), key).toString("base64url");
+}
+
+/** Verifies a reviewer's independent approval signature. */
+export function verifyReviewerSignature(
+  record: Record<string, unknown> & { reviewerSignature: string },
+  request: KeyVerificationRequest,
+): string[] {
+  const { key, failures } = resolveSigningKey(request);
+  if (key === undefined) return failures;
+
+  let publicKey;
+  try {
+    publicKey = createPublicKey({
+      key: Buffer.from(key.publicKey, "base64"),
+      format: "der",
+      type: "spki",
+    });
+  } catch {
+    return [...failures, `approval key ${key.keyId} has unreadable public material`];
+  }
+
+  const valid = verify(
+    null,
+    Buffer.from(reviewerSigningPayload(record), "utf8"),
+    publicKey,
+    Buffer.from(record.reviewerSignature, "base64url"),
+  );
+  if (!valid) failures.push("reviewer signature does not verify against the named approval key");
+  return failures;
+}
+
 export function signRecord<T extends Record<string, unknown>>(
   record: Omit<T, "signature">,
   privateKeyPem: string,

@@ -165,7 +165,102 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
     else failures.set(record.evidenceId, reasons);
   }
 
+  rejectSupersededFieldEvidence(valid, failures);
+
   return { valid, failures, storeFailures };
+}
+
+interface FieldBinding {
+  readonly record: CompletionEvidence;
+  readonly fieldId: string;
+  readonly generation: number;
+  readonly bootId: string;
+  readonly observedMs: number;
+}
+
+/**
+ * Rejects evidence that a later Field generation or a later guest boot has
+ * superseded.
+ *
+ * Two distinct replays are caught here. A *stale generation* is evidence
+ * attributed to generation N that was observed after generation N+1 had already
+ * started producing evidence — the generation it names no longer existed. A
+ * *superseded boot* is evidence carrying an older boot id that was observed
+ * after a later boot of the same generation began, which is what replaying a
+ * captured artifact after a restart looks like.
+ *
+ * Evidence recorded legitimately in an earlier boot or generation is untouched:
+ * only records that overlap a later one in time are rejected.
+ */
+export function rejectSupersededFieldEvidence(
+  valid: Map<string, CompletionEvidence>,
+  failures: Map<string, string[]>,
+): void {
+  const bindings: FieldBinding[] = [];
+  for (const record of valid.values()) {
+    const { fieldId, fieldGeneration, fieldBootId } = record.environment;
+    if (fieldId === undefined || fieldGeneration === undefined || fieldBootId === undefined) continue;
+    const observedMs = Date.parse(record.observedAt);
+    if (Number.isNaN(observedMs)) continue;
+    bindings.push({ record, fieldId, generation: fieldGeneration, bootId: fieldBootId, observedMs });
+  }
+
+  const reject = (binding: FieldBinding, reason: string): void => {
+    valid.delete(binding.record.evidenceId);
+    failures.set(binding.record.evidenceId, [...(failures.get(binding.record.evidenceId) ?? []), reason]);
+  };
+
+  const groupBy = <K>(items: readonly FieldBinding[], key: (item: FieldBinding) => K): Map<K, FieldBinding[]> => {
+    const map = new Map<K, FieldBinding[]>();
+    for (const item of items) {
+      const existing = map.get(key(item));
+      if (existing === undefined) map.set(key(item), [item]);
+      else existing.push(item);
+    }
+    return map;
+  };
+
+  for (const [fieldId, perField] of groupBy(bindings, (item) => item.fieldId)) {
+    // ---- a later generation supersedes earlier ones from its first sighting ----
+    const firstSeenByGeneration = new Map<number, number>();
+    for (const item of perField) {
+      const seen = firstSeenByGeneration.get(item.generation);
+      if (seen === undefined || item.observedMs < seen) firstSeenByGeneration.set(item.generation, item.observedMs);
+    }
+    for (const item of perField) {
+      for (const [generation, firstSeen] of firstSeenByGeneration) {
+        if (generation > item.generation && item.observedMs > firstSeen) {
+          reject(
+            item,
+            `recorded against Field ${fieldId} generation ${item.generation}, which generation ${generation} had already superseded`,
+          );
+          break;
+        }
+      }
+    }
+
+    // ---- within a generation, a later boot supersedes earlier boots ----
+    for (const [, perGeneration] of groupBy(perField, (item) => item.generation)) {
+      const firstSeenByBoot = new Map<string, number>();
+      for (const item of perGeneration) {
+        const seen = firstSeenByBoot.get(item.bootId);
+        if (seen === undefined || item.observedMs < seen) firstSeenByBoot.set(item.bootId, item.observedMs);
+      }
+      for (const item of perGeneration) {
+        if (!valid.has(item.record.evidenceId)) continue;
+        const ownFirstSeen = firstSeenByBoot.get(item.bootId) ?? item.observedMs;
+        for (const [bootId, firstSeen] of firstSeenByBoot) {
+          if (bootId !== item.bootId && firstSeen > ownFirstSeen && item.observedMs > firstSeen) {
+            reject(
+              item,
+              `replayed from superseded guest boot ${item.bootId}; boot ${bootId} had already started`,
+            );
+            break;
+          }
+        }
+      }
+    }
+  }
 }
 
 /** Qualifying evidence for a gate: valid, bound to it, and in an accepted class. */

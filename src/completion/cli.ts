@@ -15,7 +15,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { createHash, createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname, release, type as osType } from "node:os";
 import { join, resolve } from "node:path";
@@ -43,7 +43,7 @@ import {
   type CompletionTarget,
   type RegistryPurpose,
 } from "./policy.js";
-import { rootKeyFingerprint, signRecord } from "./signing.js";
+import { rootKeyFingerprint, signAsReviewer, signRecord } from "./signing.js";
 import { nextLedgerEvent } from "./ledger.js";
 import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
@@ -120,6 +120,18 @@ const KEY_ROLES: Readonly<Record<string, readonly SigningKeyRole[]>> = {
   "completion-ledger-1": ["ledger"],
   "completion-evidence-1": ["evidence"],
   "completion-host-1": ["host"],
+  // Approval authorities. Held by people; the host automation must never hold
+  // these, or it could approve its own transitions.
+  "completion-technical-review-1": ["technical_review"],
+  "completion-owner-1": ["owner_acceptance"],
+  "completion-release-1": ["release_approval"],
+};
+
+/** Maps an approval authority to the key expected to hold it. */
+const APPROVAL_KEY_IDS: Readonly<Record<ApprovalRole, string>> = {
+  technical_review: "completion-technical-review-1",
+  owner_acceptance: "completion-owner-1",
+  release_approval: "completion-release-1",
 };
 
 /**
@@ -156,7 +168,29 @@ function commandKeys(): void {
   const lifetimeDays = purpose === "live" ? 365 : 3 * 365;
   const notAfter = new Date(now.getTime() + lifetimeDays * 86_400_000);
 
+  // Preserve the validity window of any key already in the registry. Moving
+  // notBefore forward would invalidate every record that key already signed.
+  const previousRegistry = existsSync(PATHS.keys)
+    ? readJson<KeyRegistry>(PATHS.keys)
+    : undefined;
+
   const keys = Object.entries(KEY_ROLES).map(([keyId, roles]) => {
+    // Never regenerate a key that already exists: the development set is a
+    // reproducible fixture, and rotating it would invalidate recorded state.
+    const existingPath = join(outDir, `${keyId}.pem`);
+    if (existsSync(existingPath)) {
+      const secret = createPrivateKey(readFileSync(existingPath, "utf8"));
+      const previous = previousRegistry?.keys.find((candidate) => candidate.keyId === keyId);
+      return {
+        keyId,
+        algorithm: "ed25519" as const,
+        publicKey: createPublicKey(secret).export({ format: "der", type: "spki" }).toString("base64"),
+        roles: [...roles],
+        ...(roles.includes("host") ? { machineId: machineIdentity() } : {}),
+        notBefore: previous?.notBefore ?? now.toISOString(),
+        notAfter: previous?.notAfter ?? notAfter.toISOString(),
+      };
+    }
     const { publicKey, privateKey: secret } = generateKeyPairSync("ed25519");
     writeFileSync(
       join(outDir, `${keyId}.pem`),
@@ -513,16 +547,36 @@ function commandTransition(): void {
     ...(arg("--reviewer-role") === undefined
       ? { reviewerRole: requiredApprovalRole(testId) }
       : { reviewerRole: requireArg("--reviewer-role") as ApprovalRole }),
+    ...(to === "passed"
+      ? {
+        reviewerKeyId: arg("--reviewer-key")
+          ?? APPROVAL_KEY_IDS[
+            (arg("--reviewer-role") as ApprovalRole | undefined) ?? requiredApprovalRole(testId)
+          ],
+      }
+      : {}),
     reason: requireArg("--reason"),
     recordedAt,
     signingKeyId: "completion-ledger-1",
   });
 
+  // The reviewer signs the approval first; the issuer's signature then seals
+  // the event including that approval.
+  const approved = to === "passed"
+    ? {
+      ...unsigned,
+      reviewerSignature: signAsReviewer(
+        unsigned,
+        privateKey(unsigned.reviewerKeyId ?? APPROVAL_KEY_IDS[requiredApprovalRole(testId)]),
+      ),
+    }
+    : unsigned;
+
   writeJson(PATHS.ledger, completionLedgerSchema.parse({
     contractVersion: 2,
     events: [...ledger.events, {
-      ...unsigned,
-      signature: signRecord(unsigned, privateKey("completion-ledger-1")),
+      ...approved,
+      signature: signRecord(approved, privateKey("completion-ledger-1")),
     }],
   }));
   console.log(`Recorded ${testId}: ${from} -> ${to}`);

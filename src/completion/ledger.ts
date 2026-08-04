@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { canonicalJson } from "../fieldContracts.js";
 import { isTransitionAllowed, requiredApprovalRole, type CompletionStatus } from "./policy.js";
-import { verifyRecordSignature } from "./signing.js";
+import { verifyRecordSignature, verifyReviewerSignature } from "./signing.js";
 import type { ApprovalRole } from "./policy.js";
 import type {
   CompletionEvidence,
@@ -117,6 +117,30 @@ export function verifyCompletionLedger(request: LedgerVerificationRequest): Ledg
           `${label}: gate ${event.testId} requires ${required} but the transition claims ${event.reviewerRole}`,
         );
       }
+
+      // ---- the approval must be independently signed ----
+      // Without this, whoever holds the ledger key could name any reviewer and
+      // claim any authority. The approval key is held by a person and must be
+      // a different key from the one sealing the event.
+      if (event.reviewerKeyId === undefined || event.reviewerSignature === undefined) {
+        failures.push(
+          `${label}: promotion to passed requires an independent reviewer signature (reviewerKeyId and reviewerSignature)`,
+        );
+      } else if (event.reviewerKeyId === event.signingKeyId) {
+        failures.push(
+          `${label}: the approval key must not be the key that seals the transition`,
+        );
+      } else if (event.reviewerRole !== undefined) {
+        failures.push(...verifyReviewerSignature(
+          { ...event, reviewerSignature: event.reviewerSignature },
+          {
+            registry: request.registry,
+            keyId: event.reviewerKeyId,
+            role: event.reviewerRole,
+            signedAt: event.recordedAt,
+          },
+        ).map((reason) => `${label}: ${reason}`));
+      }
     }
 
     // ---- cited evidence must be valid and bound to this very test ----
@@ -166,10 +190,11 @@ export function nextLedgerEvent(input: {
   readonly issuer: string;
   readonly reviewer?: string;
   readonly reviewerRole?: ApprovalRole;
+  readonly reviewerKeyId?: string;
   readonly reason: string;
   readonly recordedAt: string;
   readonly signingKeyId: string;
-}): Omit<CompletionLedgerEvent, "signature"> {
+}): Omit<CompletionLedgerEvent, "signature" | "reviewerSignature"> {
   const events = [...input.ledger.events].sort((left, right) => left.sequence - right.sequence);
   const last = events.at(-1);
   return {
@@ -184,6 +209,7 @@ export function nextLedgerEvent(input: {
     issuer: input.issuer,
     ...(input.reviewer === undefined ? {} : { reviewer: input.reviewer }),
     ...(input.reviewerRole === undefined ? {} : { reviewerRole: input.reviewerRole }),
+    ...(input.reviewerKeyId === undefined ? {} : { reviewerKeyId: input.reviewerKeyId }),
     reason: input.reason,
     recordedAt: input.recordedAt,
     signingKeyId: input.signingKeyId,

@@ -316,3 +316,149 @@ function evaluateWithForeignPin(
   });
   return result.integrityFailures.join(" | ");
 }
+
+describe("M0.5 — approval authority must be independently signed", () => {
+  it("rejects a promotion with no reviewer co-signature", () => {
+    const fixture = createCompletionFixture();
+    const record = fixture.addEvidence({ testId: "SRC-001" });
+    fixture.addTransition({ testId: "SRC-001", from: "planned", to: "source_validated" });
+    fixture.addTransition({ testId: "SRC-001", from: "source_validated", to: "ready_for_live" });
+    fixture.addTransition({
+      testId: "SRC-001",
+      from: "ready_for_live",
+      to: "passed",
+      evidenceIds: [record.evidenceId],
+      issuer: "ci",
+      reviewer: "a-human",
+      reviewerRole: requiredApprovalRole("SRC-001"),
+      reviewerSigns: false,
+    });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/requires an independent reviewer signature/);
+  });
+
+  it("rejects the ledger key approving its own transition", () => {
+    const fixture = createCompletionFixture();
+    const record = fixture.addEvidence({ testId: "SRC-001" });
+    fixture.addTransition({ testId: "SRC-001", from: "planned", to: "source_validated" });
+    fixture.addTransition({ testId: "SRC-001", from: "source_validated", to: "ready_for_live" });
+    fixture.addTransition({
+      testId: "SRC-001",
+      from: "ready_for_live",
+      to: "passed",
+      evidenceIds: [record.evidenceId],
+      issuer: "ci",
+      reviewer: "a-human",
+      reviewerRole: requiredApprovalRole("SRC-001"),
+      reviewerKeyId: "k-ledger",
+    });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/approval key must not be the key that seals the transition/);
+  });
+
+  it("rejects an approval key that does not hold the claimed authority", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003", "HYP-001", "CHN-001", "SCN-001", "ACT-001"]) {
+      fixture.promote(testId);
+    }
+    // TCH-001 demands owner acceptance; sign the approval with the engineering key.
+    fixture.promote("TCH-001", {});
+    const events = fixture.ledger.events.map((event) =>
+      event.testId === "TCH-001" && event.newStatus === "passed"
+        ? { ...event, reviewerKeyId: "k-tech-review" }
+        : event);
+    fixture.ledger = { contractVersion: 2, events };
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/not authorised for role owner_acceptance|reviewer signature does not verify/);
+  });
+
+  it("rejects an approval forged with the ledger key under a reviewer key id", () => {
+    const fixture = createCompletionFixture();
+    const record = fixture.addEvidence({ testId: "SRC-001" });
+    fixture.addTransition({ testId: "SRC-001", from: "planned", to: "source_validated" });
+    fixture.addTransition({ testId: "SRC-001", from: "source_validated", to: "ready_for_live" });
+    fixture.addTransition({
+      testId: "SRC-001",
+      from: "ready_for_live",
+      to: "passed",
+      evidenceIds: [record.evidenceId],
+      issuer: "ci",
+      reviewer: "a-human",
+      reviewerRole: requiredApprovalRole("SRC-001"),
+      // Names the real approval key, but the automation signs it itself.
+      reviewerKeyId: "k-tech-review",
+      reviewerSigns: false,
+    });
+    const events = [...fixture.ledger.events];
+    const last = events.at(-1)!;
+    events[events.length - 1] = {
+      ...last,
+      reviewerSignature: signRecord({ ...last, signature: undefined }, fixture.secrets["k-ledger"]!),
+    };
+    fixture.ledger = { contractVersion: 2, events };
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/reviewer signature does not verify against the named approval key/);
+  });
+});
+
+describe("M0.5 — superseded boot and generation replay", () => {
+  it("rejects evidence replayed from a superseded guest boot", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    // Boot ids are opaque, so the detectable signal is overlap: one boot of a
+    // generation still producing evidence after a different boot of the same
+    // generation has already started. Two boots cannot run at once.
+    fixture.addEvidence({
+      testId: "CHN-001",
+      observedAt: "2026-08-04T12:10:00.000Z",
+      fieldBootId: "boot-first",
+    });
+    fixture.addEvidence({
+      testId: "SCN-001",
+      observedAt: "2026-08-04T12:30:00.000Z",
+      fieldBootId: "boot-second",
+    });
+    fixture.promote(LIVE_GATE, {
+      observedAt: "2026-08-04T12:50:00.000Z",
+      fieldBootId: "boot-first",
+    });
+    const result = fixture.evaluate("personal_mvp");
+    expect(allFailures(result)).toMatch(/replayed from superseded guest boot boot-first/);
+    expect(provenLiveGate(result)).toBe(false);
+  });
+
+  it("rejects evidence recorded against a superseded Field generation", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.addEvidence({
+      testId: "CHN-001",
+      fieldGeneration: 2,
+      observedAt: "2026-08-04T12:20:00.000Z",
+    });
+    fixture.promote(LIVE_GATE, {
+      fieldGeneration: 1,
+      observedAt: "2026-08-04T12:50:00.000Z",
+    });
+    const result = fixture.evaluate("personal_mvp");
+    expect(allFailures(result)).toMatch(/generation 1, which generation 2 had already superseded/);
+    expect(provenLiveGate(result)).toBe(false);
+  });
+
+  it("accepts sequential boots that do not overlap", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    // Honest sequence: the earlier boot's evidence precedes the later boot.
+    fixture.promote(LIVE_GATE, {
+      observedAt: "2026-08-04T12:10:00.000Z",
+      fieldBootId: "boot-first",
+    });
+    fixture.addEvidence({
+      testId: "CHN-001",
+      observedAt: "2026-08-04T12:40:00.000Z",
+      fieldBootId: "boot-second",
+    });
+    const result = fixture.evaluate("personal_mvp");
+    expect(allFailures(result)).not.toMatch(/superseded/);
+    expect(provenLiveGate(result)).toBe(true);
+  });
+});

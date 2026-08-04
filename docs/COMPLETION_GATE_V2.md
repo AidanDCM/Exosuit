@@ -147,6 +147,36 @@ Approval authorities are separated and never interchangeable:
 `technical_review`, `owner_acceptance`, and `release_approval`. Policy decides
 which one a gate demands; claiming the wrong one fails the transition.
 
+Each authority is a **separate key held by a person**, and a promotion to
+`passed` carries an independent reviewer signature:
+
+| Field | Meaning |
+| --- | --- |
+| `reviewerKeyId` | The approval key. Must differ from `signingKeyId`. |
+| `reviewerSignature` | Taken over the event *before* the issuer seals it. |
+
+The reviewer signs first; the issuer's signature then covers the reviewer's, so
+an approval cannot be moved onto a different transition or altered afterwards.
+Without this the holder of the ledger key could name any reviewer and claim any
+authority — the reviewer field alone was only a string. Host automation must
+never hold an approval key.
+
+### Superseded boots and generations
+
+A Field generation and a guest boot each have a lifetime, and evidence may not
+outlive them. Two replays are rejected:
+
+- **Stale generation** — evidence attributed to generation *N* observed after
+  generation *N+1* had already produced evidence. The generation it names no
+  longer existed.
+- **Superseded boot** — within one generation, two boots whose observation
+  windows overlap. Two boots of a generation cannot run at once, so the older
+  boot still emitting evidence after a newer one started is a replayed capture.
+
+Boot ids are opaque, so ordering is derived from observation windows rather than
+from the ids themselves. Evidence legitimately recorded in an earlier boot or
+generation is untouched; only records overlapping a later one are rejected.
+
 For a personal MVP one offline root key is sufficient. Commercial production
 should move to a two-of-three threshold model so no single key holder can
 rewrite the completion state.
