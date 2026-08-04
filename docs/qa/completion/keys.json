@@ -1,0 +1,46 @@
+{
+  "contractVersion": 2,
+  "keys": [
+    {
+      "keyId": "completion-manifest-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEA+baw9cwXG6CVCOa2pSWqeP4V2LZWmf0YZMr5kiTHfKw=",
+      "roles": [
+        "manifest"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-ledger-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAbGctQRLnuKWVX99C7Bi/b+7eNEk1DcUpg2EmkLsFW3g=",
+      "roles": [
+        "ledger"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-evidence-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEA/GEK9TZlBK0q8Jh1EIMzA7//CbXwBM2CB0cigmrOaQk=",
+      "roles": [
+        "evidence"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-host-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEACNrpb5+nWmOS3boH47G8cxqoKHzXELcpp3+/C8Z5tPU=",
+      "roles": [
+        "host"
+      ],
+      "machineId": "machine-9c62d678dd970f15",
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    }
+  ]
+}

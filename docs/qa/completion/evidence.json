@@ -1,0 +1,71 @@
+{
+  "contractVersion": 2,
+  "records": [
+    {
+      "evidenceId": "src-001-ce41f2ecb9d2",
+      "boundTestId": "SRC-001",
+      "evidenceClass": "fake_integration",
+      "artifactSha256": "ce41f2ecb9d296d2d95f4c203809e6330950aab856c2e5221703cf13cd8da2b8",
+      "artifactBytes": 121141,
+      "mediaType": "application/json",
+      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "runId": "m0-src001-1785867041",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "ci-local",
+      "observedAt": "2026-08-04T18:12:29.127Z",
+      "nonce": "a2082a1f0f96887f26715bda1f017080",
+      "designation": "synthetic",
+      "signingKeyId": "completion-evidence-1",
+      "signature": "XWntoQ4DXTdw37j985wZSQcOVtnJ6dUbgzFKAtzqAzZ2_fXS_ul59WtGXkiBEGZDLhRAh-_6wUCX2Ba0XAk2AA"
+    },
+    {
+      "evidenceId": "src-002-0fc5f127be6d",
+      "boundTestId": "SRC-002",
+      "evidenceClass": "fake_integration",
+      "artifactSha256": "0fc5f127be6d73fbd9ca75ef1af683d4057edc61364ddafa8cfc6e305215a193",
+      "artifactBytes": 69916,
+      "mediaType": "application/json",
+      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "runId": "m0-src002-1785867160",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "ci-local",
+      "observedAt": "2026-08-04T18:12:48.145Z",
+      "nonce": "85b6fbb95d31a1bef6600667b2988998",
+      "designation": "synthetic",
+      "signingKeyId": "completion-evidence-1",
+      "signature": "i8yyWndhmohPX9tsydoOI60ZhVyFqXYqK68LGUitKFB7YbBXmBBvFhJuY0wMwF7PS--U3YFAP5Dt_4onu4qjAQ"
+    },
+    {
+      "evidenceId": "src-003-a6d4fa59b131",
+      "boundTestId": "SRC-003",
+      "evidenceClass": "unit",
+      "artifactSha256": "a6d4fa59b131e31c20221957a469a9868b6ca2e5b525aa16450415f65db74b39",
+      "artifactBytes": 1599,
+      "mediaType": "application/json",
+      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "runId": "m0-src003-1785867175",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "ci-local",
+      "observedAt": "2026-08-04T18:13:06.657Z",
+      "nonce": "9318c6345d7af5d7ae98c9a8ea37fd5e",
+      "designation": "synthetic",
+      "signingKeyId": "completion-evidence-1",
+      "signature": "3hLbRmKaB7BTrqJCEAGjttW5KScmZueM-A-oYMm6DkogIrgrBducKJ6SndCeF1bGsiB4vt2hTQMUbqPIuWbIAw"
+    }
+  ]
+}
