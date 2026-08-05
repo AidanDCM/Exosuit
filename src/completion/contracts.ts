@@ -187,6 +187,45 @@ export const completionTrialBundleSchema = z.object({
 }).strict();
 export type CompletionTrialBundle = z.infer<typeof completionTrialBundleSchema>;
 
+/* ------------------------------------------------------- field lifecycle */
+
+/**
+ * A Field generation and each of its boots have a lifetime. Without a record of
+ * that lifetime, evidence can name a boot of a generation that was destroyed
+ * hours earlier and nothing detects it — a gap found during M0.5 reboot
+ * verification on 2026-08-05.
+ *
+ * These events are observed and signed by the host, because only the host sees
+ * a Field being created, booted, stopped, and destroyed.
+ */
+export const fieldLifecycleKindSchema = z.enum(["created", "booted", "stopped", "destroyed"]);
+export type FieldLifecycleKind = z.infer<typeof fieldLifecycleKindSchema>;
+
+export const fieldLifecycleEventSchema = z.object({
+  eventId: identifier,
+  sequence: z.number().int().nonnegative(),
+  fieldId: identifier,
+  generation: z.number().int().positive(),
+  kind: fieldLifecycleKindSchema,
+  /** Required for `booted` and `stopped`; identifies the boot session. */
+  bootId: identifier.optional(),
+  /** Required for `created`; binds the generation to its immutable base. */
+  baseImageSha256: sha256Hex.optional(),
+  vmGuid: identifier.optional(),
+  previousEventHash: sha256Hex,
+  machineId: identifier,
+  recordedAt: z.string().datetime(),
+  signingKeyId: identifier,
+  signature: signatureValue,
+}).strict();
+export type FieldLifecycleEvent = z.infer<typeof fieldLifecycleEventSchema>;
+
+export const fieldLifecycleLedgerSchema = z.object({
+  contractVersion: z.literal(COMPLETION_CONTRACT_VERSION),
+  events: z.array(fieldLifecycleEventSchema),
+}).strict();
+export type FieldLifecycleLedger = z.infer<typeof fieldLifecycleLedgerSchema>;
+
 /* ---------------------------------------------------------------- ledger */
 
 /**

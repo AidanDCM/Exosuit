@@ -20,6 +20,7 @@ import {
 } from "./policy.js";
 import { requiredRoleForLiveEvidence, verifyRecordSignature } from "./signing.js";
 import type { BuildCompletionManifest, CompletionEvidence, KeyRegistry } from "./contracts.js";
+import { checkAgainstLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
 
 /** Read an artifact by its content address. Returns undefined when absent. */
 export interface EvidenceArtifactSource {
@@ -36,6 +37,12 @@ export interface EvidenceVerificationRequest {
   readonly registry: KeyRegistry;
   readonly artifacts: EvidenceArtifactSource;
   readonly now: string;
+  /**
+   * Verified Field lifecycle. Field-bound live evidence fails closed without
+   * it: with no record of when a generation existed or a boot ran, a record
+   * naming a destroyed generation cannot be distinguished from a live one.
+   */
+  readonly lifecycle?: LifecycleVerificationResult;
 }
 
 export interface EvidenceVerificationResult {
@@ -113,6 +120,21 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
         const { fieldId, fieldGeneration, fieldBootId } = record.environment;
         if (fieldId === undefined || fieldGeneration === undefined || fieldBootId === undefined) {
           reasons.push("Field-bound evidence must name fieldId, fieldGeneration, and fieldBootId");
+        } else if (request.lifecycle === undefined) {
+          reasons.push(
+            "Field-bound evidence requires a verified Field lifecycle ledger; none was supplied",
+          );
+        } else {
+          const observedMs = Date.parse(record.observedAt);
+          if (!Number.isNaN(observedMs)) {
+            reasons.push(...checkAgainstLifecycle({
+              fieldId,
+              generation: fieldGeneration,
+              bootId: fieldBootId,
+              observedAtMs: observedMs,
+              lifecycle: request.lifecycle,
+            }));
+          }
         }
       }
     }

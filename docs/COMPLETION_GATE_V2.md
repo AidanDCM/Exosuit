@@ -181,6 +181,41 @@ For a personal MVP one offline root key is sufficient. Commercial production
 should move to a two-of-three threshold model so no single key holder can
 rewrite the completion state.
 
+## Field lifecycle ledger (v2.2)
+
+M0.5 reboot verification on 2026-08-05 found a hole: a fully valid, correctly
+signed evidence record — fresh artifact, fresh nonce, valid host signature —
+naming the boot of a Field generation that had been **destroyed an hour
+earlier** was accepted. Nothing bound evidence to a boot's lifetime. The
+observation-window overlap rule only fired when two boots of one generation
+overlapped; a single record naming a dead boot passed unchallenged.
+
+The host now records a signed, hash-chained lifecycle per generation:
+
+```
+created → booted → stopped → booted → ... → destroyed
+```
+
+Only a host-bound key under a live registry may write it, because only the host
+observes a Field being created, booted, stopped, and destroyed. The chain
+enforces that a boot cannot start while another is open, a boot id cannot be
+reused within a generation, and nothing may follow a destroy.
+
+Field-bound live evidence must then fall inside an **open boot window** of a
+generation that existed at the time. It **fails closed**: with no lifecycle
+ledger there is no way to tell a live generation from a destroyed one, so the
+evidence is rejected rather than assumed good.
+
+Validated on real hardware, not only fixtures. A second disposable Field was
+created, booted, and attested with lifecycle recording; evidence inside the
+open boot verified, and evidence recorded after the boot was stopped was
+rejected with `evidence was observed after boot … ended`.
+
+The two M0.5 evidence records produced before this rule existed no longer
+validate. They were removed rather than back-dated — inventing lifecycle events
+for a destroyed Field is exactly the forgery this contract exists to prevent.
+Both remain in git history and in the M0.5 report.
+
 ## Trust roots and residual risk
 
 Stated plainly, because the version 1 report overclaimed:

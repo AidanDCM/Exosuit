@@ -119,3 +119,45 @@ The evidence envelope and transition-ledger core behaved correctly against real
 data. They are ready to freeze as **contract v2.1** once reboot verification
 passes. M0 should then be re-attested under the live registry once, rather than
 regenerating keys repeatedly.
+
+---
+
+## Addendum — reboot verification and contract v2.2
+
+**Reboot verification did not run.** The first attempt was void: the machine
+never restarted. Uptime was 2 days 1 hour, the last OS start event was
+2026-08-03T13:53, and `LastBootUpTime` was byte-identical across the supposed
+restart. Fast Startup is enabled (`HiberbootEnabled = 1`), so a shutdown plus
+power-on resumes from the hiberfile and produces the same false result; only an
+explicit **Restart** performs a full boot. The persistence, key-loading, and
+ledger-continuity checks are therefore still unproven across a real restart.
+
+**A real contract gap was found anyway,** and it did not depend on the reboot —
+it reproduces on a machine that never restarted. A fully valid, correctly
+signed record naming the boot of a destroyed Field generation was accepted.
+
+The first version of that probe scored a **pass** for the wrong reason: it
+reused the sample record's artifact and nonce, so it was rejected for artifact
+reuse and a broken signature rather than anything about boots. The probe now
+uses a fresh artifact, a fresh nonce, and a valid host signature, and only
+counts a rejection whose reason actually mentions a boot, supersession, or
+staleness. With that correction the gap was unambiguous.
+
+**Closed by the Field lifecycle ledger (v2.2).** See
+[`../COMPLETION_GATE_V2.md`](../COMPLETION_GATE_V2.md). Validated on hardware
+with a second disposable Field, `6fe7bf2b-7c62-4115-9a03-4f08f83bdc01`
+generation 1, boot `boot-7dfb720f84a05ff2`:
+
+| Step | Result |
+| --- | --- |
+| `created` recorded with the base image hash | yes |
+| `booted` recorded; guest heartbeat OK in 31 s | yes |
+| Evidence inside the open boot window | verified, 0 integrity failures |
+| `stopped` recorded, then evidence attempted under the closed boot | **rejected** — `observed after boot boot-7dfb720f84a05ff2 ended` |
+| `destroyed` recorded; Field removed | 23 prior field directories and the G4 VM untouched |
+| v25 immutable base | unchanged |
+
+The two original M0.5 evidence records were removed rather than back-dated.
+
+**Still outstanding:** a genuine restart, to prove persistence, key loading, and
+ledger continuity survive one.

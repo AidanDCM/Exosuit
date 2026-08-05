@@ -11,5 +11,6 @@ export * from "./contracts.js";
 export * from "./signing.js";
 export * from "./evidence.js";
 export * from "./ledger.js";
+export * from "./fieldLifecycle.js";
 export * from "./benchmark.js";
 export * from "./evaluate.js";

@@ -24,11 +24,13 @@ import {
   buildCompletionManifestSchema,
   completionLedgerSchema,
   evidenceStoreSchema,
+  fieldLifecycleLedgerSchema,
   keyRegistrySchema,
   type BuildCompletionManifest,
   type CompletionEvidence,
   type CompletionLedger,
   type EvidenceStore,
+  type FieldLifecycleLedger,
   type KeyRegistry,
   type SigningKeyRole,
 } from "./contracts.js";
@@ -45,6 +47,7 @@ import {
 } from "./policy.js";
 import { rootKeyFingerprint, signAsReviewer, signRecord } from "./signing.js";
 import { nextLedgerEvent } from "./ledger.js";
+import { nextLifecycleEvent } from "./fieldLifecycle.js";
 import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
 
@@ -65,6 +68,7 @@ const PATHS = {
   manifest: join(DIR, "manifest.json"),
   ledger: join(DIR, "ledger.json"),
   evidence: join(DIR, "evidence.json"),
+  lifecycle: join(DIR, "field-lifecycle.json"),
 };
 
 /* ------------------------------------------------------------------ util */
@@ -725,6 +729,50 @@ function commandTransition(): void {
   console.log(`Recorded ${testId}: ${from} -> ${to}`);
 }
 
+/* ------------------------------------------------------ field lifecycle */
+
+function readLifecycle(): FieldLifecycleLedger {
+  return existsSync(PATHS.lifecycle)
+    ? readJson<FieldLifecycleLedger>(PATHS.lifecycle)
+    : { contractVersion: 2, events: [] };
+}
+
+/**
+ * Records one Field lifecycle event. Only the host observes a Field being
+ * created, booted, stopped, and destroyed, so these are signed by the
+ * host-bound key.
+ */
+function commandFieldLifecycle(): void {
+  const ledger = readLifecycle();
+  const kind = requireArg("--kind") as "created" | "booted" | "stopped" | "destroyed";
+  const last = [...ledger.events].sort((a, b) => a.sequence - b.sequence).at(-1);
+  const recordedAt = new Date(
+    Math.max(Date.now(), last === undefined ? 0 : Date.parse(last.recordedAt) + 1000),
+  ).toISOString();
+
+  const unsigned = nextLifecycleEvent({
+    ledger,
+    eventId: arg("--event-id") ?? `lc-${kind}-${Date.now()}`,
+    fieldId: requireArg("--field-id"),
+    generation: Number.parseInt(requireArg("--generation"), 10),
+    kind,
+    ...(arg("--boot-id") === undefined ? {} : { bootId: requireArg("--boot-id") }),
+    ...(arg("--base-image-sha256") === undefined
+      ? {}
+      : { baseImageSha256: requireArg("--base-image-sha256") }),
+    ...(arg("--vm-guid") === undefined ? {} : { vmGuid: requireArg("--vm-guid") }),
+    machineId: machineIdentity(),
+    recordedAt,
+    signingKeyId: KEY.host(),
+  });
+
+  writeJson(PATHS.lifecycle, fieldLifecycleLedgerSchema.parse({
+    contractVersion: 2,
+    events: [...ledger.events, { ...unsigned, signature: signRecord(unsigned, privateKey(KEY.host())) }],
+  }));
+  console.log(`Recorded Field lifecycle: ${unsigned.fieldId} gen ${unsigned.generation} ${kind}`);
+}
+
 /* -------------------------------------------------------------- evaluate */
 
 function commandEvaluate(): void {
@@ -746,6 +794,7 @@ function commandEvaluate(): void {
       registry,
       artifacts: filesystemArtifactSource(),
       target,
+      fieldLifecycle: readLifecycle(),
     });
     console.log(`\n${result.headline}`);
     console.log(`- proven gates: ${result.provenTestCount}/${result.requiredTestCount}`);
@@ -783,6 +832,7 @@ function main(): void {
     case "migrate": return commandMigrate();
     case "record": return commandRecord();
     case "record-artifact": return commandRecordArtifact();
+    case "field-lifecycle": return commandFieldLifecycle();
     case "transition": return commandTransition();
     case "evaluate": return commandEvaluate();
     default:

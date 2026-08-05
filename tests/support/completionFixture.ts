@@ -15,8 +15,11 @@ import {
   isBenchmarkGate,
   requiredApprovalRole,
   rootKeyFingerprint,
+  fieldBoundEvidenceClasses,
   liveEvidenceClasses,
   nextLedgerEvent,
+  nextLifecycleEvent,
+  verifyFieldLifecycle,
   signAsReviewer,
   signRecord,
   TEST_DEFINITION_VERSION,
@@ -28,6 +31,7 @@ import {
   type CompletionStatus,
   type CompletionTarget,
   type EvidenceStore,
+  type FieldLifecycleLedger,
   type ApprovalRole,
   type KeyRegistry,
   type KeyRevocation,
@@ -40,6 +44,7 @@ export const FIXTURE_COMMIT = "de52ad72b11ddafe969e5923f16c946e49cf04f4";
 export const BASELINE_AT = "2026-08-01T00:00:00.000Z";
 export const OBSERVED_AT = "2026-08-04T12:00:00.000Z";
 export const LEDGER_START = "2026-08-04T13:00:00.000Z";
+export const LIFECYCLE_START = "2026-08-04T11:00:00.000Z";
 export const NOW = "2026-08-04T18:00:00.000Z";
 export const MACHINE_ID = "machine-fixture0000000a";
 
@@ -67,6 +72,8 @@ export interface CompletionFixture {
   manifest: BuildCompletionManifest;
   ledger: CompletionLedger;
   evidence: EvidenceStore;
+  /** Host-signed Field lifecycle; Field-bound evidence is invalid without it. */
+  fieldLifecycle: FieldLifecycleLedger;
   artifacts: Map<string, Uint8Array>;
   secrets: Record<string, string>;
   /** PEM of the fixture's offline root key. */
@@ -79,6 +86,14 @@ export interface CompletionFixture {
   addEvidence(input: EvidenceInput): CompletionEvidence;
   /** Signs and appends one ledger transition. */
   addTransition(input: TransitionInput): void;
+  addLifecycle(input: {
+    fieldId: string;
+    generation: number;
+    kind: "created" | "booted" | "stopped" | "destroyed";
+    bootId?: string;
+    recordedAt?: string;
+    machineId?: string;
+  }): void;
   /** Drives a gate from planned to passed with valid evidence. */
   promote(testId: string, overrides?: Partial<EvidenceInput>): CompletionEvidence;
   /** Drives every gate required for a target to passed. */
@@ -101,6 +116,9 @@ export interface EvidenceInput {
   machineId?: string;
   fieldGeneration?: number;
   fieldBootId?: string;
+  fieldId?: string;
+  /** Set true to deliberately omit lifecycle registration. */
+  skipLifecycle?: boolean;
   artifactBytes?: number;
   storeArtifact?: boolean;
 }
@@ -142,6 +160,10 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
 
   const source = JSON.parse(readFileSync(manifestPath, "utf8")) as BuildCompletionManifest;
   let ledgerClock = Date.parse(LEDGER_START);
+  let lifecycleClock = Date.parse(LIFECYCLE_START);
+  const createdGenerations = new Set<string>();
+  const openBoots = new Map<string, string>();
+  const seenBoots = new Set<string>();
 
   const sealRegistry = (input: { keys: SigningKey[]; revocations?: KeyRevocation[]; purpose?: RegistryPurpose }): KeyRegistry => {
     const core = {
@@ -168,14 +190,79 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
     manifest: buildCompletionManifestSchema.parse({ ...source }),
     ledger: { contractVersion: 2, events: [] },
     evidence: { contractVersion: 2, records: [] },
+    fieldLifecycle: { contractVersion: 2, events: [] },
     artifacts: new Map<string, Uint8Array>(),
     secrets,
+
+    addLifecycle(input: {
+      fieldId: string;
+      generation: number;
+      kind: "created" | "booted" | "stopped" | "destroyed";
+      bootId?: string;
+      recordedAt?: string;
+      machineId?: string;
+    }): void {
+      const unsigned = nextLifecycleEvent({
+        ledger: fixture.fieldLifecycle,
+        eventId: `lc-${input.kind}-${fixture.fieldLifecycle.events.length}`,
+        fieldId: input.fieldId,
+        generation: input.generation,
+        kind: input.kind,
+        ...(input.bootId === undefined ? {} : { bootId: input.bootId }),
+        ...(input.kind === "created" ? { baseImageSha256: "a".repeat(64) } : {}),
+        machineId: input.machineId ?? MACHINE_ID,
+        recordedAt: input.recordedAt ?? new Date((lifecycleClock += 1000)).toISOString(),
+        signingKeyId: "k-host",
+      });
+      fixture.fieldLifecycle = {
+        contractVersion: 2,
+        events: [...fixture.fieldLifecycle.events, {
+          ...unsigned,
+          signature: signRecord(unsigned, secrets["k-host"]!),
+        }],
+      };
+    },
 
     addEvidence(input: EvidenceInput): CompletionEvidence {
       const evidenceClass = input.evidenceClass
         ?? gateEvidenceAllowlist[input.testId]?.[0]
         ?? "unit";
       const isLive = liveEvidenceClasses.has(evidenceClass);
+      // Field-bound evidence needs a recorded generation and an open boot, or
+      // the contract rejects it. Registration is chronological: a boot that is
+      // still open is stopped before a different one starts, which is what the
+      // real host would record.
+      if (isLive && fieldBoundEvidenceClasses.has(evidenceClass) && input.skipLifecycle !== true) {
+        const fieldId = input.fieldId ?? "field-fixture-1";
+        const generation = input.fieldGeneration ?? 1;
+        const bootId = input.fieldBootId ?? "boot-fixture-1";
+        const observedMs = Date.parse(input.observedAt ?? OBSERVED_AT);
+        const key = `${fieldId}#${generation}`;
+
+        if (!createdGenerations.has(key)) {
+          createdGenerations.add(key);
+          fixture.addLifecycle({
+            fieldId, generation, kind: "created",
+            recordedAt: new Date(observedMs - 60_000).toISOString(),
+          });
+        }
+        const open = openBoots.get(key);
+        if (open !== undefined && open !== bootId) {
+          fixture.addLifecycle({
+            fieldId, generation, kind: "stopped", bootId: open,
+            recordedAt: new Date(observedMs - 2_000).toISOString(),
+          });
+          openBoots.delete(key);
+        }
+        if (!seenBoots.has(`${key}#${bootId}`)) {
+          seenBoots.add(`${key}#${bootId}`);
+          openBoots.set(key, bootId);
+          fixture.addLifecycle({
+            fieldId, generation, kind: "booted", bootId,
+            recordedAt: new Date(observedMs - 1_000).toISOString(),
+          });
+        }
+      }
       const artifact = input.artifact
         ?? Buffer.from(`artifact for ${input.testId} ${randomBytes(8).toString("hex")}`, "utf8");
       const artifactSha256 = createHash("sha256").update(artifact).digest("hex");
@@ -196,7 +283,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
           osBuild: "10.0.26200",
           ...(isLive
             ? {
-              fieldId: "field-fixture-1",
+              fieldId: input.fieldId ?? "field-fixture-1",
               fieldGeneration: input.fieldGeneration ?? 1,
               fieldBootId: input.fieldBootId ?? "boot-fixture-1",
             }
@@ -305,6 +392,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         registry: fixture.registry,
         artifacts: artifactSourceFromMap(fixture.artifacts),
         target,
+        fieldLifecycle: fixture.fieldLifecycle,
         now,
         acceptedRootFingerprints: [fixture.rootFingerprint],
       });

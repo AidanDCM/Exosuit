@@ -43,6 +43,8 @@ import {
   type EvidenceArtifactSource,
 } from "./evidence.js";
 import { verifyCompletionLedger } from "./ledger.js";
+import { verifyFieldLifecycle } from "./fieldLifecycle.js";
+import { fieldLifecycleLedgerSchema, type FieldLifecycleLedger } from "./contracts.js";
 import { evaluateBenchmark, parseTrialBundle } from "./benchmark.js";
 import { verifyKeyRegistry, verifyRecordSignature } from "./signing.js";
 
@@ -53,6 +55,8 @@ export interface CompletionEvaluationRequest {
   readonly registry: KeyRegistry;
   readonly artifacts: EvidenceArtifactSource;
   readonly target: CompletionTarget;
+  /** Host-signed Field lifecycle. Required for any Field-bound live evidence. */
+  readonly fieldLifecycle?: FieldLifecycleLedger;
   readonly now?: string;
   /** Overrides the in-repo pinned root fingerprints. Used by fixtures. */
   readonly acceptedRootFingerprints?: readonly string[];
@@ -92,12 +96,23 @@ export function evaluateBuildCompletion(request: CompletionEvaluationRequest): B
 
   integrityFailures.push(...validateCompletionGraph(manifest));
 
+  const lifecycleResult = request.fieldLifecycle === undefined
+    ? undefined
+    : verifyFieldLifecycle({
+      ledger: fieldLifecycleLedgerSchema.parse(structuredClone(request.fieldLifecycle)),
+      registry: request.registry,
+    });
+  if (lifecycleResult !== undefined) {
+    integrityFailures.push(...lifecycleResult.failures.map((reason) => `field lifecycle: ${reason}`));
+  }
+
   const evidenceResult = verifyEvidenceStore({
     records: evidence.records,
     manifest,
     registry: request.registry,
     artifacts: request.artifacts,
     now,
+    ...(lifecycleResult === undefined ? {} : { lifecycle: lifecycleResult }),
   });
   integrityFailures.push(...evidenceResult.storeFailures.map((reason) => `evidence store: ${reason}`));
   for (const [evidenceId, reasons] of evidenceResult.failures) {

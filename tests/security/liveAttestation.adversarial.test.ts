@@ -423,7 +423,11 @@ describe("M0.5 — superseded boot and generation replay", () => {
       fieldBootId: "boot-first",
     });
     const result = fixture.evaluate("personal_mvp");
-    expect(allFailures(result)).toMatch(/replayed from superseded guest boot boot-first/);
+    // The lifecycle ledger is authoritative and catches this precisely: the
+    // boot had been recorded as stopped before the evidence was observed. The
+    // observation-window overlap heuristic remains as defence in depth.
+    expect(allFailures(result))
+      .toMatch(/observed after boot boot-first ended|replayed from superseded guest boot boot-first/);
     expect(provenLiveGate(result)).toBe(false);
   });
 
@@ -459,6 +463,146 @@ describe("M0.5 — superseded boot and generation replay", () => {
     });
     const result = fixture.evaluate("personal_mvp");
     expect(allFailures(result)).not.toMatch(/superseded/);
+    expect(provenLiveGate(result)).toBe(true);
+  });
+});
+
+describe("M0.5 — Field lifecycle binding (contract v2.2)", () => {
+  it("rejects Field-bound evidence when the lifecycle ledger is empty", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE, { skipLifecycle: true });
+    const result = fixture.evaluate("personal_mvp");
+    expect(allFailures(result)).toMatch(/no Field lifecycle record for/);
+    expect(provenLiveGate(result)).toBe(false);
+  });
+
+  it("fails closed when no lifecycle ledger is supplied at all", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE);
+    // Evaluate without passing fieldLifecycle: the verifier must not silently
+    // treat "no ledger" as "nothing to check".
+    const result = evaluateBuildCompletion({
+      manifest: fixture.manifest,
+      ledger: fixture.ledger,
+      evidence: fixture.evidence,
+      registry: fixture.registry,
+      artifacts: artifactSourceFromMap(fixture.artifacts),
+      target: "personal_mvp",
+      now: "2026-08-04T18:00:00.000Z",
+      acceptedRootFingerprints: [fixture.rootFingerprint],
+    });
+    expect(allFailures(result)).toMatch(/requires a verified Field lifecycle ledger; none was supplied/);
+    expect(provenLiveGate(result)).toBe(false);
+  });
+
+  it("rejects evidence naming a Field generation that was never created", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE, { fieldId: "field-never-existed", skipLifecycle: true });
+    // Give the store *a* lifecycle, just not one covering this field.
+    fixture.addLifecycle({ fieldId: "field-other", generation: 1, kind: "created" });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/no Field lifecycle record for field-never-existed/);
+  });
+
+  it("rejects evidence observed after its generation was destroyed", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE, { observedAt: "2026-08-04T12:00:00.000Z" });
+    // The host destroys the generation, then evidence turns up dated later.
+    fixture.addLifecycle({
+      fieldId: "field-fixture-1",
+      generation: 1,
+      kind: "destroyed",
+      recordedAt: "2026-08-04T12:05:00.000Z",
+    });
+    fixture.addEvidence({
+      testId: "CHN-001",
+      observedAt: "2026-08-04T13:00:00.000Z",
+      skipLifecycle: true,
+    });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/observed after field-fixture-1 generation 1 was destroyed/);
+  });
+
+  it("rejects evidence naming a boot that was never recorded", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE);
+    fixture.addEvidence({
+      testId: "CHN-001",
+      fieldBootId: "boot-never-happened",
+      skipLifecycle: true,
+    });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/no recorded boot boot-never-happened/);
+  });
+
+  it("rejects evidence predating the boot it claims", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE, { observedAt: "2026-08-04T12:00:00.000Z" });
+    fixture.addEvidence({
+      testId: "CHN-001",
+      observedAt: "2026-08-04T11:00:00.000Z",
+      skipLifecycle: true,
+    });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/predates the start of boot|predates the creation of/);
+  });
+
+  it("rejects a lifecycle ledger signed by a non-host key", () => {
+    const fixture = createCompletionFixture();
+    const events = fixture.fieldLifecycle.events.length > 0
+      ? fixture.fieldLifecycle.events
+      : (fixture.addLifecycle({ fieldId: "field-fixture-1", generation: 1, kind: "created" }),
+        fixture.fieldLifecycle.events);
+    fixture.fieldLifecycle = {
+      contractVersion: 2,
+      events: events.map((event) => ({ ...event, signingKeyId: "k-evidence" })),
+    };
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/field lifecycle:.*not authorised for role host|field lifecycle:.*signature does not verify/);
+  });
+
+  it("rejects a broken lifecycle chain", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE);
+    const events = [...fixture.fieldLifecycle.events];
+    expect(events.length).toBeGreaterThan(1);
+    fixture.fieldLifecycle = { contractVersion: 2, events: events.slice(1).map((e, i) => ({ ...e, sequence: i })) };
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/field lifecycle:.*previousEventHash does not match/);
+  });
+
+  it("rejects reuse of a boot id within one generation", () => {
+    const fixture = createCompletionFixture();
+    fixture.addLifecycle({ fieldId: "f1", generation: 1, kind: "created" });
+    fixture.addLifecycle({ fieldId: "f1", generation: 1, kind: "booted", bootId: "b1" });
+    fixture.addLifecycle({ fieldId: "f1", generation: 1, kind: "stopped", bootId: "b1" });
+    fixture.addLifecycle({ fieldId: "f1", generation: 1, kind: "booted", bootId: "b1" });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/boot id b1 reused for the same generation/);
+  });
+
+  it("rejects a boot of an already destroyed generation", () => {
+    const fixture = createCompletionFixture();
+    fixture.addLifecycle({ fieldId: "f2", generation: 1, kind: "created" });
+    fixture.addLifecycle({ fieldId: "f2", generation: 1, kind: "destroyed" });
+    fixture.addLifecycle({ fieldId: "f2", generation: 1, kind: "booted", bootId: "b9" });
+    expect(allFailures(fixture.evaluate("personal_mvp")))
+      .toMatch(/boot of a destroyed generation/);
+  });
+
+  it("accepts honest evidence inside an open boot window", () => {
+    const fixture = createCompletionFixture();
+    for (const testId of ["SRC-001", "SRC-002", "SRC-003"]) fixture.promote(testId);
+    fixture.promote(LIVE_GATE);
+    const result = fixture.evaluate("personal_mvp");
+    expect(result.integrityFailures).toEqual([]);
     expect(provenLiveGate(result)).toBe(true);
   });
 });
