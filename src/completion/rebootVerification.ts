@@ -27,7 +27,9 @@ import {
 } from "./contracts.js";
 import { verifyEvidenceStore, type EvidenceArtifactSource } from "./evidence.js";
 import { hashLedgerEvent, verifyCompletionLedger } from "./ledger.js";
-import { verifyKeyRegistry } from "./signing.js";
+import { signRecord, verifyKeyRegistry } from "./signing.js";
+import { randomBytes } from "node:crypto";
+import { writeFileSync as writeArtifact } from "node:fs";
 
 const DIR = resolve(process.env["EXOSUIT_COMPLETION_DIR"] ?? "docs/qa/completion-m05");
 const ARTIFACTS = join(DIR, "artifacts");
@@ -41,6 +43,14 @@ function powershell(script: string): string {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
   }).trim();
+}
+
+/**
+ * Reads JSON, tolerating a UTF-8 BOM. PowerShell 5.1's `Set-Content -Encoding
+ * utf8` emits one, and JSON.parse rejects it.
+ */
+function readJsonFile(path: string): unknown {
+  return JSON.parse(readFileSync(path, "utf8").replace(/^﻿/, ""));
 }
 
 function fileSha(path: string): string {
@@ -77,10 +87,10 @@ function artifactSource(): EvidenceArtifactSource {
 }
 
 function loadState() {
-  const registry = keyRegistrySchema.parse(JSON.parse(readFileSync(join(DIR, "keys.json"), "utf8")));
-  const manifest = buildCompletionManifestSchema.parse(JSON.parse(readFileSync(join(DIR, "manifest.json"), "utf8")));
-  const ledger = completionLedgerSchema.parse(JSON.parse(readFileSync(join(DIR, "ledger.json"), "utf8")));
-  const evidence = evidenceStoreSchema.parse(JSON.parse(readFileSync(join(DIR, "evidence.json"), "utf8")));
+  const registry = keyRegistrySchema.parse(readJsonFile(join(DIR, "keys.json")));
+  const manifest = buildCompletionManifestSchema.parse(readJsonFile(join(DIR, "manifest.json")));
+  const ledger = completionLedgerSchema.parse(readJsonFile(join(DIR, "ledger.json")));
+  const evidence = evidenceStoreSchema.parse(readJsonFile(join(DIR, "evidence.json")));
   return { registry, manifest, ledger, evidence };
 }
 
@@ -137,7 +147,7 @@ function verify(): void {
     process.exitCode = 2;
     return;
   }
-  const before = JSON.parse(readFileSync(CAPTURE_PATH, "utf8"));
+  const before = readJsonFile(CAPTURE_PATH) as Record<string, any>;
   const { registry, manifest, ledger, evidence } = loadState();
   const now = new Date().toISOString();
   const checks: Check[] = [];
@@ -243,39 +253,81 @@ function verify(): void {
     });
   }
 
-  // 8. old boot id rejection — a pre-reboot boot cannot still be producing
-  //    evidence after the machine restarted.
+  // 8. old boot id rejection.
+  //
+  //    This must be an isolated test. An earlier version reused the sample's
+  //    artifact and nonce, so the record was rejected for artifact reuse and a
+  //    broken signature — which scores a pass while proving nothing about boot
+  //    rules. Here the record gets a fresh artifact, a fresh nonce, and a valid
+  //    host signature, so a stale boot id is the only defect left.
   const oldBootId: string | undefined = before.usedBootIds[0];
   if (oldBootId !== undefined && sample !== undefined) {
-    const stale: CompletionEvidence = {
+    const freshArtifact = Buffer.from(
+      `post-reboot probe ${randomBytes(8).toString("hex")}`,
+      "utf8",
+    );
+    const freshHash = createHash("sha256").update(freshArtifact).digest("hex");
+    writeArtifact(join(ARTIFACTS, freshHash), freshArtifact);
+
+    const unsigned = {
       ...sample,
-      evidenceId: `${sample.evidenceId}-stale-boot`,
-      nonce: createHash("sha256").update(`${sample.nonce}-stale`).digest("hex").slice(0, 32),
+      evidenceId: `post-reboot-stale-boot-${freshHash.slice(0, 8)}`,
+      artifactSha256: freshHash,
+      artifactBytes: freshArtifact.byteLength,
+      nonce: randomBytes(16).toString("hex"),
       observedAt: now,
       environment: { ...sample.environment, fieldBootId: oldBootId },
     };
-    const staleResult = verifyEvidenceStore({
-      records: [...evidence.records, stale],
-      manifest: manifest as BuildCompletionManifest,
-      registry,
-      artifacts: artifactSource(),
-      now,
-    });
-    const rejected = !staleResult.valid.has(stale.evidenceId);
-    checks.push({
-      name: "pre-reboot boot id rejected for new evidence",
-      pass: rejected,
-      detail: (staleResult.failures.get(stale.evidenceId) ?? []).join("; ") || "ACCEPTED",
-      // The contract has no rule tying evidence to the current host boot; if
-      // this passes it is because of artifact/nonce reuse, not a boot rule.
-      gap: !rejected,
-    });
+    delete (unsigned as Partial<CompletionEvidence>).signature;
+
+    let stale: CompletionEvidence | undefined;
+    try {
+      const vault = join(KEY_DIR, `${sample.signingKeyId}.pem.dpapi`);
+      const pem = Buffer.from(powershell(
+        "Add-Type -AssemblyName System.Security; "
+        + `$b=[IO.File]::ReadAllBytes('${vault.replace(/'/g, "''")}'); `
+        + "$u=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,'CurrentUser'); "
+        + "[Console]::Out.Write([Convert]::ToBase64String($u))",
+      ), "base64").toString("utf8");
+      stale = { ...unsigned, signature: signRecord(unsigned, pem) } as CompletionEvidence;
+    } catch {
+      stale = undefined;
+    }
+
+    if (stale === undefined) {
+      checks.push({
+        name: "pre-reboot boot id rejected for new evidence",
+        pass: false,
+        detail: "could not sign the probe; test inconclusive",
+      });
+    } else {
+      const staleResult = verifyEvidenceStore({
+        records: [...evidence.records, stale],
+        manifest: manifest as BuildCompletionManifest,
+        registry,
+        artifacts: artifactSource(),
+        now,
+      });
+      const reasons = staleResult.failures.get(stale.evidenceId) ?? [];
+      const rejected = !staleResult.valid.has(stale.evidenceId);
+      // Only a boot- or freshness-based reason counts. Anything else means the
+      // probe was defective, not that the contract caught a stale boot.
+      const rightReason = reasons.some((r) => /boot|superseded|stale/i.test(r));
+      checks.push({
+        name: "pre-reboot boot id rejected for new evidence",
+        pass: rejected && rightReason,
+        detail: rejected
+          ? `rejected: ${reasons.join("; ")}`
+          : "ACCEPTED — a fully valid record carrying a pre-reboot boot id was admitted",
+        gap: !rejected || !rightReason,
+      });
+    }
   }
 
   // 9. host attestation freshness relative to the current boot
   const hostAttestationPath = join(DIR, "host-attestation.json");
   if (existsSync(hostAttestationPath)) {
-    const attestation = JSON.parse(readFileSync(hostAttestationPath, "utf8"));
+    const attestation = readJsonFile(hostAttestationPath) as any;
     const attestedBoot: string | undefined = attestation?.windows?.lastBootUpTime;
     const stale = attestedBoot !== undefined && attestedBoot !== bootNow;
     checks.push({
