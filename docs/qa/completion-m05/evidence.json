@@ -1,0 +1,55 @@
+{
+  "contractVersion": 2,
+  "records": [
+    {
+      "evidenceId": "m05-host-attestation",
+      "boundTestId": "HYP-001",
+      "evidenceClass": "hyperv_host_guest",
+      "artifactSha256": "62786a4913a3433854de4693b25e5a223b5329a5006ec0b0c6ab0ca2f02cffe9",
+      "artifactBytes": 3057,
+      "mediaType": "application/json",
+      "exactCommit": "94b2610610a2ad43e98caa6c28a4604720c2e504",
+      "runId": "m05-1785939571453",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200",
+        "fieldId": "5e919359-3927-4fc7-88ff-f6fad1b2c517",
+        "fieldGeneration": 1,
+        "fieldBootId": "boot-22984ba1583d4ede"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "m05-host-collector",
+      "observedAt": "2026-08-05T14:19:31.453Z",
+      "nonce": "c87f7ec161ef4018cc1ba4e1f7afd3cd",
+      "designation": "live",
+      "signingKeyId": "live-host-1",
+      "signature": "H6Tk5QB9MBqJifKj5I6nUoLkK0e8KAwOVn8ZtkZSF0QfDyKirdpu6gPj5AVPjnS-mnvdTKJuAq-sST99r-fDCw"
+    },
+    {
+      "evidenceId": "m05-field-attestation",
+      "boundTestId": "HYP-001",
+      "evidenceClass": "hyperv_host_guest",
+      "artifactSha256": "5ee8a4bae865b6bf689f859058018e24e11a09f484500ae09b9fd11b412b0b96",
+      "artifactBytes": 2909,
+      "mediaType": "application/json",
+      "exactCommit": "94b2610610a2ad43e98caa6c28a4604720c2e504",
+      "runId": "m05-1785939585505",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200",
+        "fieldId": "5e919359-3927-4fc7-88ff-f6fad1b2c517",
+        "fieldGeneration": 1,
+        "fieldBootId": "boot-22984ba1583d4ede"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "m05-field-collector",
+      "observedAt": "2026-08-05T14:19:45.505Z",
+      "nonce": "c65511547a80451be43b63978ef00a5c",
+      "designation": "live",
+      "signingKeyId": "live-host-1",
+      "signature": "20WTia7xI1L9hEvcWQ29MCXhOUg0swjOTiOQHbWTfwJiBT7fSK1iadz6hHNUSGG1PS_5XTz0Ndjwt0rbqqfeDQ"
+    }
+  ]
+}

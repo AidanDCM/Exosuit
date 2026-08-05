@@ -1,0 +1,72 @@
+﻿{
+    "schema":  "exosuit.host-attestation/1",
+    "collectorVersion":  "1.0.0",
+    "collectorSelfHash":  "35130513a5e71c9ff42adb1c35718f988117038be64be78405ce6a08ad320490",
+    "expectedCollectorHash":  "35130513a5e71c9ff42adb1c35718f988117038be64be78405ce6a08ad320490",
+    "collectorHashMatches":  true,
+    "nonce":  "c1f7a3d9e40b2856bb91d7c3a2f60e4d",
+    "exactCommit":  "94b2610610a2ad43e98caa6c28a4604720c2e504",
+    "startedAt":  "2026-08-05T14:00:22.1844393Z",
+    "endedAt":  "2026-08-05T14:00:26.0646057Z",
+    "elevated":  true,
+    "runAsIdentity":  "AIDANS-DELL7430\\Aidan",
+    "machine":  {
+                    "hostname":  "Aidans-Dell7430",
+                    "manufacturer":  "Dell Inc.",
+                    "model":  "Latitude 7430",
+                    "uuid":  "4C4C4544-0044-5110-804D-CAC04F4B5233"
+                },
+    "windows":  {
+                    "caption":  "Microsoft Windows 11 Pro",
+                    "version":  "10.0.26200",
+                    "buildNumber":  "26200",
+                    "architecture":  "64-bit",
+                    "installDate":  "2026-04-27T21:24:39.0000000Z",
+                    "lastBootUpTime":  "2026-08-03T13:53:45.5741880Z"
+                },
+    "secureBoot":  false,
+    "tpm":  {
+                "present":  true,
+                "ready":  true,
+                "enabled":  true,
+                "activated":  true,
+                "owned":  true,
+                "lockedOut":  false,
+                "managedAuthLevel":  "Full"
+            },
+    "tpmSpec":  {
+                    "specVersion":  "2.0, 0, 1.38",
+                    "manufacturerId":  "STM ",
+                    "manufacturerVersion":  "1.258.0.0"
+                },
+    "hypervisorPresent":  true,
+    "hyperVFeature":  "Enabled",
+    "services":  {
+                     "vmcompute":  {
+                                       "status":  "Running",
+                                       "startType":  "Manual"
+                                   },
+                     "vmms":  {
+                                  "status":  "Running",
+                                  "startType":  "Automatic"
+                              }
+                 },
+    "vmHost":  {
+                   "computerName":  "AIDANS-DELL7430",
+                   "logicalProcessorCount":  12,
+                   "memoryCapacityBytes":  16579715072,
+                   "virtualHardDiskPath":  "C:\\ProgramData\\Microsoft\\Windows\\Virtual Hard Disks"
+               },
+    "switches":  [
+                     {
+                         "name":  "Exosuit-Field-Isolated",
+                         "switchType":  "Private",
+                         "id":  "a5507d25-ac00-4231-afa1-e5c39b3f9699"
+                     },
+                     {
+                         "name":  "Default Switch",
+                         "switchType":  "Internal",
+                         "id":  "c08cb7b8-9b3c-408e-8e30-5e16a3aeb444"
+                     }
+                 ]
+}
