@@ -192,6 +192,14 @@ export type RegistryPurpose = (typeof registryPurposes)[number];
 export const pinnedRootKeyFingerprints: readonly string[] = [
   // development root — fixtures only, may never sign a live registry
   "95ec3b180ab30f94d5dc86f28c439b2f7f366e87a1b89c938463c7eac66ba426",
+  // provisional live root for M0.5, generated offline on AIDANS-DELL7430
+  // 2026-08-05. trustPosture: provisional_personal_mvp.
+  // rootGeneratedOnAttestedHost: true — the root lives on the machine it
+  // vouches for, which is acceptable for proving the attestation workflow and
+  // for a personal MVP. productionEligible: false. Rotate to a genuinely
+  // offline, externally generated root before production or any external
+  // distribution.
+  "dd2efb2e527ac6a535991bba59b215365a0caf96a5b6a3e20d407ddfb87b5c1c",
 ];
 
 /**
