@@ -49,7 +49,16 @@ import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
 
 const ROOT = resolve(process.cwd());
-const DIR = join(ROOT, "docs", "qa", "completion");
+/**
+ * Completion state directory. Overridable so a separate evaluation context —
+ * such as the M0.5 live-attestation smoke test — can be recorded without
+ * disturbing the development-signed state that the recorded M0 result depends
+ * on. Overwriting the development registry would invalidate every record its
+ * keys signed.
+ */
+const DIR = process.env["EXOSUIT_COMPLETION_DIR"] === undefined
+  ? join(ROOT, "docs", "qa", "completion")
+  : resolve(process.env["EXOSUIT_COMPLETION_DIR"]);
 const ARTIFACTS = join(DIR, "artifacts");
 const PATHS = {
   keys: join(DIR, "keys.json"),
