@@ -8,13 +8,13 @@
       "previousStatus": "planned",
       "newStatus": "source_validated",
       "previousEventHash": "0000000000000000000000000000000000000000000000000000000000000000",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:49.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "tRztHg4fP5OMoqmHOYXp-XXt7N4-wgRkQOKFc3jgn5DqK7NoS0fpSh9QcShFfHHQcNM0V6r3hGFvn6Z6FiJ_BA"
+      "recordedAt": "2026-08-06T15:01:54.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "PZ7kwKcw3b-qWh_G32ztskqjc1Qu0J4yO682e7n4ns2LdSBtEKhBYyTQ5edxue_946LMdifwEMi4uKEZXXYPDw"
     },
     {
       "eventId": "migrate-SRC-001-ready_for_live",
@@ -22,14 +22,14 @@
       "testId": "SRC-001",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "877ecfcfa7a00be16186c603149c5cb1ec502143ce7490e6f667532420831e1d",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "b057350312066e8e9826e5425c7bfa8e215a71bb213cf0c96078fab7fe175725",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:50.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "YvQ5Hk_WdqcoZ3mres1M38VnuLaVnVI6WaZoCRasgM6-fi3CNlWSBNDygcq7FtRr8g_6k3NT_dibGloWMHxLBQ"
+      "recordedAt": "2026-08-06T15:01:55.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "F9uUX8F6Kt3dbfnLft5BCmLKufQNInNXuehZXSLFBZLlk64qiA80rtMCHR1belNaxHYlLbEUg86jLTmgUuNjBg"
     },
     {
       "eventId": "migrate-SRC-002-source_validated",
@@ -37,14 +37,14 @@
       "testId": "SRC-002",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "c2f9e98bee7ac4d0c479d7f00312fbe06d8bd480e359eedf295981f10d7fb1e7",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "267ab2f26cb95997c184f2c7fb30adeee5f86694605a3c7c0deb6acad3f8eb08",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:51.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "_s1asHydhvw6HfGUZ_5xZWnhFZ0NXoTNYJNcotU82-jdSSLnNoY-o40UMFK_SPJONsaOSzvRXMOmoem90JOrAw"
+      "recordedAt": "2026-08-06T15:01:56.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "XIWqAGz1ZNATTrTk-ON5Fy_P1mUH-AbBe9gg6VoyZrRHCW9Bv-SbsxjvRC6q_6ul62SnjgMybvshO8L24zT7BQ"
     },
     {
       "eventId": "migrate-SRC-002-ready_for_live",
@@ -52,14 +52,14 @@
       "testId": "SRC-002",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "fa03780f4d12d24f3971ffea5605cd96e330af721b820fd4aa0e8c2cc6e129b9",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "32967003ad61167ebfdcd56dba808480c9ba732cc9b34eba476b541a5baf6583",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:52.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "WoycBAxpHtp7kUC8Ug4LVA-MdmEQjqKNDY6GoeaSn0nrBMEUk2MX2Sz1vJlDOV5d8rQvAHmkiv_nbML6gr3PDw"
+      "recordedAt": "2026-08-06T15:01:57.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "Zk-7Hsfr1_3Sxf2zbxSTPjK9H5SkbzU7ZQeEXlNeQLB0Mismwks53H_fl6ZD2vEk1LZ85xBfZj1rGZAaSU9bBQ"
     },
     {
       "eventId": "migrate-SRC-003-source_validated",
@@ -67,14 +67,14 @@
       "testId": "SRC-003",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "6e68dd2ea353f2b71c1e1af3b76a625568b96749d3d3fabc6a399c1d935d5a88",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "3d8509247e959a671ce169123dc6bbdbc1a4dfe18e1cb23be90792a6fcd360c0",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:53.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "Hqnr-CXJhAGs5fpkemZNkoKew8Yyg4F3rpGEjKxOA3WEbf_G4eJGF6F7ki-DhZ2TZ052Fbjf11XXEJdKeWUKDA"
+      "recordedAt": "2026-08-06T15:01:58.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "b93EGWlM-Z9rOeE98kxBDMMR-MZWn0iYuI8FRsbywz6zRT37DyXBzgo7WPloBxry7OOhPJ8y4IpTlaAsX5MrDg"
     },
     {
       "eventId": "migrate-SRC-003-ready_for_live",
@@ -82,14 +82,14 @@
       "testId": "SRC-003",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "041779bcda1ba2ea7d587396c2752e18733d9dcab0cb3e5fcdb6b2e6c7b67a7b",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "ec4a27252ebc9ab1eeda3ddbb1249468911bc9e0d1666ac9bc6b9cdf0eafb8bf",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (passed); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:54.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "R2a4rhf944KuOCxuwU9QX_QSTSg5o38EwZHr0eGK8QPbiBv_oe3OB2KDt5c1n8-ql5eLrg3GMFC6xKOMRkckDw"
+      "recordedAt": "2026-08-06T15:01:59.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "9kgL6SZULnBtvDoEMOUC52Gr0j5lOUbWvXBpVMlvkf3VKYUZ9PPcsm8ymVP9PnTRh4yQ_OBZFabv1NfWxdFRCg"
     },
     {
       "eventId": "migrate-HYP-001-source_validated",
@@ -97,14 +97,14 @@
       "testId": "HYP-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "244e1ba55644ab4a99965cc08ec23d936f9f5ecaedc1f2a3c0ef96143713c2fc",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "5c8deaf97af03cb84a62057c14cb178d11c228b3463aa98eb100e0076d03cc2c",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:55.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "PYQasLhvpICyz-FzdVr9XJYo9fF1vCWJESSU7PVPWqBjwL9da9NEdupWymrbg8rQpSmbiUVWa1sR4-9PeBBlCA"
+      "recordedAt": "2026-08-06T15:02:00.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "lke8mRuN6TiST1iiqGVs_FtL5y0JXEn51Iv80x1nAZvf5GAWk11pO0Y1s3uDwlSQkZpvxH0rwNk8_0KKxLM9Cg"
     },
     {
       "eventId": "migrate-HYP-001-ready_for_live",
@@ -112,14 +112,14 @@
       "testId": "HYP-001",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "aeaa37969c9c75edd863ee9c07fb31a86d3468816cdc1dcdbae71c2fbeb22a80",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "578812caf96a7a74e56cd9b0a514389648bfda05d416393ef89bf66690bb9501",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:56.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "vz7A0J6eF886mVT-EYxcdQDY8NbYq7eCqE9k4Q9rK3U9fXzkV0NjSl_GuIjpfc0YlkCihqdsgwxUvWi6wDPZBw"
+      "recordedAt": "2026-08-06T15:02:01.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "gZu93PPwIFp1IoVb5oKTPs31-pgbiQBB59hYk_mRFyQlXM5K6wddNYrCULiCDBr1Q4vnmzNo9i78Qz_nxswsAw"
     },
     {
       "eventId": "migrate-CHN-001-source_validated",
@@ -127,14 +127,14 @@
       "testId": "CHN-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "f4036e9754e39d629492c87f13413fe064de9aa48a44542fb835e967ed93a3d7",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "fc127f0a039cdd296fccb6c9f344b2daf6dab982b550fd1beee4c686ece54f26",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:57.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "cmDFD77sDad89nES_BJK0S-Shk8bbJwY_kRtxaWen-jo7h5OPfW51banks_AFbb47jXJSYFSzit7COJW-9dtAQ"
+      "recordedAt": "2026-08-06T15:02:02.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "L9AKjYI5HOXlddA6OFQvy8CaVQGtZjEWSWv2o2S1jIUq2IeIlglZNsBnWWRrTG8VkVqJ0ts2XUDzVLPG_R8LDQ"
     },
     {
       "eventId": "migrate-SCN-001-source_validated",
@@ -142,14 +142,14 @@
       "testId": "SCN-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "e30916b135673a9195965171933db1add142dea7c4cfad808cb18f869058c386",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "5b85fbe6b36a67d0b0026fdc3c19216e4bf9e1c4959af5083928529e98fbb334",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:58.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "B6G0CfA5Yb6CPwx4uhXSFDjeUf84ufqTt-oSE-CrNneKuqd76_Gx4qEUHtHuebtQsFy4jpOcyRBweZInYY5FDA"
+      "recordedAt": "2026-08-06T15:02:03.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "KqD53ImLcL3c1DT8CJmZ_W_xWqUCvkDAeK90rWN9Q-U9qzmd7Az7LwPXLC_s7FtDGVUMqVjdLRxMuDql82q6CQ"
     },
     {
       "eventId": "migrate-ACT-001-source_validated",
@@ -157,14 +157,14 @@
       "testId": "ACT-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "6f95f2dcbee5791df2a001b7443481eb2bcc0212ee44e3b3655a580347075d9f",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "8e087a76cbef4f80fa312a3e39c63246249fef2e4179356acf909b23144c4263",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:15:59.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "bqgJ58eXU6DxoM7XFUYLQCV6aUZnBW1F74a8kHgUkxJcWTEvYFtPPgM-GtR6M65sR1NvTrVLD4yQoKxiHaaCBw"
+      "recordedAt": "2026-08-06T15:02:04.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "Jl46MO500QIjxSSWZyA9eut3cIsZg_xHt-DrEem5DLuqUqWk9DTTOR7dl9tZ2CWU8PNnOAbJo0Uk4S3yiA3VCg"
     },
     {
       "eventId": "migrate-TCH-001-source_validated",
@@ -172,14 +172,14 @@
       "testId": "TCH-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "481db32a811de2354c3843ab2ea815a66e3bf0f9e12e2b9af432e6eb9ecf76e9",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "69b78f1c14ee04589a52dff84aba01b4e77e02593c845523c91f2cde13100aa7",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:00.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "Spqe5QmKYxSpvW9MhjvNjtYrFRByUZr8Xe7clxeO0d6BAU0Y1VjU7jP_bqDXsFfDN6W57vAKBG7moP1o6bB1AQ"
+      "recordedAt": "2026-08-06T15:02:05.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "XkRKGqNkTG6zY4qApeO7nqTRlorLDp8hW8FBVajv7WLaJO5RuquBeoj1K8xJcmUH65KxDyjgWFy8FT8TwC_iCg"
     },
     {
       "eventId": "migrate-SHD-001-source_validated",
@@ -187,14 +187,14 @@
       "testId": "SHD-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "65b5f8dba392fc4a99c401f9ef43f49ce160e671217c7d87cb30f0aa85d44522",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "b050dd233c16f3f9d87471c24343c82bc189430c3fbf741f4e25f3ca425e8b8e",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:01.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "ccfhepDMOpXLiZptj7_-VTNdfAt61P1dkfLIrBVVuscbA-LHH2nkaAcjqPbjVCc143hzBd1NLaXltO6yLB_ZAg"
+      "recordedAt": "2026-08-06T15:02:06.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "o0HdmYrKqC1m9zdJbV6Sgy8aNso1J53MMD2bysBYe-qTNwnpx-uMQs3bHDyW6HRTlJBmGu1VsvEN3qiztNkGCA"
     },
     {
       "eventId": "migrate-AST-001-source_validated",
@@ -202,14 +202,14 @@
       "testId": "AST-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "aac0c52283f6f923af7372dba2bf9218683847a127ee8da0139444b3d6c5a823",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "cf5a03373832e1c0c18d6820eb1ff59fea688b24ba1144653708ffe2bd1e35ed",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:02.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "HKPNd9_RbP6sQKCYeQTCptFTeSc2SFstexcHpemEz3lf2moUPU1hP2dj6JTLUIu11VjZA7L96nOjWRN3exikCQ"
+      "recordedAt": "2026-08-06T15:02:07.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "rvkyC3RKroJ_lx41W8Bb4nCApuMYdvRkofKjBVpYcDFqhoFysgAL1Wero76qsCkR1ZE7kViusfVUc_9CulSDBw"
     },
     {
       "eventId": "migrate-RCP-001-source_validated",
@@ -217,14 +217,14 @@
       "testId": "RCP-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "7aeb24681259ea2501c6dffbce08af7a6b005941ab94fa9274e97923bfee4e1f",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "d131f91bbc1943fd151ee336a0558d41e995421d63b533f4dedff7575c069eb3",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:03.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "WGioYRhsU4YVWRyNZIGuQOeh77cWmbUzvMjMwkwRa3xGhSpyvzBYFwpGDibD3z2vbqiQ1MDrvrF94x6hWTDuAw"
+      "recordedAt": "2026-08-06T15:02:08.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "SB3QGUOrSWv7FLjXv3gkoBe-8aNr1vEaL6cCjHytWfxMgHVcOfq1uFVpH8lTB-clw1h1Jcjy9sdlVGutyzOMAg"
     },
     {
       "eventId": "migrate-RCP-001-ready_for_live",
@@ -232,14 +232,14 @@
       "testId": "RCP-001",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "8f0920978c4d9459d407ed9d3ad43a61e9c6629c445c6f0a009561cbe20082a5",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "89e5116d8c2ad397149f5334b8b5598fe6cba24cbd9a0e14c59c5afc25f0641d",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:04.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "oGxtuM90T6YY9s0VJ-_hj0C7gFo3Efc3w5Sa1oIBhYN6sDh-Clkx8BZgY3txAEPv-VKveSE_KmW2FfqkDqqxAA"
+      "recordedAt": "2026-08-06T15:02:09.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "Zd7HOcofA0fAa_IJU1AYvIoH8Lq8h7V0bDcWF7KkuHRs38Aa0tkEYm4deZjsCiE6s5WGaUmbe1GRUogm5GoiDw"
     },
     {
       "eventId": "migrate-MCP-001-source_validated",
@@ -247,14 +247,14 @@
       "testId": "MCP-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "3ca44469c7e7c31d112c0ff8f90c022008786c26af3911a7fe1666d4d7270f88",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "8915554785a7827fa141874afa66d20139f55347569a0bcedd5fe41a0d2622c1",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:05.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "mjRFUvHaF927cKfNmvHkGXAI-zs9ajdKY_3BdCtgHcavwMRnFizZOlGLprOKOTQtVRc7j7HhBf78J8wVnDhlAQ"
+      "recordedAt": "2026-08-06T15:02:10.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "KrWJXivzbFnHAXPz5nrrZZfEZXY4ibVe4JVPuR7geuZpZkh6ipxx-RRuQ6S6dlm12_B3djd3OKb51snCwVG8AA"
     },
     {
       "eventId": "migrate-MCP-001-ready_for_live",
@@ -262,14 +262,14 @@
       "testId": "MCP-001",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "239683d6e831114a090150b57fed0197f91e6d080eb77f630a76aa6e2a1f5d03",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "35ecbb320ef020f4fbc1ea93fa5bf195178daa0c8830f67c56f2c4855e998dd6",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:06.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "N9ns-bgT7KjN9i1CsziU8JBUXNELwKgUkCRHcnDTrC-yXGXmlceVlWQGr6w6dHXJJ3ixCM9SejDoW2p52AxDAA"
+      "recordedAt": "2026-08-06T15:02:11.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "V7zQXXwMG5HvCRPZTiZtH57h3BP6_7ZvLfSlDiB1KTXYEfFTDBJAbx_WyqI8AnwBzZXhcw-g1QuA5Q93F_17Cg"
     },
     {
       "eventId": "migrate-CPK-001-source_validated",
@@ -277,14 +277,14 @@
       "testId": "CPK-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "d702a7b2ce8d22ab915d696b564d79e94f1dd514f36925e70247c82d082dfa79",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "dca93ac945787d23daef016f2882dfcda4d9f545c1cc32ef3071ddbafffda0b7",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:07.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "4RAQYLw7nU466LdqKkZo3Gqgh0qRtcWNme4ec7oBsrjRob5as7rgXUPES8Ppwfksr2bFJ3ei8uvZnqe9NLlPBw"
+      "recordedAt": "2026-08-06T15:02:12.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "EUAGuBN5YYlT-34wQ2rINabmFCeiAr6zQ_s5_w6NjQH6Rj9aUft8KujCA8HVksXAO2jfN3FbuPAgz6Rp8kmBCg"
     },
     {
       "eventId": "migrate-INS-001-source_validated",
@@ -292,14 +292,14 @@
       "testId": "INS-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "cbca663c515e34ab851d3c69e3a8b7fee26a9399a01cce8004df701572f630d2",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "ebeae528591cf4463652852726f290118922af7db2f5cecef677ea7f6abc185f",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:08.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "P1QOfrQ1VCEQj_lhYexoE11GGrO2tqvSvmJz2S0nB65S1ydiWJRsdq197I4EYXUgHIpeCPNbWdpTotwiKJNNDg"
+      "recordedAt": "2026-08-06T15:02:13.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "221h4O0Ifpe_rLKcIxsVEGCFA0ee_m33JE1M-PUJExSKLjNtRltk5dwuiOm7wQgtXZRHGtSt11Iq5GciaFItDg"
     },
     {
       "eventId": "migrate-OWN-001-source_validated",
@@ -307,14 +307,14 @@
       "testId": "OWN-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "fa08acd913a1c10176802daffe44c70bb42c020c465fbf4db525dec99d653e23",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "0cec4caff8bb16b1d117add0301c545df9bde9256e69aa90ba86d8f933c36d8c",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:09.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "iKNyh9hr5g5z6GzrGlsNOdFMboOAZr8RmuqDTzDJpOExrrdGraMDoJTb6DRXlLxAmm3kzsUh9j_ti4X1l3uYDQ"
+      "recordedAt": "2026-08-06T15:02:14.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "ZJpTLd_EJPf0FwEblrtNuBmVfkZPqrhtHrBS-PlNqxGdmaFCHtwQWpHM6fflQrrrSIV2mvOIZVssekI8kYcvAQ"
     },
     {
       "eventId": "migrate-OWN-001-ready_for_live",
@@ -322,14 +322,14 @@
       "testId": "OWN-001",
       "previousStatus": "source_validated",
       "newStatus": "ready_for_live",
-      "previousEventHash": "0610dc343a1b45f88e3c91fb793388aed14a6d23581b8b38b10f9746d5c7f3e8",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "092366b95796c66aa1ee7bdecb22a820c23ba733e1ab8e29a2c2c672c329c02d",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (ready_for_live); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:10.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "C9AJq_1TU6BSVglIhCvHIBClv_1jCThX3stc52wDW2FEwweVLk0daDsD6Yh6DMXen6vED2IoXIdnqNVDFmO3Ag"
+      "recordedAt": "2026-08-06T15:02:15.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "XnXzO_-1hb50AmZk6o4YvL15Pa4sIFD2lm0EQQZtTCNlC1iGDzQf0Vma5eGvV36UIdxO_bFUtSwMlu36y6B4CQ"
     },
     {
       "eventId": "migrate-SEC-001-source_validated",
@@ -337,14 +337,14 @@
       "testId": "SEC-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "cffded3d801cfc930ebf45b8223f36f0d0d92a6d78866289560f5ac830b32ebc",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "007594c05c7862fe3dab8168421673a918b372e9f82df5ab7412503cad92477b",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:11.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "ZqFM9cUBsoURRYNR7WF4XQiQ2vCeQGUvQaj9reFFAuIBiaZvBolREUI0nG6rPZduedxGpQZRYok8EZ5yVEVPAA"
+      "recordedAt": "2026-08-06T15:02:16.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "VTh_OJNVLk0NReZ3vCI5EEfFRQk5hU5B9pOMsupGzyuUZ32btbNwCJMp0HriDKuF7taqW02boLtqfKhi3EULBg"
     },
     {
       "eventId": "migrate-REL-001-source_validated",
@@ -352,77 +352,77 @@
       "testId": "REL-001",
       "previousStatus": "planned",
       "newStatus": "source_validated",
-      "previousEventHash": "3c9cea413ccd4fc51ea1cc3acc03e724d02f380146025c26eb90d2a31f051936",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "102f7f1efd4c5d0aa9068515fd006338cf9b815a5d583c7d30f9fea9cbb971b2",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [],
       "issuer": "completion-migration",
       "reason": "Migrated v1 implementation-readiness claim (source_validated); not evidence-backed under contract 2.",
-      "recordedAt": "2026-08-04T19:16:12.694Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "pcGn0h6bEJf1zjp4Jwzw5woYedYZmcVSjCmjZhH82K8zVJGcU9SB2gd_mHRfWbkhFHykXKSI92Xkgy3I0iMaAA"
+      "recordedAt": "2026-08-06T15:02:17.120Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "WTtafYpnhZLZMN-6skLAhFqFIwPSnrdbWvZUd5U18JROeZ8d4Aps9MgMrPqVvD46njPX7bU9fC8-Gvwc5D1GAQ"
     },
     {
-      "eventId": "src-001-passed-1785873934734",
+      "eventId": "src-001-passed-1786028723161",
       "sequence": 24,
       "testId": "SRC-001",
       "previousStatus": "ready_for_live",
       "newStatus": "passed",
-      "previousEventHash": "a5b5157c818972f654e5e1d9a4f386f34af0c94bfe7bdfe5bf87fd1f26695b45",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "06d95ff83413e7252e742857414b100282d54f7fbb048c4806781cfbf6331696",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [
-        "src-001-ce41f2ecb9d2"
+        "src-001-09dcdbb918c9"
       ],
       "issuer": "ci-local",
-      "reviewer": "completion-review-2026-08-04",
+      "reviewer": "completion-review-2026-08-06",
       "reviewerRole": "technical_review",
-      "reviewerKeyId": "completion-technical-review-1",
-      "reviewerSignature": "pVOGA_yWjhXAgT4thkv1kvCOXoCuhNWx3mB3sXmWG_qccYGmxMAh9TxcIK04bWuDq0e6oMogPEeBOhG-dJXmCQ",
-      "reason": "M0 re-attested under contract 2.1: full-validate-typescript-chain, independently approved.",
-      "recordedAt": "2026-08-04T20:05:34.731Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "-mG788W0Dhc7-u2b5jsFY7K6w7jKbGhJhAZtqYBGzPJO3a0gXaiXYtVOmmzRharR6rEA2_5YCherDkNEK8vHAg"
+      "reviewerKeyId": "live-technical-review-1",
+      "reviewerSignature": "tBJ_9dJ7tcXY1D7P1qatGDeDiDwkLgsTpSPJGd3Oyt3U55brlRAHtGic7iGxhEq1lQB0TVIJYOPb5cX1HvazAg",
+      "reason": "M0 re-attested under the live registry at frozen contract v2.2: full-validate-typescript-chain.",
+      "recordedAt": "2026-08-06T15:05:23.160Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "03DrO-3Q4S9IioiSSPJRqL-s0arT8gghnlkzJ47HL_77tulX5EPhOJMvSUQ7I_HhbeK_gvSfM5Ldq1JjpEEtDg"
     },
     {
-      "eventId": "src-002-passed-1785873938723",
+      "eventId": "src-002-passed-1786028728055",
       "sequence": 25,
       "testId": "SRC-002",
       "previousStatus": "ready_for_live",
       "newStatus": "passed",
-      "previousEventHash": "b6126216428865f7608c5f0884966cefeedddefb5eb0318640ae8ed87a54091d",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "d0360118d2cbf2b95ac67dc2ba85d395aac9078e3f09ae352d968f875683f1cd",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [
-        "src-002-0fc5f127be6d"
+        "src-002-1275011c80b7"
       ],
       "issuer": "ci-local",
-      "reviewer": "completion-review-2026-08-04",
+      "reviewer": "completion-review-2026-08-06",
       "reviewerRole": "technical_review",
-      "reviewerKeyId": "completion-technical-review-1",
-      "reviewerSignature": "iHyVmRTAWfxr0t0ytZhEQZ8x7HztqOKhxOvj25qHANqTTKzbEEtQiVI6BGZ5bsjxV0gBH6TsGUC8bDI3PE5eAw",
-      "reason": "M0 re-attested under contract 2.1: SBOM-and-dependency-audit, independently approved.",
-      "recordedAt": "2026-08-04T20:05:38.722Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "_2NXX1ju14QhOhIotHwcqsUtLYKVcKWycb2Bni3LGJVOllGUzHmYuszSRKwf_ukPHiT5tOjpR6-qYu7ocME_AA"
+      "reviewerKeyId": "live-technical-review-1",
+      "reviewerSignature": "XKrDor42Qo2uUpepIF4hfxESE_cAVxbZjITdf9wXw44c1ecgGr2_r86RvMqsjLXrh8n9PkcEWHQyDv672-S5CQ",
+      "reason": "M0 re-attested under the live registry at frozen contract v2.2: SBOM-and-dependency-audit.",
+      "recordedAt": "2026-08-06T15:05:28.053Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "4JDEbH1MMvoBDNvB0byXbTx77dCxEXuykIhHmK2L7XCQ9tcMl2dCzl3YCOTvZbaQyACrspbci71tBsjxA65nDw"
     },
     {
-      "eventId": "src-003-passed-1785873942709",
+      "eventId": "src-003-passed-1786028732869",
       "sequence": 26,
       "testId": "SRC-003",
       "previousStatus": "ready_for_live",
       "newStatus": "passed",
-      "previousEventHash": "e77f4f5f98eb1181370d4c0a6a9e6656bd2a6bf115067b32325b1c061a7be5ee",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
+      "previousEventHash": "4397d27ecbd89eb9cf476785e2445c650499e34ff2c0d3010741036dbaff6ca4",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
       "evidenceIds": [
-        "src-003-a6d4fa59b131"
+        "src-003-f6a59ad631f4"
       ],
       "issuer": "ci-local",
-      "reviewer": "completion-review-2026-08-04",
+      "reviewer": "completion-review-2026-08-06",
       "reviewerRole": "technical_review",
-      "reviewerKeyId": "completion-technical-review-1",
-      "reviewerSignature": "gd6E6Ffe0R_EYwOx3ToXA_JndGjH8SPmgwk1o67LFPw4RtwHS4xwtlSNz3AdZASI82LmY3nhNEKcIPGCqO_7CA",
-      "reason": "M0 re-attested under contract 2.1: completion-gate-and-adversarial-suites, independently approved.",
-      "recordedAt": "2026-08-04T20:05:42.707Z",
-      "signingKeyId": "completion-ledger-1",
-      "signature": "ywx_54w3F5o9zRcTtUTJg2P9plxz1hI4LnOUG0FrlTCrOL5kDolCj7ka-LT0SVLFS3otRwoFZFidfLcOv1d5AQ"
+      "reviewerKeyId": "live-technical-review-1",
+      "reviewerSignature": "dC3lOnuV3a1Cz6pOzLkxAH6OscWZJj9c74K92LXNbKWdOcEBrAU2K39ub78pIiNyAqza6qzSiK5GPg4WG3z7Dg",
+      "reason": "M0 re-attested under the live registry at frozen contract v2.2: completion-gate-and-adversarial-suites.",
+      "recordedAt": "2026-08-06T15:05:32.867Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "Ii6mupC0HqZP8Cv1hU3UmhkKWvI0zIPhOTXF-tbaCYXMoZlREVxIU8TIafN9b6mQTdxfuIKjPOpcqY-2YbsNAA"
     }
   ]
 }

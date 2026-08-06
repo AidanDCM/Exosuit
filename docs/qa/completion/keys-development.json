@@ -1,0 +1,86 @@
+{
+  "contractVersion": 2,
+  "registryId": "development-fixtures-2026-08-04",
+  "purpose": "development",
+  "version": 2,
+  "previousRegistryHash": "362d94758600da6c057d51dbaec4b782ed72dade5c277ddf6ca22c7faed9776a",
+  "issuedAt": "2026-08-04T20:04:46.251Z",
+  "expiresAt": "2029-08-03T20:04:46.251Z",
+  "keys": [
+    {
+      "keyId": "completion-manifest-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEA+baw9cwXG6CVCOa2pSWqeP4V2LZWmf0YZMr5kiTHfKw=",
+      "roles": [
+        "manifest"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-ledger-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAbGctQRLnuKWVX99C7Bi/b+7eNEk1DcUpg2EmkLsFW3g=",
+      "roles": [
+        "ledger"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-evidence-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEA/GEK9TZlBK0q8Jh1EIMzA7//CbXwBM2CB0cigmrOaQk=",
+      "roles": [
+        "evidence"
+      ],
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-host-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEACNrpb5+nWmOS3boH47G8cxqoKHzXELcpp3+/C8Z5tPU=",
+      "roles": [
+        "host"
+      ],
+      "machineId": "machine-9c62d678dd970f15",
+      "notBefore": "2026-08-04T17:53:40.813Z",
+      "notAfter": "2029-08-03T17:53:40.813Z"
+    },
+    {
+      "keyId": "completion-technical-review-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEALQvd37Gjn/RzJ6aiBljOU3qj4/GDp6hgZ5ox6XLiswU=",
+      "roles": [
+        "technical_review"
+      ],
+      "notBefore": "2026-08-04T20:04:46.251Z",
+      "notAfter": "2029-08-03T20:04:46.251Z"
+    },
+    {
+      "keyId": "completion-owner-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAcScSVHQXR3tk/iBDUniyCx2qh1GDfmGb4TGaGQK+ioM=",
+      "roles": [
+        "owner_acceptance"
+      ],
+      "notBefore": "2026-08-04T20:04:46.251Z",
+      "notAfter": "2029-08-03T20:04:46.251Z"
+    },
+    {
+      "keyId": "completion-release-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAVAxIGgAR6MAGVNBZ3q5QcXtaM9OOiHZGKg7ZJt2m4N0=",
+      "roles": [
+        "release_approval"
+      ],
+      "notBefore": "2026-08-04T20:04:46.251Z",
+      "notAfter": "2029-08-03T20:04:46.251Z"
+    }
+  ],
+  "revocations": [],
+  "rootKeyId": "completion-root-1",
+  "rootPublicKey": "MCowBQYDK2VwAyEAJlYPt2KJc0XLZp+n8TXiDn0qPFadtkZNwvMlI9g4iuM=",
+  "signature": "XoAWnrR_GPJAf4c65UJlJYXHqKrT7yPbAHcjYOBVQDr9Zx2r2tvKFXLVoa59LRXwNUv1cafuIY8ouVc8Ud6kDg"
+}

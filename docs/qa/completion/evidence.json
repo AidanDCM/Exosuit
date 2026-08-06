@@ -2,14 +2,14 @@
   "contractVersion": 2,
   "records": [
     {
-      "evidenceId": "src-001-ce41f2ecb9d2",
+      "evidenceId": "src-001-09dcdbb918c9",
       "boundTestId": "SRC-001",
       "evidenceClass": "fake_integration",
-      "artifactSha256": "ce41f2ecb9d296d2d95f4c203809e6330950aab856c2e5221703cf13cd8da2b8",
-      "artifactBytes": 121141,
+      "artifactSha256": "09dcdbb918c9324f67e5e98c22f9eafea3eb50fc7140ee66781a95b5aa762f98",
+      "artifactBytes": 132354,
       "mediaType": "application/json",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
-      "runId": "m0-src001-1785867041",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "runId": "m0-live-src001-1786028544",
       "environment": {
         "machineId": "machine-9c62d678dd970f15",
         "osEdition": "Windows_NT win32",
@@ -17,21 +17,21 @@
       },
       "testDefinitionVersion": "2026.08.04",
       "issuer": "ci-local",
-      "observedAt": "2026-08-04T18:12:29.127Z",
-      "nonce": "a2082a1f0f96887f26715bda1f017080",
+      "observedAt": "2026-08-06T15:04:37.020Z",
+      "nonce": "7a9f926ff69ebc74b6b02d4762c8700b",
       "designation": "synthetic",
-      "signingKeyId": "completion-evidence-1",
-      "signature": "XWntoQ4DXTdw37j985wZSQcOVtnJ6dUbgzFKAtzqAzZ2_fXS_ul59WtGXkiBEGZDLhRAh-_6wUCX2Ba0XAk2AA"
+      "signingKeyId": "live-evidence-1",
+      "signature": "007ajV6KM17gKTXL-Yznk7kz1MmLj8HA_XDfJia9b0UIRR9BFUCjFAgSRo8S4e4ZQneEpTILiKNx0lq_Wp_-CQ"
     },
     {
-      "evidenceId": "src-002-0fc5f127be6d",
+      "evidenceId": "src-002-1275011c80b7",
       "boundTestId": "SRC-002",
       "evidenceClass": "fake_integration",
-      "artifactSha256": "0fc5f127be6d73fbd9ca75ef1af683d4057edc61364ddafa8cfc6e305215a193",
+      "artifactSha256": "1275011c80b79a65813cb6824cf603de5755c516ec59e01db94407d6accbb86a",
       "artifactBytes": 69916,
       "mediaType": "application/json",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
-      "runId": "m0-src002-1785867160",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "runId": "m0-live-src002-1786028688",
       "environment": {
         "machineId": "machine-9c62d678dd970f15",
         "osEdition": "Windows_NT win32",
@@ -39,21 +39,21 @@
       },
       "testDefinitionVersion": "2026.08.04",
       "issuer": "ci-local",
-      "observedAt": "2026-08-04T18:12:48.145Z",
-      "nonce": "85b6fbb95d31a1bef6600667b2988998",
+      "observedAt": "2026-08-06T15:04:54.514Z",
+      "nonce": "c4ac3fe7986fdb3a4e706c00f60dc02f",
       "designation": "synthetic",
-      "signingKeyId": "completion-evidence-1",
-      "signature": "i8yyWndhmohPX9tsydoOI60ZhVyFqXYqK68LGUitKFB7YbBXmBBvFhJuY0wMwF7PS--U3YFAP5Dt_4onu4qjAQ"
+      "signingKeyId": "live-evidence-1",
+      "signature": "-srTHayH19obdU591skZ8koT99C0L6lfvSHXnqvQcuAR6eYo9l1Of4tphygofkF6rbx8kHY70xzS5KUwu2JIAg"
     },
     {
-      "evidenceId": "src-003-a6d4fa59b131",
+      "evidenceId": "src-003-f6a59ad631f4",
       "boundTestId": "SRC-003",
       "evidenceClass": "unit",
-      "artifactSha256": "a6d4fa59b131e31c20221957a469a9868b6ca2e5b525aa16450415f65db74b39",
-      "artifactBytes": 1599,
+      "artifactSha256": "f6a59ad631f445a38cf4fc46d7edfacc9c52f3a7dc454970c8d22ce78b4e6a61",
+      "artifactBytes": 2505,
       "mediaType": "application/json",
-      "exactCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
-      "runId": "m0-src003-1785867175",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "runId": "m0-live-src003-1786028695",
       "environment": {
         "machineId": "machine-9c62d678dd970f15",
         "osEdition": "Windows_NT win32",
@@ -61,11 +61,11 @@
       },
       "testDefinitionVersion": "2026.08.04",
       "issuer": "ci-local",
-      "observedAt": "2026-08-04T18:13:06.657Z",
-      "nonce": "9318c6345d7af5d7ae98c9a8ea37fd5e",
+      "observedAt": "2026-08-06T15:05:07.165Z",
+      "nonce": "b102898f6e9c5cc2029a70c11ac95202",
       "designation": "synthetic",
-      "signingKeyId": "completion-evidence-1",
-      "signature": "3hLbRmKaB7BTrqJCEAGjttW5KScmZueM-A-oYMm6DkogIrgrBducKJ6SndCeF1bGsiB4vt2hTQMUbqPIuWbIAw"
+      "signingKeyId": "live-evidence-1",
+      "signature": "wa3gyjX8srb1Ru7zJo9H_L2fJHNSh6JY1uJVi9Sj0b6NKxu9PqI4c6sTPqi0lFSkp2zJcO4-mro7S6q3_7sgCQ"
     }
   ]
 }

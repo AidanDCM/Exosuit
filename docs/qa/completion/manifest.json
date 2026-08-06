@@ -1,9 +1,9 @@
 {
   "contractVersion": 2,
-  "generatedAt": "2026-08-04T19:15:48.694Z",
+  "generatedAt": "2026-08-06T15:01:53.120Z",
   "branch": "codex/completion-gate-v2",
-  "baselineCommit": "9e144fb1572f1add6e547a4c1c6508f14a43caff",
-  "baselineCommittedAt": "2026-08-04T18:09:30.000Z",
+  "baselineCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+  "baselineCommittedAt": "2026-08-06T15:01:10.000Z",
   "testDefinitionVersion": "2026.08.04",
   "productionDecision": "denied",
   "phases": [
@@ -530,6 +530,6 @@
       "rollbackOrContainment": "Keep production denied and rollback."
     }
   ],
-  "signingKeyId": "completion-manifest-1",
-  "signature": "Oow7IqTdi8K9uXkdJoyYI7eBk4Ums7ttTcemjMCW-S2RORuojMNkOShsNU7Ibf7Do-cuoqA49h0Lx_lc-ZGjCQ"
+  "signingKeyId": "live-manifest-1",
+  "signature": "TFpMnIwWpps3Ux-fssaMxUWQdAKPdjjce5fjB0toQ6SbCmjzo99OXVRDzXnDtMcsqjBae-GYgktlKzttSm1WBg"
 }

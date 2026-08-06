@@ -283,3 +283,41 @@ trial-record manipulation.
 The suite was mutation-tested on 2026-08-04: disabling prerequisite enforcement
 and the artifact hash check caused three tests to fail, confirming the
 assertions bite rather than passing vacuously.
+
+## Freeze — v2.2, 2026-08-06
+
+The contract surface is frozen and the freeze is enforced, not merely declared.
+`src/completion/frozen.ts` reduces everything M1 evidence depends on for its
+meaning to one canonical fingerprint:
+
+```
+8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0
+```
+
+`tests/completionContractFrozen.test.ts` recomputes it on every run. A moved
+fingerprint means a moved contract, and evidence gathered under the old surface
+may no longer mean what it did. Changing the pin is deliberate and reviewable:
+bump `FROZEN_CONTRACT_LABEL`, say why, re-attest what depended on it.
+
+Frozen after M0.5 live attestation and reboot verification passed 18/18 on a
+genuine restart.
+
+### M0 re-attested under the live registry
+
+M0 now rests on the live trust root rather than development fixtures:
+
+| | |
+| --- | --- |
+| Registry | `live-2026-08-05-aidans-dell7430`, `purpose: live`, root-sealed |
+| Baseline commit | `8efb63aa1452ebdb84f910309bbb284b2d25a980` — the freeze commit |
+| Manifest signed by | `live-manifest-1` |
+| Evidence signed by | `live-evidence-1` (3 records, commands actually re-run) |
+| Approvals co-signed by | `live-technical-review-1`, distinct from the sealing key |
+| Integrity failures | none |
+
+The development registry is preserved at `docs/qa/completion/keys-development.json`
+as a reproducible fixture. Its keys were never regenerated.
+
+```
+Exosuit personal MVP: 18.31% proven complete, 59.30% implementation-ready, 0% live-validated.
+```
