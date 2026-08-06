@@ -1,0 +1,40 @@
+{
+  "capturedAt": "2026-08-05T17:10:57.038Z",
+  "lastBootUpTime": "2026-08-03T13:53:45.5741880Z",
+  "fileHashes": {
+    "keys.json": "344b869c27b4c26893efddb19a6fa10a8397ec16f4215f81657571961fea2d63",
+    "manifest.json": "effcca9317371c1d741529c5efb9e7466903db45673f48285035501150f86aaa",
+    "ledger.json": "40760a0685779e7fe39f30795336f7599f2bd4b3a487f0fdfc578885b83fa7f0",
+    "evidence.json": "c942b9af24ddb1a68ce461d03eb2cb7ad2b59060b78d3c102646b84d2934a78b",
+    "field-lifecycle.json": "e5faf8c7eb6b3bd10557e3d96b8fa449a8bd523cf6e144a8df8171f2a3f29511"
+  },
+  "ledgerEventCount": 24,
+  "ledgerTipEventId": "migrate-REL-001-source_validated",
+  "ledgerTipHash": "42a89ad9c2bd06078ac2f883e5bbf578d5e5aa269abf2da49c5ce513954dedbf",
+  "evidenceIds": [
+    "m05b-field-attestation"
+  ],
+  "usedNonces": [
+    "f044c7f440ceab8656c81253fb2f3cd6"
+  ],
+  "usedBootIds": [
+    "boot-7dfb720f84a05ff2"
+  ],
+  "artifactHashes": [
+    "b23287f6720261f4ab07e8ccbff62b5d2f0254e249215d5904be68f768c99b90"
+  ],
+  "dpapiKeysReadable": [
+    {
+      "keyId": "live-root-1",
+      "readable": true
+    },
+    {
+      "keyId": "live-host-1",
+      "readable": true
+    },
+    {
+      "keyId": "live-ledger-1",
+      "readable": true
+    }
+  ]
+}

@@ -31,7 +31,7 @@
     "assess:production": "node scripts/validate-production-readiness.mjs --report-only",
     "validate:production": "node scripts/validate-production-readiness.mjs",
     "validate:field": "npm run validate:plan && npm run validate:mvp-plan && npm run validate:field-contract && npm run typecheck && npm run test:field -- --reporter=verbose && npm run test:field-pulse -- --reporter=verbose && npm run build",
-    "validate:typescript": "npm run validate:repository && npm run validate:plan && npm run validate:mvp-plan && npm run validate:field-contract && npm run typecheck && npm test -- --reporter=verbose && npm run build && npm run test:pulse -- --reporter=verbose && npm run test:field-pulse -- --reporter=verbose",
+    "validate:typescript": "npm run validate:repository && npm run validate:plan && npm run validate:mvp-plan && npm run validate:completion && npm run validate:field-contract && npm run typecheck && npm test -- --reporter=verbose && npm run build && npm run test:pulse -- --reporter=verbose && npm run test:field-pulse -- --reporter=verbose",
     "validate": "npm run validate:typescript && npm run agent:test",
     "dev:mcp": "tsx src/index.ts",
     "start:mcp": "node dist/src/index.js",
@@ -39,7 +39,17 @@
     "agent:test": "dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj",
     "hooks:install": "git config core.hooksPath .githooks",
     "hooks:uninstall": "git config --unset core.hooksPath",
-    "validate:ci-parity:clean": "node scripts/ci-parity.mjs --clean"
+    "validate:ci-parity:clean": "node scripts/ci-parity.mjs --clean",
+    "completion:keys": "tsx src/completion/cli.ts keys",
+    "completion:migrate": "tsx src/completion/cli.ts migrate",
+    "completion:record": "tsx src/completion/cli.ts record",
+    "completion:transition": "tsx src/completion/cli.ts transition",
+    "validate:completion": "tsx src/completion/cli.ts evaluate",
+    "assess:mvp2": "tsx src/completion/cli.ts evaluate --target personal_mvp",
+    "test:completion": "vitest run tests/completionGateV2.test.ts tests/security/buildCompletionPlanV2.adversarial.test.ts tests/security/liveAttestation.adversarial.test.ts tests/buildCompletionPlan.test.ts",
+    "completion:root-key": "tsx src/completion/cli.ts root-key",
+    "completion:seal-registry": "tsx src/completion/cli.ts seal-registry",
+    "completion:revoke": "tsx src/completion/cli.ts revoke"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

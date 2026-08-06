@@ -1,0 +1,58 @@
+{
+  "contractVersion": 2,
+  "events": [
+    {
+      "eventId": "lc-created-1785945207646",
+      "sequence": 0,
+      "fieldId": "6fe7bf2b-7c62-4115-9a03-4f08f83bdc01",
+      "generation": 1,
+      "kind": "created",
+      "baseImageSha256": "5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744",
+      "vmGuid": "1811c4b9-e367-4024-a6a6-88c51be0a4f5",
+      "previousEventHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-05T15:53:27.644Z",
+      "signingKeyId": "live-host-1",
+      "signature": "yiiKbjVaTX0F5vuUPw8_wNhTN99jJGnSOT3ZefpFumgilKKwnnfbOG0rF810TDDaBOxGVYKIAixIelUy66NdDA"
+    },
+    {
+      "eventId": "lc-booted-1785945280271",
+      "sequence": 1,
+      "fieldId": "6fe7bf2b-7c62-4115-9a03-4f08f83bdc01",
+      "generation": 1,
+      "kind": "booted",
+      "bootId": "boot-7dfb720f84a05ff2",
+      "vmGuid": "1811c4b9-e367-4024-a6a6-88c51be0a4f5",
+      "previousEventHash": "955af7b3215ab585a0ef3fc51ab9823cd3049017a7831cf708aca916b24afaa0",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-05T15:54:40.270Z",
+      "signingKeyId": "live-host-1",
+      "signature": "KkIP3j5n63rXVqhI2rULizofVgWoCm9sAUJ5zbbplMUzobaHOfY6GLzIDb2QD-0-90JZcZ8F7okJVWEdmT_7CQ"
+    },
+    {
+      "eventId": "lc-stopped-1785945409291",
+      "sequence": 2,
+      "fieldId": "6fe7bf2b-7c62-4115-9a03-4f08f83bdc01",
+      "generation": 1,
+      "kind": "stopped",
+      "bootId": "boot-7dfb720f84a05ff2",
+      "previousEventHash": "6ecc6cc69e8f43c46cb84e7926f683df9d26387217876ef386fece3f1521105a",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-05T15:56:49.290Z",
+      "signingKeyId": "live-host-1",
+      "signature": "-S1GmZoS3TqxVhfxFTaF-2Gm69wR9cG3-TSy_MHksU-VRlI6GYrUfsfyUkhcdILs69aSdYib3fIsXGKx6GZIDw"
+    },
+    {
+      "eventId": "lc-destroyed-1785945500745",
+      "sequence": 3,
+      "fieldId": "6fe7bf2b-7c62-4115-9a03-4f08f83bdc01",
+      "generation": 1,
+      "kind": "destroyed",
+      "previousEventHash": "f94165a5e6854d5ab3766e94786b129c19767861f28ad984e60571878954824b",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-05T15:58:20.742Z",
+      "signingKeyId": "live-host-1",
+      "signature": "Hj8WPWlaJ0voaTSrJ_-ozEkOYxpbshMlYKjfIPtgF1OBvnfDGDfnxtOVbBQFbT9Evv9JzUMAfVtxAYTQ6x4DAQ"
+    }
+  ]
+}

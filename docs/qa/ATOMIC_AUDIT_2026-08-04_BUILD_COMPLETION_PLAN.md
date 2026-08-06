@@ -1,5 +1,17 @@
 # Atomic Audit — Build Completion Plan and Test Program
 
+> **SUPERSEDED — see [`ATOMIC_AUDIT_2026-08-04_COMPLETION_GATE_V2.md`](ATOMIC_AUDIT_2026-08-04_COMPLETION_GATE_V2.md).**
+>
+> The completion evaluator described here (contract version 1) passed ordinary
+> CI and then **failed adversarial review on the same day**. Twelve of thirteen
+> attacks succeeded. The percentages below are an implementation-readiness
+> estimate produced by an evaluator that could be made to report any number —
+> including 100% with promotion allowed, from a machine with no Hyper-V.
+>
+> This document is retained unedited below as the record of what was claimed.
+> Do not rely on its figures, nor on any statement in it that tampering or
+> unsupported promotion "fails closed". Neither did.
+
 **Date:** 2026-08-04  
 **Branch:** `codex/unify-glove-field`  
 **Validated implementation commit:** `24764b8c6846026e7b0d76dfd0bf784c0aff252a`  

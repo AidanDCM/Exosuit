@@ -1,0 +1,12 @@
+{
+  "rootKeyId": "live-root-1",
+  "rootPublicKey": "MCowBQYDK2VwAyEA5KWvJOdUcsL6w5PaCH2HiXkUzakhWS/v3dEPleQ7Fno=",
+  "fingerprint": "dd2efb2e527ac6a535991bba59b215365a0caf96a5b6a3e20d407ddfb87b5c1c",
+  "machineId": "machine-9c62d678dd970f15",
+  "hostname": "Aidans-Dell7430",
+  "generatedAt": "2026-08-05T13:41:23.284Z",
+  "generatedOffline": true,
+  "trustPosture": "provisional_personal_mvp",
+  "rootGeneratedOnAttestedHost": true,
+  "productionEligible": false
+}

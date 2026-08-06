@@ -1,0 +1,122 @@
+/**
+ * The frozen contract surface (v2.2).
+ *
+ * Freezing is only meaningful if a change is detected rather than merely
+ * discouraged. This module reduces the parts of the contract that M1 evidence
+ * will depend on — statuses, transitions, evidence classes and their per-gate
+ * allowlists, weights, scores, benchmark thresholds, freshness windows,
+ * approval authorities, and the field lists of every wire schema — to a single
+ * canonical fingerprint, pinned below.
+ *
+ * `tests/completionContractFrozen.test.ts` recomputes it. If the fingerprint
+ * moves, the contract moved, and evidence collected under the old one may no
+ * longer mean what it did. Changing the pin is therefore a deliberate,
+ * reviewable act: bump the label, state why, and re-attest.
+ *
+ * Frozen 2026-08-06, after M0.5 live attestation and reboot verification passed
+ * 18/18 on a genuine restart.
+ */
+
+import { sha256Canonical } from "../fieldContracts.js";
+import {
+  allowedStatusTransitions,
+  approvalRoles,
+  benchmarkGates,
+  COMPLETION_CONTRACT_VERSION,
+  completionEvidenceClasses,
+  completionStatuses,
+  completionTargets,
+  disqualifyingStatuses,
+  evidenceMaximumAgeDays,
+  fieldBoundEvidenceClasses,
+  gateEvidenceAllowlist,
+  implementationStatusScore,
+  liveEvidenceClasses,
+  maximumClockSkewSeconds,
+  registryPurposes,
+  requiredApprovalRole,
+  requiredGateIds,
+  requiredPhaseIds,
+  satisfyingStatuses,
+  severityWeights,
+  TEST_DEFINITION_VERSION,
+} from "./policy.js";
+import {
+  buildCompletionManifestSchema,
+  completionEvidenceSchema,
+  completionLedgerEventSchema,
+  completionTestSchema,
+  completionTrialBundleSchema,
+  completionTrialSchema,
+  executionEnvironmentSchema,
+  fieldLifecycleEventSchema,
+  keyRegistrySchema,
+  signingKeySchema,
+} from "./contracts.js";
+
+/** The human-facing label. `contractVersion` on the wire stays 2. */
+export const FROZEN_CONTRACT_LABEL = "2.2" as const;
+
+function fields(schema: { shape: Record<string, unknown> }): string[] {
+  return Object.keys(schema.shape).sort();
+}
+
+/** Everything M1 evidence depends on for its meaning. */
+export function frozenContractSurface(): Record<string, unknown> {
+  return {
+    label: FROZEN_CONTRACT_LABEL,
+    wireContractVersion: COMPLETION_CONTRACT_VERSION,
+    testDefinitionVersion: TEST_DEFINITION_VERSION,
+
+    targets: [...completionTargets],
+    statuses: [...completionStatuses],
+    transitions: allowedStatusTransitions,
+    satisfyingStatuses: [...satisfyingStatuses].sort(),
+    disqualifyingStatuses: [...disqualifyingStatuses].sort(),
+
+    evidenceClasses: [...completionEvidenceClasses],
+    liveEvidenceClasses: [...liveEvidenceClasses].sort(),
+    fieldBoundEvidenceClasses: [...fieldBoundEvidenceClasses].sort(),
+    gateEvidenceAllowlist,
+    evidenceMaximumAgeDays,
+    maximumClockSkewSeconds,
+
+    severityWeights,
+    implementationStatusScore,
+    benchmarkGates,
+
+    approvalRoles: [...approvalRoles],
+    approvalByGate: Object.fromEntries(
+      requiredGateIds.map((gateId) => [gateId, requiredApprovalRole(gateId)]),
+    ),
+
+    registryPurposes: [...registryPurposes],
+    requiredPhaseIds: [...requiredPhaseIds],
+    requiredGateIds: [...requiredGateIds].sort(),
+
+    schemaFields: {
+      manifest: fields(buildCompletionManifestSchema),
+      test: fields(completionTestSchema),
+      evidence: fields(completionEvidenceSchema),
+      environment: fields(executionEnvironmentSchema),
+      ledgerEvent: fields(completionLedgerEventSchema),
+      lifecycleEvent: fields(fieldLifecycleEventSchema),
+      trial: fields(completionTrialSchema),
+      trialBundle: fields(completionTrialBundleSchema),
+      registry: fields(keyRegistrySchema),
+      signingKey: fields(signingKeySchema),
+    },
+  };
+}
+
+export function frozenContractFingerprint(): string {
+  return sha256Canonical(frozenContractSurface());
+}
+
+/**
+ * Pinned fingerprint. Changing this value is a contract change: say why in the
+ * commit, bump FROZEN_CONTRACT_LABEL, and re-attest anything that depended on
+ * the old surface.
+ */
+export const FROZEN_CONTRACT_FINGERPRINT =
+  "8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0";

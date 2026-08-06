@@ -1,0 +1,26 @@
+# Completion gate trust root.
+#
+# The public key registry is protected by code review, not cryptography: anyone
+# who can change these files and holds a private key can mint completion
+# records. Every path below requires owner review.
+
+# Policy: weights, evidence allowlists, approval roles, pinned root fingerprints
+/src/completion/policy.ts                    @AidanDCM
+
+# Verifier internals: signatures, evidence binding, ledger rules, evaluation
+/src/completion/                             @AidanDCM
+
+# Trust root and recorded completion state
+/docs/qa/completion/keys.json                @AidanDCM
+/docs/qa/completion/ledger.json              @AidanDCM
+/docs/qa/completion/evidence.json            @AidanDCM
+/docs/qa/completion/manifest.json            @AidanDCM
+/docs/qa/completion/artifacts/               @AidanDCM
+
+# The adversarial suites are the proof the gate still fails closed
+/tests/security/                             @AidanDCM
+/tests/support/completionFixture.ts          @AidanDCM
+
+# Contract documentation
+/docs/COMPLETION_GATE_V2.md                  @AidanDCM
+/docs/qa/M0_5_LIVE_ATTESTATION.md            @AidanDCM

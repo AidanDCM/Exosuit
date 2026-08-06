@@ -1,0 +1,54 @@
+﻿{
+    "schema":  "exosuit.field-attestation/1",
+    "fieldId":  "5e919359-3927-4fc7-88ff-f6fad1b2c517",
+    "generation":  1,
+    "vmGuid":  "887446a6-677d-49b1-b8ba-812177ea1c1d",
+    "vmName":  "Exosuit-Field-5e919359-3927-4fc7-88ff-f6fad1b2c517-G1",
+    "bootId":  "boot-22984ba1583d4ede",
+    "bootIdDerivation":  "host-observed: sha256(vmGuid|powerOnTimeUtc), guest boot GUID unavailable without credentials",
+    "powerOnAtUtc":  "2026-08-05T14:12:15.9284415Z",
+    "observedAtUtc":  "2026-08-05T14:14:23.3965167Z",
+    "uptimeSeconds":  36,
+    "state":  "Running",
+    "switchName":  "Exosuit-Field-Isolated",
+    "switchType":  "Private",
+    "secureBoot":  "On",
+    "baseImage":  {
+                      "path":  "C:\\ProgramData\\Exosuit\\Images\\exosuit-field-base-v25.vhdx",
+                      "sha256":  "5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744",
+                      "readOnly":  true
+                  },
+    "osOverlay":  {
+                      "path":  "C:\\ProgramData\\Exosuit\\Fields\\5e919359-3927-4fc7-88ff-f6fad1b2c517\\generation-1\\5e919359-3927-4fc7-88ff-f6fad1b2c517-g1-os-overlay.vhdx",
+                      "vhdType":  "Differencing",
+                      "diskIdentifier":  "D0898ECA-8A97-483D-8B71-250D231FAE14",
+                      "parent":  "C:\\ProgramData\\Exosuit\\Images\\exosuit-field-base-v25.vhdx"
+                  },
+    "taskDisk":  {
+                     "path":  "C:\\ProgramData\\Exosuit\\Fields\\5e919359-3927-4fc7-88ff-f6fad1b2c517\\generation-1\\5e919359-3927-4fc7-88ff-f6fad1b2c517-g1-task.vhdx",
+                     "vhdType":  "Dynamic",
+                     "diskIdentifier":  "3D89B495-4311-45AA-9633-8400D2663F21"
+                 },
+    "guestServices":  [
+                          "Guest Service Interface=False/OK",
+                          "Heartbeat=True/OK",
+                          "Key-Value Pair Exchange=True/OK",
+                          "Shutdown=True/OK",
+                          "Time Synchronization=True/OK",
+                          "VSS=True/OK"
+                      ],
+    "guestReported":  {
+                          "OSVersion":  "10.0.26100",
+                          "OSName":  "Windows 10 IoT Enterprise LTSC 2024 Evaluation",
+                          "FullyQualifiedDomainName":  "DESKTOP-MEQDT58",
+                          "OSBuildNumber":  "10011",
+                          "IntegrationServicesVersion":  "10.0.26100"
+                      },
+    "readiness":  {
+                      "heartbeat":  "OK",
+                      "readinessGeneration":  1
+                  },
+    "readOnlyOperation":  "queried guest intrinsic KVP over the Hyper-V integration channel; no guest mutation, no credentials",
+    "hostMachineId":  "machine-9c62d678dd970f15",
+    "exactCommit":  "94b2610610a2ad43e98caa6c28a4604720c2e504"
+}
