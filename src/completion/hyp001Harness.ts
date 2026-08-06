@@ -43,6 +43,7 @@ import { createFieldProvisioningPlan } from "../fieldProvisioningPlan.js";
 import {
   deriveBootId,
   hyp001RunSchema,
+  resolveDotnetSdk,
   validateHyp001Run,
   REQUIRED_CYCLES,
   type Hyp001Cycle,
@@ -171,15 +172,12 @@ function runPreflight(): PreflightResult {
   const baseDigest = existsSync(base.path) ? sha256File(base.path) : undefined;
 
   // HYP-001.4 — the toolchain the guest bootstrap and the harness both need.
-  // `dotnet` is probed rather than assumed: the SDK is installed on this host
-  // but has been shadowed on PATH before, and a preflight that quietly tolerates
-  // that is how a run scores green while proving nothing.
+  const sdk = resolveDotnetSdk();
   const toolchain = {
     node: process.version,
     powershell: powershell("$PSVersionTable.PSVersion.ToString()"),
-    dotnet: (() => {
-      try { return powershell("dotnet --version"); } catch { return "unavailable"; }
-    })(),
+    dotnet: sdk === undefined ? "unavailable" : sdk.version,
+    dotnetPath: sdk?.path ?? "unresolved",
   };
 
   const isolatedSwitch = powershell(
@@ -206,7 +204,9 @@ function runPreflight(): PreflightResult {
   else if (baseDigest !== base.digest.toLowerCase()) failures.push("base image digest does not match the host configuration");
   if (isolatedSwitch !== "Private") failures.push(`isolated switch is '${isolatedSwitch}', expected Private`);
   if (!elevated) failures.push("not elevated; Hyper-V provisioning requires an elevated token");
-  if (toolchain.dotnet === "unavailable") failures.push("dotnet is not resolvable on PATH; HYP-001.4 requires the .NET SDK");
+  if (toolchain.dotnet === "unavailable") {
+    failures.push("no .NET SDK on PATH or in %USERPROFILE%\\.dotnet; HYP-001.4 requires it");
+  }
 
   return { ok: failures.length === 0, checks: { ...checks, failures } };
 }

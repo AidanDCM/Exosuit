@@ -8,7 +8,35 @@
  */
 
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
+
+/**
+ * `dotnet` on PATH here is a hostfxr-only install with no SDK, while a usable
+ * SDK sits at `%USERPROFILE%\.dotnet`. `dotnet --version` fails against the
+ * shadowing install even though the toolchain works, so HYP-001.4 must probe
+ * `--list-sdks` and fall back the way `scripts/ci-parity.mjs` already does.
+ * Answering this question twice, differently, is how a preflight blocks a run
+ * whose toolchain is fine.
+ */
+export function resolveDotnetSdk(): { readonly path: string; readonly version: string } | undefined {
+  const probe = (exe: string) => {
+    const result = spawnSync(exe, ["--list-sdks"], { encoding: "utf8", shell: false });
+    return result.status === 0 && (result.stdout ?? "").trim().length > 0
+      ? (result.stdout ?? "").trim()
+      : undefined;
+  };
+  const onPath = probe("dotnet");
+  if (onPath !== undefined) return { path: "dotnet", version: onPath.split(/\r?\n/)[0]! };
+
+  const home = process.env["USERPROFILE"] ?? process.env["HOME"] ?? "";
+  const userLocal = join(home, ".dotnet", process.platform === "win32" ? "dotnet.exe" : "dotnet");
+  if (!existsSync(userLocal)) return undefined;
+  const local = probe(userLocal);
+  return local === undefined ? undefined : { path: userLocal, version: local.split(/\r?\n/)[0]! };
+}
 
 /** HYP-001.12 requires three consecutive complete cycles. Not configurable. */
 export const REQUIRED_CYCLES = 3;

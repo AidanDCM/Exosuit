@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { deriveBootId, hyp001RunSchema, validateHyp001Run, REQUIRED_CYCLES } from "../src/completion/hyp001.js";
+import {
+  deriveBootId,
+  hyp001RunSchema,
+  resolveDotnetSdk,
+  validateHyp001Run,
+  REQUIRED_CYCLES,
+} from "../src/completion/hyp001.js";
 
 const BASE = "a".repeat(64);
 
@@ -53,6 +59,18 @@ describe("deriveBootId", () => {
   it("distinguishes two power-ons of the same VM", () => {
     expect(deriveBootId("abc", "2026-08-06T12:00:00.000Z"))
       .not.toBe(deriveBootId("abc", "2026-08-06T12:00:01.000Z"));
+  });
+});
+
+describe("resolveDotnetSdk", () => {
+  // `dotnet --version` fails on this host because the PATH install is
+  // hostfxr-only, while a real SDK sits in %USERPROFILE%\.dotnet. The whole
+  // point of this helper is that HYP-001.4 must not fail on that distinction.
+  it("finds an SDK when one is installed anywhere the repo already looks", () => {
+    const sdk = resolveDotnetSdk();
+    if (sdk === undefined) return; // CI images without any SDK are a valid state.
+    expect(sdk.version).toMatch(/^\d+\.\d+\.\d+/);
+    expect(sdk.path.length).toBeGreaterThan(0);
   });
 });
 

@@ -277,7 +277,7 @@ anything.
 
 1. Read `docs/COMPLETION_GATE_V2.md` §"Field lifecycle ledger" and §"Freeze".
 2. Run `npm run validate:completion` and confirm `18.31 / 59.30 / 0` with exit 0.
-3. Run `npx vitest run` and confirm 534 pass — especially
+3. Run `npx vitest run` and confirm 535 pass — especially
    `completionContractFrozen`.
 4. Decide Secure Boot and TPM sealing (§7) **before** any M1 evidence.
 5. Run the HYP-001 harness (§12).
