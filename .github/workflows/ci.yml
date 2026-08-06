@@ -48,8 +48,13 @@ on:
 permissions:
   contents: read
 
+# Keyed on the workflow plus the branch under test, so a superseded run of *this*
+# workflow on *this* branch is cancelled and nothing else is. Keying on
+# `github.ref` alone grouped every event for a PR under refs/pull/N/merge, which
+# is how runs on an exact head ended up cancelled and recorded as failures,
+# leaving no green hosted validation for that commit.
 concurrency:
-  group: exosuit-ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
