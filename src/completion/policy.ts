@@ -192,6 +192,16 @@ export const keyProtectionBackends = ["tpm", "dpapi", "plaintext"] as const;
 export type KeyProtectionBackend = (typeof keyProtectionBackends)[number];
 
 /**
+ * After this instant a live record must be v2.3.
+ *
+ * Legacy live records stay verifiable so existing attestations are not
+ * destroyed, but the legacy shape cannot be used to *create* new live evidence
+ * — otherwise omitting `recordVersion` would remain a way to opt out of custody
+ * and TPM proof indefinitely.
+ */
+export const LEGACY_LIVE_RECORD_CUTOFF = "2026-08-07T00:00:00.000Z";
+
+/**
  * SHA-256 fingerprints of the DER public halves of accepted offline root keys.
  *
  * The root PRIVATE key is held offline and never touches the repository. Only

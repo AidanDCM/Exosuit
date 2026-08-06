@@ -17,6 +17,7 @@ import type {
   CompletionEvidence,
   CompletionLedger,
   CompletionLedgerEvent,
+  CompletionLedgerEventV22,
   KeyRegistry,
 } from "./contracts.js";
 
@@ -194,7 +195,10 @@ export function nextLedgerEvent(input: {
   readonly reason: string;
   readonly recordedAt: string;
   readonly signingKeyId: string;
-}): Omit<CompletionLedgerEvent, "signature" | "reviewerSignature"> {
+// Returns the legacy shape: this builds the event body, and a caller that has
+// custody information spreads it on top to make a v2.3 record. Omit<> over the
+// union would widen `recordVersion` and lose that distinction.
+}): Omit<CompletionLedgerEventV22, "signature" | "reviewerSignature"> {
   const events = [...input.ledger.events].sort((left, right) => left.sequence - right.sequence);
   const last = events.at(-1);
   return {

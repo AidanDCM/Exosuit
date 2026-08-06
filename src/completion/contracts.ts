@@ -124,37 +124,53 @@ export type ExecutionEnvironment = z.infer<typeof executionEnvironmentSchema>;
 export const evidenceDesignationSchema = z.enum(["live", "synthetic"]);
 
 /**
- * Key custody binding (contract v2.3), shared by every signed record.
+ * Record versioning (contract v2.3).
  *
- * These say how the signing key was protected when the record was made, and
- * point at the custody event that independently attests it. The signature
- * covers them, so they cannot be edited onto an existing record.
+ * Records are a union of two shapes, not one shape with optional fields.
+ * Optionality meant a v2.3 record could omit a custody field and be
+ * structurally valid, leaving the verifier as the only thing standing between
+ * a partial record and acceptance. Under the union, a record claiming `"2.3"`
+ * that lacks custody information does not parse at all.
  *
- * They are **optional in the schema and mandatory for live records**, enforced
- * in the verifier rather than here. Making them structurally required would
- * invalidate every record signed under v2.2 — including the recorded M0
- * attestation — turning a protection improvement into a forced re-attestation
- * of unrelated evidence. A live record that omits them is rejected, so the
- * looser schema costs nothing: omission fails closed.
+ * The discriminator is **optional on the legacy shape**, and that is
+ * deliberate. Every record signed before v2.3 has no `recordVersion` field, and
+ * a signature is taken over the canonical record — so defaulting the field in
+ * would change the bytes and invalidate signatures the schema is supposed to
+ * preserve. Absent therefore means 2.2.
+ *
+ * `recoveryGrantId` and `tpmProofId` are explicitly nullable on v2.3 rather
+ * than omitted. "No grant was open" is a fact the signature should cover; an
+ * absent field is indistinguishable from a field someone stripped.
  */
+export const RECORD_VERSIONS = ["2.2", "2.3"] as const;
+export type RecordVersion = (typeof RECORD_VERSIONS)[number];
+
+/** Custody fields as they exist on a v2.3 record: present, and explicit about absence. */
 export const keyCustodyBindingShape = {
+  recordVersion: z.literal("2.3"),
   /** The backend that actually opened the signing key. Live records must say `tpm`. */
-  keyProtectionBackend: z.enum(keyProtectionBackends).optional(),
+  keyProtectionBackend: z.enum(keyProtectionBackends),
   /** The custody event attesting that backend for that key. */
-  keyCustodyEventId: identifier.optional(),
+  keyCustodyEventId: identifier,
   /** The purpose of the registry the signing key was used under. */
-  registryPurpose: z.enum(registryPurposes).optional(),
-  /** Present only when the key was opened under an explicit recovery grant. */
-  recoveryGrantId: identifier.optional(),
+  registryPurpose: z.enum(registryPurposes),
+  /** The grant the key was opened under, or explicitly `null` for none. */
+  recoveryGrantId: identifier.nullable(),
   /**
-   * The TPM participation proof for this signing event.
+   * The TPM participation proof for this signing event, or explicitly `null`
+   * for a synthetic record that needs none.
    *
    * Without it, `keyProtectionBackend: tpm` rests on the custody event — which
    * is signed by the same Ed25519 key it describes, so a holder of that key
    * could mint record and custody event together and have them agree. The proof
    * is produced by a separate non-exportable TPM key, so it cannot be.
    */
-  tpmProofId: identifier.optional(),
+  tpmProofId: identifier.nullable(),
+} as const;
+
+/** The legacy shape: no custody fields at all, and `.strict()` rejects them. */
+export const legacyRecordShape = {
+  recordVersion: z.literal("2.2").optional(),
 } as const;
 
 /**
@@ -162,7 +178,7 @@ export const keyCustodyBindingShape = {
  * the artifact itself lives in the evidence store and is located by its own
  * SHA-256. A record is bound to exactly one test.
  */
-export const completionEvidenceSchema = z.object({
+const completionEvidenceCoreShape = {
   evidenceId: identifier,
   boundTestId: testId,
   evidenceClass: completionEvidenceClassSchema,
@@ -179,10 +195,27 @@ export const completionEvidenceSchema = z.object({
   nonce: z.string().regex(/^[a-f0-9]{32}$/),
   designation: evidenceDesignationSchema,
   signingKeyId: identifier,
-  ...keyCustodyBindingShape,
   signature: signatureValue,
+} as const;
+
+export const completionEvidenceV23Schema = z.object({
+  ...completionEvidenceCoreShape,
+  ...keyCustodyBindingShape,
 }).strict();
+export const completionEvidenceV22Schema = z.object({
+  ...completionEvidenceCoreShape,
+  ...legacyRecordShape,
+}).strict();
+
+// v2.3 is tried first, so a record carrying custody fields is judged against
+// the shape that demands all of them rather than falling back to the legacy
+// shape and being rejected for an unrelated reason.
+export const completionEvidenceSchema = z.union([
+  completionEvidenceV23Schema,
+  completionEvidenceV22Schema,
+]);
 export type CompletionEvidence = z.infer<typeof completionEvidenceSchema>;
+export type CompletionEvidenceV23 = z.infer<typeof completionEvidenceV23Schema>;
 
 export const evidenceStoreSchema = z.object({
   contractVersion: z.literal(COMPLETION_CONTRACT_VERSION),
@@ -269,7 +302,7 @@ export type FieldLifecycleLedger = z.infer<typeof fieldLifecycleLedgerSchema>;
  * before it, so a later write cannot erase an earlier failure or revocation
  * without breaking the chain.
  */
-export const completionLedgerEventSchema = z.object({
+const completionLedgerEventCoreShape = {
   eventId: identifier,
   sequence: z.number().int().nonnegative(),
   testId,
@@ -302,10 +335,54 @@ export const completionLedgerEventSchema = z.object({
   reason: z.string().min(1).max(500),
   recordedAt: z.string().datetime(),
   signingKeyId: identifier,
-  ...keyCustodyBindingShape,
   signature: signatureValue,
+} as const;
+
+export const completionLedgerEventV23Schema = z.object({
+  ...completionLedgerEventCoreShape,
+  ...keyCustodyBindingShape,
 }).strict();
+export const completionLedgerEventV22Schema = z.object({
+  ...completionLedgerEventCoreShape,
+  ...legacyRecordShape,
+}).strict();
+
+export type CompletionLedgerEventV22 = z.infer<typeof completionLedgerEventV22Schema>;
+
+export const completionLedgerEventSchema = z.union([
+  completionLedgerEventV23Schema,
+  completionLedgerEventV22Schema,
+]);
 export type CompletionLedgerEvent = z.infer<typeof completionLedgerEventSchema>;
+
+/**
+ * The custody view of any record, legacy or current.
+ *
+ * Consumers ask this rather than testing for fields themselves, so "what does
+ * a v2.2 record report?" is answered in exactly one place.
+ */
+export function custodyBindingOf(record: CompletionEvidence | CompletionLedgerEvent): {
+  readonly recordVersion: RecordVersion;
+  readonly signingKeyId: string;
+  readonly keyProtectionBackend?: string;
+  readonly keyCustodyEventId?: string;
+  readonly registryPurpose?: string;
+  readonly recoveryGrantId?: string;
+  readonly tpmProofId?: string;
+} {
+  if (record.recordVersion !== "2.3") {
+    return { recordVersion: "2.2", signingKeyId: record.signingKeyId };
+  }
+  return {
+    recordVersion: "2.3",
+    signingKeyId: record.signingKeyId,
+    keyProtectionBackend: record.keyProtectionBackend,
+    keyCustodyEventId: record.keyCustodyEventId,
+    registryPurpose: record.registryPurpose,
+    ...(record.recoveryGrantId === null ? {} : { recoveryGrantId: record.recoveryGrantId }),
+    ...(record.tpmProofId === null ? {} : { tpmProofId: record.tpmProofId }),
+  };
+}
 
 export const completionLedgerSchema = z.object({
   contractVersion: z.literal(COMPLETION_CONTRACT_VERSION),

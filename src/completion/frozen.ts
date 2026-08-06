@@ -43,8 +43,10 @@ import {
 } from "./policy.js";
 import {
   buildCompletionManifestSchema,
-  completionEvidenceSchema,
-  completionLedgerEventSchema,
+  completionEvidenceV22Schema,
+  completionEvidenceV23Schema,
+  completionLedgerEventV22Schema,
+  completionLedgerEventV23Schema,
   completionTestSchema,
   completionTrialBundleSchema,
   completionTrialSchema,
@@ -97,9 +99,9 @@ export function frozenContractSurface(): Record<string, unknown> {
     schemaFields: {
       manifest: fields(buildCompletionManifestSchema),
       test: fields(completionTestSchema),
-      evidence: fields(completionEvidenceSchema),
+      evidence: fields(completionEvidenceV23Schema),
       environment: fields(executionEnvironmentSchema),
-      ledgerEvent: fields(completionLedgerEventSchema),
+      ledgerEvent: fields(completionLedgerEventV23Schema),
       lifecycleEvent: fields(fieldLifecycleEventSchema),
       trial: fields(completionTrialSchema),
       trialBundle: fields(completionTrialBundleSchema),

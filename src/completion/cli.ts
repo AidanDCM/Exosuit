@@ -195,10 +195,11 @@ function readCustodyLedger(): KeyCustodyLedger {
 function attestCustody(keyId: string): {
   readonly pem: string;
   readonly binding: {
+    readonly recordVersion: "2.3";
     readonly keyProtectionBackend: KeyProtectionBackend;
     readonly keyCustodyEventId: string;
     readonly registryPurpose: RegistryPurpose;
-    readonly recoveryGrantId?: string;
+    readonly recoveryGrantId: string | null;
   };
 } {
   const material = privateKeyWithBackend(keyId);
@@ -228,10 +229,13 @@ function attestCustody(keyId: string): {
   return {
     pem: material.pem,
     binding: {
+      recordVersion: "2.3",
       keyProtectionBackend: material.backend,
       keyCustodyEventId: unsigned.eventId,
       registryPurpose: purpose,
-      ...(grantId === undefined ? {} : { recoveryGrantId: grantId }),
+      // Explicit null rather than an omitted field: an absent value is
+      // indistinguishable from one someone stripped.
+      recoveryGrantId: grantId ?? null,
     },
   };
 }
@@ -777,9 +781,10 @@ function commandRecord(): void {
 
   const custody = attestCustody(keyId);
   const withCustody = { ...unsigned, ...custody.binding };
-  const bound = isLive
-    ? { ...withCustody, tpmProofId: issueTpmProof(withCustody, custody.binding.keyCustodyEventId) }
-    : withCustody;
+  const bound = {
+    ...withCustody,
+    tpmProofId: isLive ? issueTpmProof(withCustody, custody.binding.keyCustodyEventId) : null,
+  };
   const record: CompletionEvidence = {
     ...bound,
     signature: signRecord(bound, custody.pem),
@@ -845,9 +850,10 @@ function commandRecordArtifact(): void {
   // the binding and it cannot be attached to an existing record afterwards.
   const custody = attestCustody(keyId);
   const withCustody = { ...unsigned, ...custody.binding };
-  const bound = isLive
-    ? { ...withCustody, tpmProofId: issueTpmProof(withCustody, custody.binding.keyCustodyEventId) }
-    : withCustody;
+  const bound = {
+    ...withCustody,
+    tpmProofId: isLive ? issueTpmProof(withCustody, custody.binding.keyCustodyEventId) : null,
+  };
   const record: CompletionEvidence = { ...bound, signature: signRecord(bound, custody.pem) };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
@@ -912,7 +918,7 @@ function commandTransition(): void {
   // Custody of the ledger key is attested before the event is sealed, so a
   // promotion carries the same backend evidence a record does.
   const custody = attestCustody(KEY.ledger());
-  const bound = { ...approved, ...custody.binding };
+  const bound = { ...approved, ...custody.binding, tpmProofId: null };
 
   writeJson(PATHS.ledger, completionLedgerSchema.parse({
     contractVersion: 2,

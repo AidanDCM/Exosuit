@@ -201,9 +201,11 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
    * the reference.
    */
   const addCustody = (keyId: string): {
+    recordVersion: "2.3";
     keyProtectionBackend: "tpm";
     keyCustodyEventId: string;
     registryPurpose: RegistryPurpose;
+    recoveryGrantId: null;
   } => {
     const purpose = fixture.registry.purpose;
     const unsigned = nextCustodyEvent({
@@ -223,9 +225,13 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
       }],
     };
     return {
+      recordVersion: "2.3",
       keyProtectionBackend: "tpm",
       keyCustodyEventId: unsigned.eventId,
       registryPurpose: purpose,
+      // Explicit null, not omission: "no grant was open" is a fact the
+      // signature should cover.
+      recoveryGrantId: null,
     };
   };
 
@@ -402,6 +408,9 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         const bindingFields = addCustody(unsigned.signingKeyId);
         const withCustody = { ...unsigned, ...bindingFields };
         bound = { ...withCustody, tpmProofId: addProof(withCustody, bindingFields.keyCustodyEventId) };
+      } else {
+        // Synthetic records stay on the legacy shape: no custody fields, so
+        // `.strict()` on the 2.2 member is what keeps them honest.
       }
 
       const record = {

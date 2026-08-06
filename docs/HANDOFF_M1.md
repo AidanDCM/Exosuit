@@ -454,7 +454,7 @@ contract surface moved and the pin was deliberately left alone:
 
 ```
 pinned    8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0
-computed  866ed12b779c2e9113451b1f8a92723487afdfd0fb92115ca68c706e903b3511
+computed  700b41653a12d51004b23398ed5b46022a87977da908e3ed7e4e9badcce00291
 ```
 
 Do **not** update the pin as a cleanup. Bumping `FROZEN_CONTRACT_LABEL` to 2.3
@@ -500,9 +500,37 @@ not that *this Ed25519 key was unwrapped by that TPM*. Binding those together
 needs the completion key itself to be a TPM key, which TPM 2.0 cannot do for
 Ed25519. The residual gap is narrow and stated rather than papered over.
 
-### Still outstanding for v2.3
+### Versioned record schemas (added after review)
 
-Versioned record schemas — `recordVersion: "2.2" | "2.3"` as a discriminated
-union with the custody fields structurally required on 2.3, explicit
-`recoveryGrantId: null`, and rejection of new v2.2 live records after a
-migration cutoff. Not started.
+Records are a **union of two shapes**, not one shape with optional fields.
+Optionality meant a v2.3 record could omit a custody field and still parse,
+leaving the verifier as the only thing between a partial record and acceptance.
+
+```
+2.2   no custody fields at all; `.strict()` rejects them
+2.3   recordVersion "2.3", custody fields structurally required,
+      recoveryGrantId and tpmProofId explicitly nullable
+```
+
+The discriminator is **optional on the legacy shape**. Every record signed
+before v2.3 has no `recordVersion`, and a signature is taken over the canonical
+record — defaulting the field in would change the bytes and invalidate the very
+signatures the union is meant to preserve. Absent therefore means 2.2.
+
+`recoveryGrantId: null` and `tpmProofId: null` are explicit rather than omitted:
+"no grant was open" is a fact the signature should cover, and an absent field is
+indistinguishable from one someone stripped.
+
+`LEGACY_LIVE_RECORD_CUTOFF` (2026-08-07) stops the legacy shape being used to
+*create* new live evidence, while leaving existing attestations verifiable.
+Without it, omitting `recordVersion` would be a permanent opt-out of custody and
+TPM proof.
+
+`custodyBindingOf()` is the single place that answers "what does this record
+report?", so no consumer hand-rolls field tests.
+
+20 tests in `tests/security/recordVersioning.adversarial.test.ts`, including the
+cutoff cases — which re-sign the relegated record rather than merely stripping
+fields, so they fail on the shape rule and not on a broken signature.
+
+### v2.3 is now complete

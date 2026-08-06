@@ -14,12 +14,13 @@ import {
   evidenceClassAllowedForGate,
   fieldBoundEvidenceClasses,
   liveEvidenceClasses,
+  LEGACY_LIVE_RECORD_CUTOFF,
   maximumClockSkewSeconds,
   TEST_DEFINITION_VERSION,
   type CompletionEvidenceClass,
 } from "./policy.js";
 import { requiredRoleForLiveEvidence, verifyRecordSignature } from "./signing.js";
-import type { BuildCompletionManifest, CompletionEvidence, KeyRegistry } from "./contracts.js";
+import { custodyBindingOf, type BuildCompletionManifest, type CompletionEvidence, type KeyRegistry } from "./contracts.js";
 import { checkAgainstLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
 import { verifyCustodyBinding, type CustodyVerificationResult } from "./keyCustody.js";
 import { registryHash, verifyTpmProofBinding, type TpmProof } from "./tpmAttestation.js";
@@ -146,8 +147,9 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
     // stay verifiable. Without it a live signature said nothing about whether
     // the TPM produced the key.
     const treatAsLive = isLiveClass || record.designation === "live";
+    const binding = custodyBindingOf(record);
     reasons.push(...verifyCustodyBinding({
-      record,
+      record: binding,
       live: treatAsLive,
       registryPurpose: request.registry.purpose,
       custody: request.custody ?? EMPTY_CUSTODY_VERIFICATION,
@@ -158,6 +160,17 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
     // Custody alone is a self-report: the custody event is signed by the same
     // Ed25519 key it vouches for. The proof comes from a separate
     // non-exportable TPM key, so holding the completion key is not enough.
+    // A legacy record may not be used to create new live evidence. Existing
+    // ones stay verifiable; without the cutoff, omitting `recordVersion` would
+    // be a permanent opt-out of custody and TPM proof.
+    if (treatAsLive && binding.recordVersion === "2.2"
+      && Date.parse(record.observedAt) >= Date.parse(LEGACY_LIVE_RECORD_CUTOFF)) {
+      reasons.push(
+        `live record uses legacy shape 2.2 but was observed at ${record.observedAt}, `
+        + `after the ${LEGACY_LIVE_RECORD_CUTOFF} migration cutoff`,
+      );
+    }
+
     if (treatAsLive && request.requireTpmProof !== false) {
       reasons.push(...verifyTpmProofBinding({
         record: record as unknown as Record<string, unknown> & { signingKeyId: string; tpmProofId?: string },
@@ -165,7 +178,7 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
         registryHash: registryHash(request.registry),
         machineId: record.environment.machineId,
         openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
-        ...(record.keyCustodyEventId === undefined ? {} : { custodyEventId: record.keyCustodyEventId }),
+        ...(binding.keyCustodyEventId === undefined ? {} : { custodyEventId: binding.keyCustodyEventId }),
         acceptedAttestationFingerprints: request.acceptedAttestationFingerprints ?? [],
         consumedProofIds,
       }));
