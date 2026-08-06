@@ -55,6 +55,23 @@ function powershell(script: string): string {
 }
 
 /**
+ * Runs a script with secret input supplied on stdin rather than in `-Command`.
+ *
+ * A process command line is readable by any sufficiently privileged local
+ * process — and by anything that can enumerate processes at the right moment —
+ * so the AES data key must never appear there. stdin is not visible that way.
+ * The script reads it with `[Console]::In.ReadLine()`.
+ */
+function powershellWithSecret(script: string, secretLine: string): string {
+  return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], {
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
+    input: `${secretLine}\n`,
+    stdio: ["pipe", "pipe", "pipe"],
+  }).trim();
+}
+
+/**
  * PowerShell 5.1 runs on .NET Framework, where `RSACng` lacks the
  * `Export*`/`ImportRSAPublicKey` helpers .NET 6+ has. Everything below
  * therefore stays inside `RSACng.Encrypt`/`Decrypt`, which are present on both.
@@ -115,27 +132,39 @@ export function tpmStatus(): TpmStatus {
   }
 }
 
-/** Wraps 32 bytes under the TPM key, creating the key on first use. */
+/**
+ * Wraps 32 bytes under the TPM key, creating the key on first use.
+ *
+ * The data key arrives on stdin, never as a command-line argument.
+ */
 function wrapDataKey(dataKey: Buffer): string {
-  return powershell(
+  return powershellWithSecret(
     OPEN_OR_CREATE(TPM_WRAPPING_KEY_NAME)
-    + `$plain = [Convert]::FromBase64String('${dataKey.toString("base64")}'); `
+    + "$plain = [Convert]::FromBase64String([Console]::In.ReadLine()); "
     + "$ct = $rsa.Encrypt($plain, [System.Security.Cryptography.RSAEncryptionPadding]::OaepSHA256); "
+    + "[System.Array]::Clear($plain, 0, $plain.Length); "
     + "[Convert]::ToBase64String($ct)",
+    dataKey.toString("base64"),
   );
 }
 
+/**
+ * Unwraps the data key. The wrapped form is a ciphertext and is not secret, but
+ * it travels on stdin too so the two halves stay symmetric and neither ends up
+ * on a command line by a later edit.
+ */
 function unwrapDataKey(wrapped: string, keyName: string): Buffer {
-  const raw = powershell(
+  const raw = powershellWithSecret(
     `$provider = [System.Security.Cryptography.CngProvider]::new('${PROVIDER}'); `
     + `$name = '${keyName.replace(/'/g, "''")}'; `
     + "if (-not [System.Security.Cryptography.CngKey]::Exists($name, $provider)) { "
     + "  throw 'TPM wrapping key ' + $name + ' does not exist on this host.' }; "
     + "$key = [System.Security.Cryptography.CngKey]::Open($name, $provider); "
     + "$rsa = [System.Security.Cryptography.RSACng]::new($key); "
-    + `$ct = [Convert]::FromBase64String('${wrapped.replace(/'/g, "''")}'); `
+    + "$ct = [Convert]::FromBase64String([Console]::In.ReadLine()); "
     + "$pt = $rsa.Decrypt($ct, [System.Security.Cryptography.RSAEncryptionPadding]::OaepSHA256); "
     + "[Convert]::ToBase64String($pt)",
+    wrapped,
   );
   return Buffer.from(raw, "base64");
 }

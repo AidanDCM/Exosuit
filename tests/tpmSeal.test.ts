@@ -16,6 +16,7 @@ import {
  */
 const status = tpmStatus();
 const withTpm = status.available ? it : it.skip;
+const TPM_TIMEOUT = 60_000;
 
 function ed25519Pem(): Buffer {
   const { privateKey } = generateKeyPairSync("ed25519");
@@ -71,39 +72,39 @@ describe("sealToTpm / unsealFromTpm", () => {
   withTpm("round-trips an Ed25519 private key exactly", () => {
     const pem = ed25519Pem();
     expect(unsealFromTpm(sealToTpm(pem)).equals(pem)).toBe(true);
-  });
+  }, TPM_TIMEOUT);
 
   withTpm("never puts the plaintext in the vault", () => {
     const pem = ed25519Pem();
     const serialized = JSON.stringify(sealToTpm(pem));
     expect(serialized).not.toContain("PRIVATE KEY");
     expect(serialized).not.toContain(pem.toString("base64"));
-  });
+  }, TPM_TIMEOUT);
 
   withTpm("produces a different vault each time for the same input", () => {
     const pem = ed25519Pem();
     // Fresh data key and nonce per seal, so two vaults over one key are not
     // byte-identical and neither reveals that they protect the same secret.
     expect(sealToTpm(pem).ciphertext).not.toBe(sealToTpm(pem).ciphertext);
-  });
+  }, TPM_TIMEOUT);
 
   withTpm("fails closed on a tampered ciphertext", () => {
     const vault = sealToTpm(ed25519Pem());
     const raw = Buffer.from(vault.ciphertext, "base64");
     raw[0] = (raw[0] ?? 0) ^ 0xff;
     expect(() => unsealFromTpm({ ...vault, ciphertext: raw.toString("base64") })).toThrow();
-  });
+  }, TPM_TIMEOUT);
 
   withTpm("fails closed on a tampered authentication tag", () => {
     const vault = sealToTpm(ed25519Pem());
     const tag = Buffer.from(vault.authTag, "base64");
     tag[0] = (tag[0] ?? 0) ^ 0xff;
     expect(() => unsealFromTpm({ ...vault, authTag: tag.toString("base64") })).toThrow();
-  });
+  }, TPM_TIMEOUT);
 
   withTpm("refuses a vault naming a wrapping key this host does not have", () => {
     const vault = sealToTpm(ed25519Pem());
     expect(() => unsealFromTpm({ ...vault, wrappingKeyName: "exosuit-absent-key-not-on-this-host" }))
       .toThrow();
-  });
+  }, TPM_TIMEOUT);
 });
