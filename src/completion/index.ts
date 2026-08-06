@@ -14,3 +14,4 @@ export * from "./ledger.js";
 export * from "./fieldLifecycle.js";
 export * from "./benchmark.js";
 export * from "./evaluate.js";
+export * from "./frozen.js";
