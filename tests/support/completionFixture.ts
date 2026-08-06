@@ -441,14 +441,23 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         signingKeyId: "k-ledger",
       });
 
+      // Custody is bound BEFORE the reviewer signs, mirroring cli.ts.
+      //
+      // The fixture previously stopped at `unsigned` here, so no test exercised
+      // a reviewer approving an event that also carries custody fields — and a
+      // real promotion built the other way round shipped with a reviewer
+      // signature that could not verify. The fixture has to model the order the
+      // CLI actually uses or it cannot catch that class of bug.
+      const withCustody = { ...unsigned, ...addCustody("k-ledger"), tpmProofId: null };
+
       // The reviewer signs first; the issuer's signature then covers that
       // approval, matching the real two-party flow.
       const approved = reviewerKeyId !== undefined && input.reviewerSigns !== false
         ? {
-          ...unsigned,
-          reviewerSignature: signAsReviewer(unsigned, secrets[reviewerKeyId] ?? secrets["k-tech-review"]!),
+          ...withCustody,
+          reviewerSignature: signAsReviewer(withCustody, secrets[reviewerKeyId] ?? secrets["k-tech-review"]!),
         }
-        : unsigned;
+        : withCustody;
 
       fixture.ledger = {
         contractVersion: 2,

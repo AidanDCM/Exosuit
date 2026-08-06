@@ -7,7 +7,7 @@ import {
 } from "../src/completion/frozen.js";
 import { gateEvidenceAllowlist, requiredGateIds } from "../src/completion/policy.js";
 
-describe("completion contract freeze (v2.2)", () => {
+describe("completion contract freeze (v2.3)", () => {
   it("matches the pinned contract fingerprint", () => {
     // If this fails, the contract surface moved. That is not automatically
     // wrong — but evidence collected under the old surface may no longer mean
@@ -16,8 +16,8 @@ describe("completion contract freeze (v2.2)", () => {
     expect(frozenContractFingerprint()).toBe(FROZEN_CONTRACT_FINGERPRINT);
   });
 
-  it("is labelled 2.2", () => {
-    expect(FROZEN_CONTRACT_LABEL).toBe("2.2");
+  it("is labelled 2.3", () => {
+    expect(FROZEN_CONTRACT_LABEL).toBe("2.3");
   });
 
   it("covers every gate in the allowlist", () => {

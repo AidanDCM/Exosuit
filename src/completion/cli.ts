@@ -903,22 +903,27 @@ function commandTransition(): void {
     signingKeyId: KEY.ledger(),
   });
 
-  // The reviewer signs the approval first; the issuer's signature then seals
-  // the event including that approval.
-  const approved = to === "passed"
+  // Custody of the ledger key is attested first, so the binding is part of the
+  // content the reviewer approves.
+  //
+  // Order is load-bearing. Adding custody fields *after* the reviewer signed
+  // silently invalidated their signature: the verifier recomputes the approval
+  // over the event minus its two signatures, and that now includes these
+  // fields. The reviewer must approve what actually gets sealed, not a prefix.
+  const custody = attestCustody(KEY.ledger());
+  const withCustody = { ...unsigned, ...custody.binding, tpmProofId: null };
+
+  // The reviewer signs the approval; the issuer's signature then seals the
+  // event including that approval.
+  const bound = to === "passed"
     ? {
-      ...unsigned,
+      ...withCustody,
       reviewerSignature: signAsReviewer(
-        unsigned,
+        withCustody,
         privateKey(unsigned.reviewerKeyId ?? APPROVAL_KEY_IDS[requiredApprovalRole(testId)]),
       ),
     }
-    : unsigned;
-
-  // Custody of the ledger key is attested before the event is sealed, so a
-  // promotion carries the same backend evidence a record does.
-  const custody = attestCustody(KEY.ledger());
-  const bound = { ...approved, ...custody.binding, tpmProofId: null };
+    : withCustody;
 
   writeJson(PATHS.ledger, completionLedgerSchema.parse({
     contractVersion: 2,
