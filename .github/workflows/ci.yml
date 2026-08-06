@@ -57,6 +57,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
+# Jobs are serialised rather than run in parallel.
+#
+# Measured 2026-08-06: this account schedules roughly one hosted job at a time.
+# In a parallel run exactly one job was assigned a runner and finished in under
+# a minute, while every sibling sat with runner_name="" and was killed at a
+# uniform ~15 minutes — regardless of its own timeout-minutes (30, 25 and 10 all
+# died at 15:00). The run was then reported as a failure even though the job
+# that ran had succeeded.
+#
+# Chaining with `needs` means each job only becomes eligible once the previous
+# one has released the slot, so none of them race and starve. `!cancelled()`
+# keeps the chain going when an upstream job *fails* — otherwise one real
+# failure would hide every downstream result — while still honouring a genuine
+# cancellation of the run.
+
 jobs:
   typescript:
     name: TypeScript Glove and Field validation
@@ -205,6 +220,8 @@ jobs:
 
   windows-agent:
     name: Windows agent and Field cross-language validation
+    needs: typescript
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
@@ -274,6 +291,8 @@ jobs:
 
   repository-contract:
     name: Required manuals, audits, and operational controls
+    needs: windows-agent
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

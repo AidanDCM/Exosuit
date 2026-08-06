@@ -37,6 +37,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
+# Serialised for the same reason as ci.yml: this account schedules about one
+# hosted job at a time. npm-audit lost the race to nuget-audit on every run and
+# was cancelled at ~15 minutes having never been assigned a runner, which read
+# as an npm failure but was pure queue starvation. npm-audit goes first because
+# it is the one that kept losing.
+
 jobs:
   npm-audit:
     name: npm dependency vulnerability audit
@@ -70,6 +76,8 @@ jobs:
 
   nuget-audit:
     name: NuGet dependency vulnerability audit
+    needs: npm-audit
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -107,7 +115,8 @@ jobs:
 
   codeql-javascript-typescript:
     name: CodeQL JavaScript/TypeScript (public repositories only)
-    if: github.event.repository.private == false
+    needs: nuget-audit
+    if: ${{ !cancelled() && github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -120,7 +129,8 @@ jobs:
 
   codeql-csharp:
     name: CodeQL C# (public repositories only)
-    if: github.event.repository.private == false
+    needs: codeql-javascript-typescript
+    if: ${{ !cancelled() && github.event.repository.private == false }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
