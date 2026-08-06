@@ -27,6 +27,8 @@ import {
 } from "./contracts.js";
 import { verifyEvidenceStore, type EvidenceArtifactSource } from "./evidence.js";
 import { hashLedgerEvent, verifyCompletionLedger } from "./ledger.js";
+import { verifyFieldLifecycle } from "./fieldLifecycle.js";
+import { fieldLifecycleLedgerSchema } from "./contracts.js";
 import { signRecord, verifyKeyRegistry } from "./signing.js";
 import { randomBytes } from "node:crypto";
 import { writeFileSync as writeArtifact } from "node:fs";
@@ -36,7 +38,7 @@ const ARTIFACTS = join(DIR, "artifacts");
 const KEY_DIR = resolve(process.env["EXOSUIT_COMPLETION_KEY_DIR"] ?? "");
 const CAPTURE_PATH = resolve(process.env["EXOSUIT_REBOOT_CAPTURE"] ?? join(DIR, "reboot-capture.json"));
 
-const FILES = ["keys.json", "manifest.json", "ledger.json", "evidence.json"] as const;
+const FILES = ["keys.json", "manifest.json", "ledger.json", "evidence.json", "field-lifecycle.json"] as const;
 
 function powershell(script: string): string {
   return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], {
@@ -91,7 +93,13 @@ function loadState() {
   const manifest = buildCompletionManifestSchema.parse(readJsonFile(join(DIR, "manifest.json")));
   const ledger = completionLedgerSchema.parse(readJsonFile(join(DIR, "ledger.json")));
   const evidence = evidenceStoreSchema.parse(readJsonFile(join(DIR, "evidence.json")));
-  return { registry, manifest, ledger, evidence };
+  // Field-bound evidence fails closed without this, so the verifier must load
+  // it exactly as the evaluator does.
+  const lifecyclePath = join(DIR, "field-lifecycle.json");
+  const lifecycleLedger = fieldLifecycleLedgerSchema.parse(
+    existsSync(lifecyclePath) ? readJsonFile(lifecyclePath) : { contractVersion: 2, events: [] },
+  );
+  return { registry, manifest, ledger, evidence, lifecycleLedger };
 }
 
 /* ---------------------------------------------------------------- capture */
@@ -148,8 +156,9 @@ function verify(): void {
     return;
   }
   const before = readJsonFile(CAPTURE_PATH) as Record<string, any>;
-  const { registry, manifest, ledger, evidence } = loadState();
+  const { registry, manifest, ledger, evidence, lifecycleLedger } = loadState();
   const now = new Date().toISOString();
+  const lifecycle = verifyFieldLifecycle({ ledger: lifecycleLedger, registry });
   const checks: Check[] = [];
 
   // 1. the machine actually rebooted
@@ -195,6 +204,13 @@ function verify(): void {
     });
   }
 
+  checks.push({
+    name: "Field lifecycle ledger verifies",
+    pass: lifecycle.failures.length === 0,
+    detail: lifecycle.failures.slice(0, 2).join("; ")
+      || `${lifecycleLedger.events.length} events, ${lifecycle.boots.length} boot windows`,
+  });
+
   // 5. ledger continuity
   const storeResult = verifyEvidenceStore({
     records: evidence.records,
@@ -202,6 +218,7 @@ function verify(): void {
     registry,
     artifacts: artifactSource(),
     now,
+    lifecycle,
   });
   const ledgerResult = verifyCompletionLedger({
     ledger,
@@ -244,6 +261,7 @@ function verify(): void {
       registry,
       artifacts: artifactSource(),
       now,
+      lifecycle,
     });
     const rejected = !replayResult.valid.has(replay.evidenceId);
     checks.push({
@@ -307,6 +325,7 @@ function verify(): void {
         registry,
         artifacts: artifactSource(),
         now,
+        lifecycle,
       });
       const reasons = staleResult.failures.get(stale.evidenceId) ?? [];
       const rejected = !staleResult.valid.has(stale.evidenceId);

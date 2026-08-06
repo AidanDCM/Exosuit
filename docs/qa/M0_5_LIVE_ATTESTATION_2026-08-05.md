@@ -159,5 +159,43 @@ generation 1, boot `boot-7dfb720f84a05ff2`:
 
 The two original M0.5 evidence records were removed rather than back-dated.
 
-**Still outstanding:** a genuine restart, to prove persistence, key loading, and
-ledger continuity survive one.
+## Reboot verification — PASSED 2026-08-06
+
+A genuine restart was performed and verified: `2026-08-03T13:53:45Z` →
+`2026-08-06T14:05:10Z`. **18/18 checks passed.**
+
+| Check | Result |
+| --- | --- |
+| New host boot identity | boot time advanced by 3 days |
+| Persistence: keys, manifest, ledger, evidence, field-lifecycle | all five byte-identical |
+| Artifact store persistence | present |
+| Registry loads, root signature verifies | valid |
+| DPAPI key loading (root, host, ledger) | all readable after restart |
+| Field lifecycle ledger verifies | 4 events, 1 boot window |
+| Ledger continuity and unchanged tip | 24 events, chain intact |
+| Recorded evidence still verifies | 1 valid, 0 rejected |
+| Nonce replay rejected after restart | rejected |
+| Pre-reboot boot id rejected | rejected — *by the lifecycle rule* |
+| Host attestation stale after reboot | detected |
+
+The boot-id case is the one that mattered. It is now rejected with
+`observed after ... generation 1 was destroyed; observed after boot ... ended` —
+the lifecycle rule firing, not an incidental signature or artifact failure. The
+probe demands a boot-related reason, so an incidental rejection would still
+score as a gap.
+
+**Three harness defects were found and fixed during this work,** each of which
+had produced a misleading result:
+
+1. The boot-id probe reused the sample's artifact and nonce, so it was rejected
+   for the wrong reason and scored a pass.
+2. The capture was taken before the lifecycle work landed, so persistence
+   checks would have compared against stale hashes.
+3. The reboot verifier did not pass the lifecycle ledger it now requires, so
+   valid evidence appeared to fail and the boot-id probe was rejected for
+   "no lifecycle supplied" rather than by the boot rule.
+
+Each was corrected rather than reported as a contract finding. A verifier that
+reports the wrong cause is worse than one that reports nothing.
+
+**Contract v2.2 is ready to freeze.**
