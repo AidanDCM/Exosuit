@@ -47,6 +47,8 @@ import { verifyFieldLifecycle } from "./fieldLifecycle.js";
 import { fieldLifecycleLedgerSchema, type FieldLifecycleLedger } from "./contracts.js";
 import { evaluateBenchmark, parseTrialBundle } from "./benchmark.js";
 import { verifyKeyRegistry, verifyRecordSignature } from "./signing.js";
+import { EMPTY_CUSTODY_LEDGER, verifyKeyCustodyLedger, type KeyCustodyLedger } from "./keyCustody.js";
+import { EMPTY_RECOVERY_LEDGER, foldRecoveryLedger, type KeyRecoveryLedger } from "./keyRecovery.js";
 
 export interface CompletionEvaluationRequest {
   readonly manifest: BuildCompletionManifest;
@@ -57,6 +59,10 @@ export interface CompletionEvaluationRequest {
   readonly target: CompletionTarget;
   /** Host-signed Field lifecycle. Required for any Field-bound live evidence. */
   readonly fieldLifecycle?: FieldLifecycleLedger;
+  /** Key custody chain. Live evidence fails closed without it. */
+  readonly keyCustody?: KeyCustodyLedger;
+  /** Recovery grants. A key with an open grant cannot produce live evidence. */
+  readonly keyRecovery?: KeyRecoveryLedger;
   readonly now?: string;
   /** Overrides the in-repo pinned root fingerprints. Used by fixtures. */
   readonly acceptedRootFingerprints?: readonly string[];
@@ -106,12 +112,23 @@ export function evaluateBuildCompletion(request: CompletionEvaluationRequest): B
     integrityFailures.push(...lifecycleResult.failures.map((reason) => `field lifecycle: ${reason}`));
   }
 
+  // Key custody (v2.3). A malformed custody or recovery chain is an integrity
+  // failure in its own right, and separately leaves live records with nothing
+  // trustworthy to bind their backend claim to.
+  const custodyResult = verifyKeyCustodyLedger(request.keyCustody ?? EMPTY_CUSTODY_LEDGER);
+  integrityFailures.push(...custodyResult.failures.map((reason) => `key custody: ${reason}`));
+
+  const recoveryState = foldRecoveryLedger(request.keyRecovery ?? EMPTY_RECOVERY_LEDGER);
+  integrityFailures.push(...recoveryState.failures.map((reason) => `key recovery: ${reason}`));
+
   const evidenceResult = verifyEvidenceStore({
     records: evidence.records,
     manifest,
     registry: request.registry,
     artifacts: request.artifacts,
     now,
+    custody: custodyResult,
+    openRecoveryKeyIds: recoveryState.openKeyIds,
     ...(lifecycleResult === undefined ? {} : { lifecycle: lifecycleResult }),
   });
   integrityFailures.push(...evidenceResult.storeFailures.map((reason) => `evidence store: ${reason}`));

@@ -21,6 +21,13 @@ import {
 import { requiredRoleForLiveEvidence, verifyRecordSignature } from "./signing.js";
 import type { BuildCompletionManifest, CompletionEvidence, KeyRegistry } from "./contracts.js";
 import { checkAgainstLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
+import { verifyCustodyBinding, type CustodyVerificationResult } from "./keyCustody.js";
+
+/** No custody ledger supplied: live records fail closed against this. */
+const EMPTY_CUSTODY_VERIFICATION: CustodyVerificationResult = {
+  byId: new Map(),
+  failures: ["no key custody ledger supplied"],
+};
 
 /** Read an artifact by its content address. Returns undefined when absent. */
 export interface EvidenceArtifactSource {
@@ -43,6 +50,14 @@ export interface EvidenceVerificationRequest {
    * naming a destroyed generation cannot be distinguished from a live one.
    */
   readonly lifecycle?: LifecycleVerificationResult;
+  /**
+   * Verified key custody chain. Live evidence fails closed without it: with no
+   * verifiable account of how a signing key was protected, a record claiming
+   * `tpm` cannot be distinguished from one that fell back.
+   */
+  readonly custody?: CustodyVerificationResult;
+  /** Keys with an open recovery grant. Their live signatures are not acceptable. */
+  readonly openRecoveryKeyIds?: readonly string[];
 }
 
 export interface EvidenceVerificationResult {
@@ -112,6 +127,19 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
 
     // ---- live evidence must describe a real execution environment ----
     const isLiveClass = liveEvidenceClasses.has(record.evidenceClass);
+
+    // ---- key custody (v2.3): how was the signing key protected? ----
+    // Checked on every record but only binding for live ones, so v2.2 records
+    // stay verifiable. Without it a live signature said nothing about whether
+    // the TPM produced the key.
+    reasons.push(...verifyCustodyBinding({
+      record,
+      live: isLiveClass || record.designation === "live",
+      registryPurpose: request.registry.purpose,
+      custody: request.custody ?? EMPTY_CUSTODY_VERIFICATION,
+      openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
+    }));
+
     if (isLiveClass) {
       if (record.designation !== "live") {
         reasons.push(`gate requires live evidence but record is designated ${record.designation}`);

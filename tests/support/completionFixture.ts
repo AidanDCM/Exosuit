@@ -39,6 +39,7 @@ import {
   type SigningKey,
 } from "../../src/completion/index.js";
 import { artifactSourceFromMap } from "../../src/completion/evidence.js";
+import { nextCustodyEvent, type KeyCustodyLedger } from "../../src/completion/keyCustody.js";
 
 export const FIXTURE_COMMIT = "de52ad72b11ddafe969e5923f16c946e49cf04f4";
 export const BASELINE_AT = "2026-08-01T00:00:00.000Z";
@@ -74,6 +75,8 @@ export interface CompletionFixture {
   evidence: EvidenceStore;
   /** Host-signed Field lifecycle; Field-bound evidence is invalid without it. */
   fieldLifecycle: FieldLifecycleLedger;
+  /** Key custody chain (v2.3); live evidence is invalid without a matching event. */
+  keyCustody: KeyCustodyLedger;
   artifacts: Map<string, Uint8Array>;
   secrets: Record<string, string>;
   /** PEM of the fixture's offline root key. */
@@ -165,6 +168,43 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
   const openBoots = new Map<string, string>();
   const seenBoots = new Set<string>();
 
+  let custodyClock = Date.parse(LIFECYCLE_START);
+
+  /**
+   * Appends a custody attestation for a signing key and returns the binding a
+   * record must carry (v2.3). Modelled on the real path in `cli.ts`: the event
+   * is written first, then the record references it and the signature covers
+   * the reference.
+   */
+  const addCustody = (keyId: string): {
+    keyProtectionBackend: "tpm";
+    keyCustodyEventId: string;
+    registryPurpose: RegistryPurpose;
+  } => {
+    const purpose = fixture.registry.purpose;
+    const unsigned = nextCustodyEvent({
+      ledger: fixture.keyCustody,
+      eventId: `custody-${keyId}-${fixture.keyCustody.events.length}`,
+      keyId,
+      backend: "tpm",
+      registryPurpose: purpose,
+      machineId: MACHINE_ID,
+      recordedAt: new Date((custodyClock += 1000)).toISOString(),
+    });
+    fixture.keyCustody = {
+      contractVersion: 2,
+      events: [...fixture.keyCustody.events, {
+        ...unsigned,
+        signature: signRecord(unsigned, fixture.secrets[keyId] ?? fixture.secrets["k-evidence"]!),
+      }],
+    };
+    return {
+      keyProtectionBackend: "tpm",
+      keyCustodyEventId: unsigned.eventId,
+      registryPurpose: purpose,
+    };
+  };
+
   const sealRegistry = (input: { keys: SigningKey[]; revocations?: KeyRevocation[]; purpose?: RegistryPurpose }): KeyRegistry => {
     const core = {
       contractVersion: 2 as const,
@@ -191,6 +231,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
     ledger: { contractVersion: 2, events: [] },
     evidence: { contractVersion: 2, records: [] },
     fieldLifecycle: { contractVersion: 2, events: [] },
+    keyCustody: { contractVersion: 2, events: [] },
     artifacts: new Map<string, Uint8Array>(),
     secrets,
 
@@ -297,9 +338,17 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         signingKeyId: input.signingKeyId ?? (isLive ? "k-host" : "k-evidence"),
       };
 
+      // Custody binding (v2.3). Emitted for live records so the fixture models
+      // the real signing path, where the backend is reported by whatever opened
+      // the key rather than asserted by the caller.
+      const bindingFields = unsigned.designation === "live"
+        ? addCustody(unsigned.signingKeyId)
+        : {};
+      const bound = { ...unsigned, ...bindingFields };
+
       const record = {
-        ...unsigned,
-        signature: signRecord(unsigned, secrets[unsigned.signingKeyId] ?? secrets["k-evidence"]!),
+        ...bound,
+        signature: signRecord(bound, secrets[unsigned.signingKeyId] ?? secrets["k-evidence"]!),
       } as CompletionEvidence;
       fixture.evidence = { contractVersion: 2, records: [...fixture.evidence.records, record] };
       return record;
@@ -393,6 +442,7 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         artifacts: artifactSourceFromMap(fixture.artifacts),
         target,
         fieldLifecycle: fixture.fieldLifecycle,
+        keyCustody: fixture.keyCustody,
         now,
         acceptedRootFingerprints: [fixture.rootFingerprint],
       });

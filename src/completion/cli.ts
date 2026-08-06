@@ -59,6 +59,13 @@ import {
   recoveryConfirmation,
   type KeyRecoveryLedger,
 } from "./keyRecovery.js";
+import {
+  EMPTY_CUSTODY_LEDGER,
+  keyCustodyLedgerSchema,
+  nextCustodyEvent,
+  type KeyCustodyLedger,
+} from "./keyCustody.js";
+import type { KeyProtectionBackend } from "./policy.js";
 
 const ROOT = resolve(process.cwd());
 /**
@@ -79,6 +86,7 @@ const PATHS = {
   evidence: join(DIR, "evidence.json"),
   lifecycle: join(DIR, "field-lifecycle.json"),
   recovery: join(DIR, "key-recovery.json"),
+  custody: join(DIR, "key-custody.json"),
 };
 
 /* ------------------------------------------------------------------ util */
@@ -152,6 +160,66 @@ function privateKeyWithBackend(keyId: string): LoadedPrivateKey {
 
 function privateKey(keyId: string): string {
   return privateKeyWithBackend(keyId).pem;
+}
+
+function readCustodyLedger(): KeyCustodyLedger {
+  return existsSync(PATHS.custody)
+    ? keyCustodyLedgerSchema.parse(readJson(PATHS.custody))
+    : EMPTY_CUSTODY_LEDGER;
+}
+
+/**
+ * Opens a key and appends a custody attestation for that use (contract v2.3).
+ *
+ * Emitting the event here, at the moment the key is actually opened, is what
+ * makes the record's `keyProtectionBackend` a report rather than a claim: the
+ * value comes from `loadPrivateKey`, not from a caller's argument, and the same
+ * value is written to an append-only chain the verifier reads independently.
+ *
+ * Returns everything a signed record needs to bind itself to that event.
+ */
+function attestCustody(keyId: string): {
+  readonly pem: string;
+  readonly binding: {
+    readonly keyProtectionBackend: KeyProtectionBackend;
+    readonly keyCustodyEventId: string;
+    readonly registryPurpose: RegistryPurpose;
+    readonly recoveryGrantId?: string;
+  };
+} {
+  const material = privateKeyWithBackend(keyId);
+  const purpose = registryPurpose();
+  const ledger = readCustodyLedger();
+  const last = [...ledger.events].sort((a, b) => a.sequence - b.sequence).at(-1);
+  const recordedAt = new Date(
+    Math.max(Date.now(), last === undefined ? 0 : Date.parse(last.recordedAt) + 1),
+  ).toISOString();
+
+  const grantId = material.underRecoveryGrant === true ? `grant-${keyId}` : undefined;
+  const unsigned = nextCustodyEvent({
+    ledger,
+    eventId: `custody-${keyId}-${Date.now()}`,
+    keyId,
+    backend: material.backend,
+    registryPurpose: purpose,
+    ...(grantId === undefined ? {} : { recoveryGrantId: grantId }),
+    machineId: machineIdentity(),
+    recordedAt,
+  });
+  writeJson(PATHS.custody, keyCustodyLedgerSchema.parse({
+    contractVersion: 2,
+    events: [...ledger.events, { ...unsigned, signature: signRecord(unsigned, material.pem) }],
+  }));
+
+  return {
+    pem: material.pem,
+    binding: {
+      keyProtectionBackend: material.backend,
+      keyCustodyEventId: unsigned.eventId,
+      registryPurpose: purpose,
+      ...(grantId === undefined ? {} : { recoveryGrantId: grantId }),
+    },
+  };
 }
 
 function powershell(script: string): string {
@@ -638,9 +706,11 @@ function commandRecord(): void {
     signingKeyId: keyId,
   };
 
+  const custody = attestCustody(keyId);
+  const bound = { ...unsigned, ...custody.binding };
   const record: CompletionEvidence = {
-    ...unsigned,
-    signature: signRecord(unsigned, privateKey(keyId)),
+    ...bound,
+    signature: signRecord(bound, custody.pem),
   };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
@@ -699,7 +769,11 @@ function commandRecordArtifact(): void {
     signingKeyId: keyId,
   };
 
-  const record: CompletionEvidence = { ...unsigned, signature: signRecord(unsigned, privateKey(keyId)) };
+  // Custody is attested before the record is sealed, so the signature covers
+  // the binding and it cannot be attached to an existing record afterwards.
+  const custody = attestCustody(keyId);
+  const bound = { ...unsigned, ...custody.binding };
+  const record: CompletionEvidence = { ...bound, signature: signRecord(bound, custody.pem) };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
     records: [...store.records, record],
@@ -760,14 +834,19 @@ function commandTransition(): void {
     }
     : unsigned;
 
+  // Custody of the ledger key is attested before the event is sealed, so a
+  // promotion carries the same backend evidence a record does.
+  const custody = attestCustody(KEY.ledger());
+  const bound = { ...approved, ...custody.binding };
+
   writeJson(PATHS.ledger, completionLedgerSchema.parse({
     contractVersion: 2,
     events: [...ledger.events, {
-      ...approved,
-      signature: signRecord(approved, privateKey(KEY.ledger())),
+      ...bound,
+      signature: signRecord(bound, custody.pem),
     }],
   }));
-  console.log(`Recorded ${testId}: ${from} -> ${to}`);
+  console.log(`Recorded ${testId}: ${from} -> ${to} (key backend: ${custody.binding.keyProtectionBackend})`);
 }
 
 /* ------------------------------------------------------ field lifecycle */
@@ -836,6 +915,8 @@ function commandEvaluate(): void {
       artifacts: filesystemArtifactSource(),
       target,
       fieldLifecycle: readLifecycle(),
+      keyCustody: readCustodyLedger(),
+      keyRecovery: readRecoveryLedger(),
     });
     console.log(`\n${result.headline}`);
     console.log(`- proven gates: ${result.provenTestCount}/${result.requiredTestCount}`);

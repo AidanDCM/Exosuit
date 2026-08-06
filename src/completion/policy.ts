@@ -182,6 +182,16 @@ export const registryPurposes = ["development", "live"] as const;
 export type RegistryPurpose = (typeof registryPurposes)[number];
 
 /**
+ * How a private key was protected at rest when it produced a signature.
+ *
+ * Recorded from what actually opened the key, never asserted by a caller. A
+ * live registry may only ever report `tpm`; `dpapi` is reachable there solely
+ * under an explicit recovery grant, and `plaintext` never is.
+ */
+export const keyProtectionBackends = ["tpm", "dpapi", "plaintext"] as const;
+export type KeyProtectionBackend = (typeof keyProtectionBackends)[number];
+
+/**
  * SHA-256 fingerprints of the DER public halves of accepted offline root keys.
  *
  * The root PRIVATE key is held offline and never touches the repository. Only

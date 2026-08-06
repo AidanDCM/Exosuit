@@ -15,6 +15,7 @@ import {
   completionEvidenceClasses,
   completionStatuses,
   completionTargets,
+  keyProtectionBackends,
   registryPurposes,
 } from "./policy.js";
 
@@ -123,6 +124,31 @@ export type ExecutionEnvironment = z.infer<typeof executionEnvironmentSchema>;
 export const evidenceDesignationSchema = z.enum(["live", "synthetic"]);
 
 /**
+ * Key custody binding (contract v2.3), shared by every signed record.
+ *
+ * These say how the signing key was protected when the record was made, and
+ * point at the custody event that independently attests it. The signature
+ * covers them, so they cannot be edited onto an existing record.
+ *
+ * They are **optional in the schema and mandatory for live records**, enforced
+ * in the verifier rather than here. Making them structurally required would
+ * invalidate every record signed under v2.2 — including the recorded M0
+ * attestation — turning a protection improvement into a forced re-attestation
+ * of unrelated evidence. A live record that omits them is rejected, so the
+ * looser schema costs nothing: omission fails closed.
+ */
+export const keyCustodyBindingShape = {
+  /** The backend that actually opened the signing key. Live records must say `tpm`. */
+  keyProtectionBackend: z.enum(keyProtectionBackends).optional(),
+  /** The custody event attesting that backend for that key. */
+  keyCustodyEventId: identifier.optional(),
+  /** The purpose of the registry the signing key was used under. */
+  registryPurpose: z.enum(registryPurposes).optional(),
+  /** Present only when the key was opened under an explicit recovery grant. */
+  recoveryGrantId: identifier.optional(),
+} as const;
+
+/**
  * Signed, content-addressed evidence record. The record describes an artifact;
  * the artifact itself lives in the evidence store and is located by its own
  * SHA-256. A record is bound to exactly one test.
@@ -144,6 +170,7 @@ export const completionEvidenceSchema = z.object({
   nonce: z.string().regex(/^[a-f0-9]{32}$/),
   designation: evidenceDesignationSchema,
   signingKeyId: identifier,
+  ...keyCustodyBindingShape,
   signature: signatureValue,
 }).strict();
 export type CompletionEvidence = z.infer<typeof completionEvidenceSchema>;
@@ -266,6 +293,7 @@ export const completionLedgerEventSchema = z.object({
   reason: z.string().min(1).max(500),
   recordedAt: z.string().datetime(),
   signingKeyId: identifier,
+  ...keyCustodyBindingShape,
   signature: signatureValue,
 }).strict();
 export type CompletionLedgerEvent = z.infer<typeof completionLedgerEventSchema>;

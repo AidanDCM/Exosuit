@@ -24,13 +24,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import type { RegistryPurpose } from "./policy.js";
+import { keyProtectionBackends, type KeyProtectionBackend, type RegistryPurpose } from "./policy.js";
 import { unsealFromTpm } from "./tpmSeal.js";
 
 /** Which vault actually produced the key material. Recorded, never asserted. */
-export const keyProtectionBackends = ["tpm", "dpapi", "plaintext"] as const;
 export const keyProtectionBackendSchema = z.enum(keyProtectionBackends);
-export type KeyProtectionBackend = (typeof keyProtectionBackends)[number];
+export { keyProtectionBackends, type KeyProtectionBackend };
 
 export interface LoadedPrivateKey {
   readonly pem: string;

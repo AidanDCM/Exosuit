@@ -408,3 +408,70 @@ It does not touch §8.1 — the provisional root still lives on the machine it
 vouches for. Sealing binds the key to this TPM; it does not make an
 on-host-generated root into an offline one. `trustPosture` remains
 `provisional_personal_mvp` and `productionEligible` remains `false`.
+
+---
+
+## 14. Contract v2.3 — implemented, frozen pin deliberately NOT bumped
+
+Key custody binding. TPM enforcement at load (§13) stops a weaker backend from
+*producing* a live signature; it does not let a verifier, later and elsewhere,
+tell how the key was protected. v2.3 closes that.
+
+Every signed record may carry:
+
+```
+keyProtectionBackend   tpm | dpapi | plaintext
+keyCustodyEventId      the custody event attesting that backend for that key
+registryPurpose        development | live
+recoveryGrantId?       set only when signed under an explicit recovery grant
+```
+
+For a **live** record the verifier requires all of: `keyProtectionBackend` is
+`tpm`; no recovery grant open for the signing key; the custody event exists,
+names the same key, and reports the same backend; the custody chain verifies;
+and the registry purpose is `live`. It rejects a false TPM claim, missing
+backend information, a record signed under an open grant, a custody event that
+describes a different key, and any live signature from DPAPI or plaintext.
+
+| | |
+| --- | --- |
+| Custody ledger | `src/completion/keyCustody.ts`, state in `docs/qa/completion/key-custody.json` |
+| Binding check | `verifyCustodyBinding`, shared by the evidence and ledger verifiers |
+| Tests | `tests/security/keyCustody.adversarial.test.ts` (23) |
+
+### Why the fields are optional in the schema
+
+They are optional structurally and **mandatory for live records in the
+verifier**. Making them structurally required would invalidate every record
+signed under v2.2 — including the recorded M0 attestation — turning a
+protection improvement into a forced re-attestation of unrelated evidence. A
+live record that omits them is rejected, so omission buys nothing.
+
+### The freeze pin is intentionally stale
+
+`tests/completionContractFrozen.test.ts` **fails right now, by design**. The
+contract surface moved and the pin was deliberately left alone:
+
+```
+pinned    8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0
+computed  fa5d2584e4ad3630582f60e946fe816db1d2a4a78b3655e8e6b7fefa3148c2d5
+```
+
+Do **not** update the pin as a cleanup. Bumping `FROZEN_CONTRACT_LABEL` to 2.3
+and re-attesting M0 is a separate deliberate act, held until there is a green
+hosted CI run on the exact integrated head. Re-attesting against a contract no
+CI has independently validated would manufacture exactly the kind of unverified
+authoritative baseline the gate exists to prevent.
+
+Consequently `git push` is blocked by the pre-push parity hook while this
+stands. That is the freeze mechanism working, not a defect.
+
+### State
+
+```
+v2.3 schema and verifier      implemented, 581/582 tests pass
+frozen fingerprint            NOT bumped (held)
+M0 re-attestation             NOT done (held)
+HYP-001 live evidence         NOT recorded (held)
+exact-head hosted green run   required before the bump
+```
