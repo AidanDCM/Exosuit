@@ -40,6 +40,7 @@ import {
   type FieldLifecycleLedger,
 } from "./contracts.js";
 import { createFieldProvisioningPlan } from "../fieldProvisioningPlan.js";
+import { tpmStatus } from "./tpmSeal.js";
 import {
   deriveBootId,
   hyp001RunSchema,
@@ -190,6 +191,30 @@ function runPreflight(): PreflightResult {
     + ".IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)",
   ) === "True";
 
+  // Handoff §7.1 and §7.2. Both weaken every live attestation M1 produces, and
+  // both stop being fixable-for-free once trials are underway — evidence
+  // gathered under an unverified boot chain does not retroactively improve when
+  // the chain is fixed. So they are preconditions the harness checks, not notes
+  // someone is meant to remember.
+  const secureBoot = (() => {
+    try {
+      return powershell("Confirm-SecureBootUEFI") === "True" ? "enabled" : "disabled";
+    } catch {
+      // Unreadable is not the same as off, and must not be scored as either.
+      return "unreadable";
+    }
+  })();
+  const tpm = tpmStatus();
+  const sealedKeys = (() => {
+    const dir = process.env["EXOSUIT_COMPLETION_KEY_DIR"];
+    if (dir === undefined || !existsSync(dir)) return { dpapi: 0, tpm: 0 };
+    const names = readdirSync(dir);
+    return {
+      dpapi: names.filter((name) => name.endsWith(".pem.dpapi")).length,
+      tpm: names.filter((name) => name.endsWith(".pem.tpm")).length,
+    };
+  })();
+
   const checks: Record<string, unknown> = {
     host: hostReport,
     toolchain,
@@ -197,6 +222,7 @@ function runPreflight(): PreflightResult {
     isolatedSwitch: { name: config.networkSwitches.isolated, type: isolatedSwitch },
     elevated,
     machineId: machineIdentity(),
+    trustPosture: { secureBoot, tpm, sealedKeys },
   };
 
   const failures: string[] = [];
@@ -207,6 +233,26 @@ function runPreflight(): PreflightResult {
   if (toolchain.dotnet === "unavailable") {
     failures.push("no .NET SDK on PATH or in %USERPROFILE%\\.dotnet; HYP-001.4 requires it");
   }
+  if (secureBoot === "disabled") {
+    failures.push(
+      "host Secure Boot is disabled; the boot chain under the root key is unverified (§7.1). "
+      + "Enable it in UEFI firmware before collecting M1 evidence.",
+    );
+  } else if (secureBoot !== "enabled") {
+    // Unreadable is not evidence of either state, so it cannot be scored as a
+    // pass — but the remedy is to re-run elevated, not to change firmware.
+    failures.push(
+      "host Secure Boot state is unreadable; Confirm-SecureBootUEFI needs elevation. "
+      + "Re-run preflight elevated before trusting either answer.",
+    );
+  }
+  if (sealedKeys.dpapi > 0 && sealedKeys.tpm < sealedKeys.dpapi) {
+    failures.push(
+      `${sealedKeys.tpm}/${sealedKeys.dpapi} live keys are TPM-sealed; the host key still rests on DPAPI alone (§7.2). `
+      + "Run scripts/completion/seal-live-keys-to-tpm.mjs --apply.",
+    );
+  }
+  if (!tpm.available) failures.push(`TPM platform provider unavailable: ${tpm.reason ?? "unknown"}`);
 
   return { ok: failures.length === 0, checks: { ...checks, failures } };
 }

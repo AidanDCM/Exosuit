@@ -50,6 +50,7 @@ import { nextLedgerEvent } from "./ledger.js";
 import { nextLifecycleEvent } from "./fieldLifecycle.js";
 import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
+import { unsealFromTpm } from "./tpmSeal.js";
 
 const ROOT = resolve(process.cwd());
 /**
@@ -99,15 +100,27 @@ function privateKeyDir(): string {
 }
 
 /**
- * Reads a private key, preferring a DPAPI-protected vault file over plaintext.
+ * Reads a private key, strongest protection first: TPM vault, then DPAPI vault,
+ * then plaintext.
  *
  * DPAPI binds the ciphertext to this Windows user on this machine, so a copied
- * vault file is useless elsewhere. It is a local-vault fallback for the case
- * where no BitLocker removable drive is available; it is not equivalent to an
- * offline root held off the signing machine.
+ * vault file is useless elsewhere — but its master key derives from the user's
+ * credentials, so whatever recovers those recovers the vault. A TPM vault also
+ * binds to the physical TPM: the wrapping key is created inside it and is
+ * non-exportable, so the vault cannot be opened on another machine even with
+ * the account password. Neither is equivalent to an offline root held off the
+ * signing machine.
+ *
+ * The order is preference, not exclusion. Sealing is additive, so a key may
+ * have both vaults; that is deliberate, and it is what makes sealing reversible
+ * if the TPM is ever cleared.
  */
 function privateKey(keyId: string): string {
   const dir = privateKeyDir();
+  const tpmPath = join(dir, `${keyId}.pem.tpm`);
+  if (existsSync(tpmPath)) {
+    return unsealFromTpm(JSON.parse(readFileSync(tpmPath, "utf8"))).toString("utf8");
+  }
   const vaultPath = join(dir, `${keyId}.pem.dpapi`);
   if (existsSync(vaultPath)) return dpapiUnprotect(vaultPath);
   return readFileSync(join(dir, `${keyId}.pem`), "utf8");

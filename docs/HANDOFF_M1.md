@@ -108,7 +108,7 @@ it. Do not just update the pin.
 | Host | `AIDANS-DELL7430`, Dell Latitude 7430, Windows 11 Pro build 26200 |
 | Machine id | `machine-9c62d678dd970f15` = `sha256(hostname)[0:16]` |
 | Hyper-V | installed and running; account is in **Hyper-V Administrators** |
-| Live private keys | `C:\Users\Aidan\.exosuit-live-keys` — 8 DPAPI vault files, **no plaintext** |
+| Live private keys | `C:\Users\Aidan\.exosuit-live-keys` — 8 keys, each with a TPM vault **and** a DPAPI vault, **no plaintext** (§13) |
 | Dev fixture keys | `C:\Users\Aidan\AppData\Local\Temp\exo-keys` (regenerable; do not rotate) |
 | Field storage | `C:\ProgramData\Exosuit\Fields` — 23 prior generations |
 | Base images | `C:\ProgramData\Exosuit\Images` — 11 read-only VHDX, v10…v25 |
@@ -145,7 +145,7 @@ export EXOSUIT_COMPLETION_KEY_PREFIX="live-"
 | Promote a gate | `tsx src/completion/cli.ts transition --test <ID> --from ready_for_live --to passed --evidence <ids> --issuer <who> --reviewer <who> --reason "<why>"` |
 | Negatives vs real artifacts | `EXOSUIT_COMPLETION_DIR=docs/qa/completion-m05 tsx src/completion/m05Negatives.ts` |
 | Reboot check | `tsx src/completion/rebootVerification.ts capture` → restart → `verify` |
-| Full suite | `npx vitest run` (516 tests, 84 files) |
+| Full suite | `npx vitest run` (547 tests, 86 files) |
 
 `record` only records when the command exits 0. Recording is a *claim*;
 `evaluate` is the *judgment*. A record can be written and still be rejected.
@@ -184,12 +184,29 @@ exact baseline commit, a fresh nonce, and a unique artifact.
 Both weaken every live attestation M1 produces. Both are fixable **now** without
 invalidating anything recorded — that stops being true once trials are underway.
 
-1. **Host Secure Boot is OFF.** Confirmed `secureBoot: false` — disabled, not
-   unreadable. The VM's Secure Boot is guest firmware and proves nothing about
-   the host. The boot chain under the root key is unverified.
-2. **TPM 2.0 is present, ready, and owned** (STM, spec `2.0, 0, 1.38`,
-   `managedAuthLevel: Full`) **but unused.** The host key rests on DPAPI alone.
-   Sealing is available today.
+1. **Host Secure Boot is OFF — still open, and only you can close it.**
+   Confirmed `secureBoot: false` — disabled, not unreadable. The VM's Secure
+   Boot is guest firmware and proves nothing about the host. The boot chain
+   under the root key is unverified.
+
+   This is a UEFI firmware setting. It cannot be changed from Windows, from a
+   script, or by the assistant; it needs physical presence at boot:
+
+   1. Save work. `shutdown /r /fw /t 0` — or restart and press **F2** during the
+      Dell splash.
+   2. In firmware setup: **Boot Configuration → Secure Boot → Enabled**, with
+      Secure Boot Mode left at **Deployed**. Boot list must be **UEFI**, not
+      Legacy/CSM.
+   3. Save and exit. Then confirm from an **elevated** PowerShell:
+      `Confirm-SecureBootUEFI` must return `True`.
+   4. Re-run `npm run hyp001:preflight` elevated; the §7.1 failure should clear.
+
+   Preflight now blocks `--apply` while this is disabled, and treats
+   *unreadable* as a separate failure — `Confirm-SecureBootUEFI` needs
+   elevation, and an unelevated read is not evidence of either state.
+
+2. **TPM 2.0 sealing — DONE (2026-08-06).** All 8 live keys are now sealed
+   under a non-exportable TPM platform key, verified end to end. See §13.
 
 Also worth settling:
 
@@ -277,7 +294,7 @@ anything.
 
 1. Read `docs/COMPLETION_GATE_V2.md` §"Field lifecycle ledger" and §"Freeze".
 2. Run `npm run validate:completion` and confirm `18.31 / 59.30 / 0` with exit 0.
-3. Run `npx vitest run` and confirm 535 pass — especially
+3. Run `npx vitest run` and confirm 547 pass — especially
    `completionContractFrozen`.
 4. Decide Secure Boot and TPM sealing (§7) **before** any M1 evidence.
 5. Run the HYP-001 harness (§12).
@@ -335,3 +352,59 @@ What the harness handles that is easy to get wrong:
 It requires `vm/field-host-config.local.json`, which is gitignored and lives only
 on the host. It does **not** promote — promotion stays a separate signed
 transition with an independent reviewer.
+
+---
+
+## 13. TPM sealing — what was done
+
+Closes §7.2. The live keys previously rested on DPAPI alone.
+
+DPAPI binds ciphertext to a Windows *user account* on a machine, and its master
+key derives from that user's credentials — so whatever recovers the credentials
+recovers the vault. The keys are now additionally wrapped under a key created
+inside the TPM, which is non-exportable and cannot be moved to another machine
+even with the account password.
+
+The signing keys did not move *into* the TPM. TPM 2.0 platform keys are RSA and
+ECDSA; the completion gate signs Ed25519. So each Ed25519 private key is
+encrypted at rest under a TPM-held key:
+
+```
+random 256-bit data key  ->  AES-256-GCM over the private key PEM
+data key                 ->  RSA-OAEP-SHA256 under the TPM platform key
+```
+
+| | |
+| --- | --- |
+| Module | `src/completion/tpmSeal.ts` |
+| Operator script | `scripts/completion/seal-live-keys-to-tpm.mjs` |
+| Tests | `tests/tpmSeal.test.ts` (12, against the real TPM) |
+| Provider | `Microsoft Platform Crypto Provider` |
+| Wrapping key | `exosuit-completion-host-wrap-v1`, RSA-2048, `ExportPolicy: None` |
+| Sealed | 8/8 live keys, `<key>.pem.tpm` beside `<key>.pem.dpapi` |
+
+**Nothing was rotated.** Public keys, the registry, the ledger and every
+existing signature are untouched, so no recorded evidence changed meaning —
+sealing changes how a key is stored, not what it is. `validate:completion` is
+unchanged at `18.31 / 59.30 / 0`, exit 0.
+
+Verified after sealing: all 7 registry keys unseal from the TPM, produce valid
+Ed25519 signatures, and match the public keys in `keys.json`.
+
+**The DPAPI vaults were kept.** Sealing is additive and never deletes them. If
+the TPM is cleared or the machine is reimaged, the sealed vaults become
+unreadable and DPAPI is the fallback — deleting the `.pem.tpm` files restores
+the previous behaviour exactly. `privateKey()` in `cli.ts` prefers TPM, then
+DPAPI, then plaintext.
+
+The script is safe to re-run: it verifies an existing sealed vault still opens
+and matches before it would replace it, and it seals, unseals and compares every
+key *before* writing anything. A key that does not round-trip is skipped and
+reported rather than written.
+
+### What this does not fix
+
+It does not touch §8.1 — the provisional root still lives on the machine it
+vouches for. Sealing binds the key to this TPM; it does not make an
+on-host-generated root into an offline one. `trustPosture` remains
+`provisional_personal_mvp` and `productionEligible` remains `false`.
