@@ -454,7 +454,7 @@ contract surface moved and the pin was deliberately left alone:
 
 ```
 pinned    8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0
-computed  fa5d2584e4ad3630582f60e946fe816db1d2a4a78b3655e8e6b7fefa3148c2d5
+computed  866ed12b779c2e9113451b1f8a92723487afdfd0fb92115ca68c706e903b3511
 ```
 
 Do **not** update the pin as a cleanup. Bumping `FROZEN_CONTRACT_LABEL` to 2.3
@@ -475,3 +475,34 @@ M0 re-attestation             NOT done (held)
 HYP-001 live evidence         NOT recorded (held)
 exact-head hosted green run   required before the bump
 ```
+
+
+### TPM participation proof (added after review)
+
+The custody event is signed by the *same Ed25519 key whose custody it
+describes*, so a holder of that key could mint record and custody event
+together and have them agree. The backend claim was still a self-report.
+
+`src/completion/tpmAttestation.ts` closes that. A separate RSA key is created
+inside the TPM (`exosuit-completion-attestation-v1`, non-exportable) and signs a
+challenge per live signing event naming the record digest, completion key,
+registry hash, machine, custody event, recovery state, a nonce and a timestamp.
+Verification is pure — no TPM needed — so another machine can check it.
+
+Rejected: a missing proof, a reused proof, a proof for another record or
+completion key, an unapproved or self-inconsistent attestation key, a mismatched
+registry, machine, custody event or recovery state, and a forged signature.
+16 adversarial tests in `tests/security/tpmAttestation.adversarial.test.ts`.
+
+**What it still does not prove.** The completion key and the attestation key are
+distinct objects, so this shows the TPM *participated in this signing event*,
+not that *this Ed25519 key was unwrapped by that TPM*. Binding those together
+needs the completion key itself to be a TPM key, which TPM 2.0 cannot do for
+Ed25519. The residual gap is narrow and stated rather than papered over.
+
+### Still outstanding for v2.3
+
+Versioned record schemas — `recordVersion: "2.2" | "2.3"` as a discriminated
+union with the custody fields structurally required on 2.3, explicit
+`recoveryGrantId: null`, and rejection of new v2.2 live records after a
+migration cutoff. Not started.

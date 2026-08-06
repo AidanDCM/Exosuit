@@ -65,6 +65,19 @@ import {
   nextCustodyEvent,
   type KeyCustodyLedger,
 } from "./keyCustody.js";
+import {
+  EMPTY_TPM_PROOF_STORE,
+  ensureAttestationKey,
+  attestationKeyFingerprint,
+  recordDigest,
+  recoveryStateDigest,
+  registryHash,
+  signTpmChallenge,
+  tpmAttestationStatus,
+  tpmProofStoreSchema,
+  TPM_ATTESTATION_KEY_NAME,
+  type TpmProofStore,
+} from "./tpmAttestation.js";
 import type { KeyProtectionBackend } from "./policy.js";
 
 const ROOT = resolve(process.cwd());
@@ -87,6 +100,7 @@ const PATHS = {
   lifecycle: join(DIR, "field-lifecycle.json"),
   recovery: join(DIR, "key-recovery.json"),
   custody: join(DIR, "key-custody.json"),
+  tpmProofs: join(DIR, "tpm-proofs.json"),
 };
 
 /* ------------------------------------------------------------------ util */
@@ -220,6 +234,61 @@ function attestCustody(keyId: string): {
       ...(grantId === undefined ? {} : { recoveryGrantId: grantId }),
     },
   };
+}
+
+/**
+ * Attestation keys this host trusts. Derived from the key currently in the TPM
+ * rather than pinned in the repository: pinning would make the file a second
+ * trust root that code review alone protects, which is the weakness already
+ * recorded against the key registry. The verifier still refuses any proof from
+ * a key this host cannot produce.
+ */
+function acceptedAttestationFingerprints(): readonly string[] {
+  const status = tpmAttestationStatus();
+  return status.publicKey === undefined ? [] : [attestationKeyFingerprint(status.publicKey)];
+}
+
+function readTpmProofs(): TpmProofStore {
+  return existsSync(PATHS.tpmProofs)
+    ? tpmProofStoreSchema.parse(readJson(PATHS.tpmProofs))
+    : EMPTY_TPM_PROOF_STORE;
+}
+
+/**
+ * Issues a TPM participation proof for an assembled-but-unsigned record.
+ *
+ * Ordering matters and is not incidental: the proof commits to the record's
+ * content, the record then references the proof id, and the Ed25519 signature
+ * covers both. Signing first would let a proof be swapped afterwards; proving
+ * first without referencing would leave the proof unattached.
+ */
+function issueTpmProof(record: Record<string, unknown>, custodyEventId: string): string {
+  const store = readTpmProofs();
+  const publicKey = ensureAttestationKey();
+  const state = foldRecoveryLedger(readRecoveryLedger());
+  const challenge = {
+    recordDigest: recordDigest(record),
+    completionKeyId: String(record["signingKeyId"]),
+    registryHash: registryHash(readJson<KeyRegistry>(PATHS.keys)),
+    machineId: machineIdentity(),
+    custodyEventId,
+    recoveryStateDigest: recoveryStateDigest(state.openKeyIds),
+    nonce: randomBytes(16).toString("hex"),
+    timestamp: new Date().toISOString(),
+  };
+  const proofId = `proof-${Date.now()}-${randomBytes(3).toString("hex")}`;
+  writeJson(PATHS.tpmProofs, tpmProofStoreSchema.parse({
+    contractVersion: 2,
+    proofs: [...store.proofs, {
+      proofId,
+      challenge,
+      attestationKeyName: TPM_ATTESTATION_KEY_NAME,
+      attestationKeyFingerprint: attestationKeyFingerprint(publicKey),
+      attestationPublicKey: publicKey,
+      signature: signTpmChallenge(challenge),
+    }],
+  }));
+  return proofId;
 }
 
 function powershell(script: string): string {
@@ -707,7 +776,10 @@ function commandRecord(): void {
   };
 
   const custody = attestCustody(keyId);
-  const bound = { ...unsigned, ...custody.binding };
+  const withCustody = { ...unsigned, ...custody.binding };
+  const bound = isLive
+    ? { ...withCustody, tpmProofId: issueTpmProof(withCustody, custody.binding.keyCustodyEventId) }
+    : withCustody;
   const record: CompletionEvidence = {
     ...bound,
     signature: signRecord(bound, custody.pem),
@@ -772,7 +844,10 @@ function commandRecordArtifact(): void {
   // Custody is attested before the record is sealed, so the signature covers
   // the binding and it cannot be attached to an existing record afterwards.
   const custody = attestCustody(keyId);
-  const bound = { ...unsigned, ...custody.binding };
+  const withCustody = { ...unsigned, ...custody.binding };
+  const bound = isLive
+    ? { ...withCustody, tpmProofId: issueTpmProof(withCustody, custody.binding.keyCustodyEventId) }
+    : withCustody;
   const record: CompletionEvidence = { ...bound, signature: signRecord(bound, custody.pem) };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
@@ -917,6 +992,8 @@ function commandEvaluate(): void {
       fieldLifecycle: readLifecycle(),
       keyCustody: readCustodyLedger(),
       keyRecovery: readRecoveryLedger(),
+      tpmProofs: readTpmProofs().proofs,
+      acceptedAttestationFingerprints: acceptedAttestationFingerprints(),
     });
     console.log(`\n${result.headline}`);
     console.log(`- proven gates: ${result.provenTestCount}/${result.requiredTestCount}`);

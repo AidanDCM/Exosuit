@@ -22,6 +22,7 @@ import { requiredRoleForLiveEvidence, verifyRecordSignature } from "./signing.js
 import type { BuildCompletionManifest, CompletionEvidence, KeyRegistry } from "./contracts.js";
 import { checkAgainstLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
 import { verifyCustodyBinding, type CustodyVerificationResult } from "./keyCustody.js";
+import { registryHash, verifyTpmProofBinding, type TpmProof } from "./tpmAttestation.js";
 
 /** No custody ledger supplied: live records fail closed against this. */
 const EMPTY_CUSTODY_VERIFICATION: CustodyVerificationResult = {
@@ -58,6 +59,16 @@ export interface EvidenceVerificationRequest {
   readonly custody?: CustodyVerificationResult;
   /** Keys with an open recovery grant. Their live signatures are not acceptable. */
   readonly openRecoveryKeyIds?: readonly string[];
+  /** TPM participation proofs, one per live signing event. */
+  readonly tpmProofs?: readonly TpmProof[];
+  /** Attestation keys this deployment trusts. Empty means no proof can pass. */
+  readonly acceptedAttestationFingerprints?: readonly string[];
+  /**
+   * Escape hatch for fixtures that predate v2.3 and for the migration window.
+   * Defaults to requiring a proof; setting it false is a deliberate downgrade
+   * and is never done by the CLI.
+   */
+  readonly requireTpmProof?: boolean;
 }
 
 export interface EvidenceVerificationResult {
@@ -77,6 +88,8 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
   const seenEvidenceIds = new Set<string>();
   const seenArtifacts = new Map<string, string>();
   const seenNonces = new Map<string, string>();
+  // One TPM proof may vouch for exactly one record.
+  const consumedProofIds = new Set<string>();
   const knownTestIds = new Set(request.manifest.tests.map((test) => test.id));
 
   const nowMs = Date.parse(request.now);
@@ -132,13 +145,31 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
     // Checked on every record but only binding for live ones, so v2.2 records
     // stay verifiable. Without it a live signature said nothing about whether
     // the TPM produced the key.
+    const treatAsLive = isLiveClass || record.designation === "live";
     reasons.push(...verifyCustodyBinding({
       record,
-      live: isLiveClass || record.designation === "live",
+      live: treatAsLive,
       registryPurpose: request.registry.purpose,
       custody: request.custody ?? EMPTY_CUSTODY_VERIFICATION,
       openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
     }));
+
+    // ---- TPM participation proof (v2.3) ----
+    // Custody alone is a self-report: the custody event is signed by the same
+    // Ed25519 key it vouches for. The proof comes from a separate
+    // non-exportable TPM key, so holding the completion key is not enough.
+    if (treatAsLive && request.requireTpmProof !== false) {
+      reasons.push(...verifyTpmProofBinding({
+        record: record as unknown as Record<string, unknown> & { signingKeyId: string; tpmProofId?: string },
+        proofs: request.tpmProofs ?? [],
+        registryHash: registryHash(request.registry),
+        machineId: record.environment.machineId,
+        openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
+        ...(record.keyCustodyEventId === undefined ? {} : { custodyEventId: record.keyCustodyEventId }),
+        acceptedAttestationFingerprints: request.acceptedAttestationFingerprints ?? [],
+        consumedProofIds,
+      }));
+    }
 
     if (isLiveClass) {
       if (record.designation !== "live") {

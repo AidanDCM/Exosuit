@@ -49,6 +49,7 @@ import { evaluateBenchmark, parseTrialBundle } from "./benchmark.js";
 import { verifyKeyRegistry, verifyRecordSignature } from "./signing.js";
 import { EMPTY_CUSTODY_LEDGER, verifyKeyCustodyLedger, type KeyCustodyLedger } from "./keyCustody.js";
 import { EMPTY_RECOVERY_LEDGER, foldRecoveryLedger, type KeyRecoveryLedger } from "./keyRecovery.js";
+import type { TpmProof } from "./tpmAttestation.js";
 
 export interface CompletionEvaluationRequest {
   readonly manifest: BuildCompletionManifest;
@@ -63,6 +64,10 @@ export interface CompletionEvaluationRequest {
   readonly keyCustody?: KeyCustodyLedger;
   /** Recovery grants. A key with an open grant cannot produce live evidence. */
   readonly keyRecovery?: KeyRecoveryLedger;
+  /** TPM participation proofs, one per live signing event. */
+  readonly tpmProofs?: readonly TpmProof[];
+  /** Attestation keys this deployment trusts. */
+  readonly acceptedAttestationFingerprints?: readonly string[];
   readonly now?: string;
   /** Overrides the in-repo pinned root fingerprints. Used by fixtures. */
   readonly acceptedRootFingerprints?: readonly string[];
@@ -129,6 +134,8 @@ export function evaluateBuildCompletion(request: CompletionEvaluationRequest): B
     now,
     custody: custodyResult,
     openRecoveryKeyIds: recoveryState.openKeyIds,
+    tpmProofs: request.tpmProofs ?? [],
+    acceptedAttestationFingerprints: request.acceptedAttestationFingerprints ?? [],
     ...(lifecycleResult === undefined ? {} : { lifecycle: lifecycleResult }),
   });
   integrityFailures.push(...evidenceResult.storeFailures.map((reason) => `evidence store: ${reason}`));

@@ -146,6 +146,15 @@ export const keyCustodyBindingShape = {
   registryPurpose: z.enum(registryPurposes).optional(),
   /** Present only when the key was opened under an explicit recovery grant. */
   recoveryGrantId: identifier.optional(),
+  /**
+   * The TPM participation proof for this signing event.
+   *
+   * Without it, `keyProtectionBackend: tpm` rests on the custody event — which
+   * is signed by the same Ed25519 key it describes, so a holder of that key
+   * could mint record and custody event together and have them agree. The proof
+   * is produced by a separate non-exportable TPM key, so it cannot be.
+   */
+  tpmProofId: identifier.optional(),
 } as const;
 
 /**
