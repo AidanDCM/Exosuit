@@ -49,7 +49,11 @@
     "test:completion": "vitest run tests/completionGateV2.test.ts tests/security/buildCompletionPlanV2.adversarial.test.ts tests/security/liveAttestation.adversarial.test.ts tests/buildCompletionPlan.test.ts",
     "completion:root-key": "tsx src/completion/cli.ts root-key",
     "completion:seal-registry": "tsx src/completion/cli.ts seal-registry",
-    "completion:revoke": "tsx src/completion/cli.ts revoke"
+    "completion:revoke": "tsx src/completion/cli.ts revoke",
+    "hyp001:preflight": "tsx src/completion/hyp001Harness.ts preflight",
+    "hyp001:cycles": "tsx src/completion/hyp001Harness.ts cycles",
+    "hyp001:record": "tsx src/completion/hyp001Harness.ts record",
+    "test:hyp001": "vitest run tests/hyp001Harness.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

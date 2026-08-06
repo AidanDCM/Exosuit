@@ -277,10 +277,61 @@ anything.
 
 1. Read `docs/COMPLETION_GATE_V2.md` §"Field lifecycle ledger" and §"Freeze".
 2. Run `npm run validate:completion` and confirm `18.31 / 59.30 / 0` with exit 0.
-3. Run `npx vitest run` and confirm 516 pass — especially
+3. Run `npx vitest run` and confirm 534 pass — especially
    `completionContractFrozen`.
 4. Decide Secure Boot and TPM sealing (§7) **before** any M1 evidence.
-5. Build the HYP-001 harness: three create/boot/ready/stop/destroy cycles with a
-   lifecycle event per transition, one evidence artifact per cycle.
+5. Run the HYP-001 harness (§12).
 6. Only then record and promote. Promotion needs a reviewer who is not the
    issuer, holding `technical_review`.
+
+---
+
+## 12. The HYP-001 harness
+
+`src/completion/hyp001Harness.ts` drives the three lifecycle cycles. The rules a
+run must satisfy live separately in `src/completion/hyp001.ts`, which is pure and
+covered by `tests/hyp001Harness.test.ts`, so the harness and its tests cannot
+drift onto different definitions of "three cycles passed".
+
+Three commands, deliberately not one:
+
+```bash
+npm run hyp001:preflight
+```
+
+HYP-001.1–.6, read-only. Writes `artifacts/hyp001/preflight.json`.
+
+```bash
+npm run hyp001:cycles
+```
+
+Dry run — prints the plan, provisions nothing. Add
+`-- --apply --confirm "RUN HYP-001 LIVE CYCLES"` to execute. Must be elevated,
+from an account in Hyper-V Administrators. Preflight runs first and blocks
+`--apply` on failure.
+
+```bash
+npm run hyp001:record
+```
+
+Records one `hyperv_host_guest` artifact per cycle. Separate from `cycles` so a
+failed or partial run leaves no claim behind, and so the artifacts get read
+before anything is signed.
+
+What the harness handles that is easy to get wrong:
+
+- **Memory.** The plan builder defaults to 8 GiB startup / 12 GiB max, which will
+  not start a Field on this host. The harness pins 1 / 2 / 4 GiB dynamic (§7.3).
+- **Boot window containment.** Evidence `observedAt` must fall inside
+  `[booted, stopped)`, and that window is defined by the `recordedAt` the CLI
+  wrote — it clamps forward for monotonicity — not by the harness's own clock.
+  The harness reads the value back rather than assuming it.
+- **Boot id.** `sha256(vmGuid|powerOnTimeUtc)`, derived from Hyper-V uptime read
+  immediately after start. Host-observed, not guest-attested (§8.2).
+- **Reasons, not booleans.** `validateHyp001Run` returns failure strings and the
+  tests assert on them, because a rejection for the wrong reason already scored
+  a false green once (§9).
+
+It requires `vm/field-host-config.local.json`, which is gitignored and lives only
+on the host. It does **not** promote — promotion stays a separate signed
+transition with an independent reviewer.
