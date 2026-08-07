@@ -4,15 +4,43 @@ Deadline-mode program for an operational, restricted desktop project operator by
 
 ## Start here
 
-1. [`DEADLINE_EXECUTION_PLAN.md`](./DEADLINE_EXECUTION_PLAN.md) — scope, calendar, critical path, agent lanes, daily rhythm, and stop conditions.
-2. [`AGENT_WORK_QUEUE.yaml`](./AGENT_WORK_QUEUE.yaml) — machine-readable owner/dependency/acceptance queue for Codex and Claude sessions.
-3. [`INTERACTION_PERSONALITY_CONTRACT.md`](./INTERACTION_PERSONALITY_CONTRACT.md) — safe visible-input and personality boundaries.
-4. [`RELEASE_GATES.md`](./RELEASE_GATES.md) — PD0-PD5 acceptance gates and operational telemetry.
+1. [`DEVELOPER_HANDOFF.md`](./DEVELOPER_HANDOFF.md) — current baseline, merged work, retired branches, exact next actions, commands, and developer ownership.
+2. [`DEADLINE_EXECUTION_PLAN.md`](./DEADLINE_EXECUTION_PLAN.md) — scope, calendar, critical path, agent lanes, daily rhythm, and stop conditions.
+3. [`AGENT_WORK_QUEUE.yaml`](./AGENT_WORK_QUEUE.yaml) — machine-readable owner/dependency/acceptance queue for Codex and Claude sessions.
+4. [`INTERACTION_PERSONALITY_CONTRACT.md`](./INTERACTION_PERSONALITY_CONTRACT.md) — visible-input and bounded personality rules.
+5. [`RELEASE_GATES.md`](./RELEASE_GATES.md) — PD0-PD5 acceptance gates and operational telemetry.
+
+## Current baseline
+
+```text
+integration branch              codex/unify-glove-field @ 1ac8488
+contract                         frozen v2.3
+M0                               re-attested and proven
+published evidence artifacts     6, clean-clone/Linux verified
+hosted CI                        green on merged #30 and PR #32's documented head
+completion                       18.31 proven / 59.30 ready / 0 live
+current hard blocker             host Secure Boot disabled
+next formal gate                 HYP-001
+```
+
+Merged into the baseline:
+
+- #28 — M1 preparation, TPM enforcement, recovery, HYP-001 harness
+- #29 — v2.3 custody, TPM participation proof, versioned records, M0 re-attestation
+- #30 — portable evidence artifacts, reconciliation invariant, evidence secret scan
+
+Retired development/monitor targets:
+
+- `codex/m1-handoff`
+- `codex/contract-v23-key-custody`
+- `codex/publish-evidence-artifacts`
+
+Use `codex/unify-glove-field`, PR #32, and issue #31 instead.
 
 ## Immediate order
 
 - PD-001: freeze the exact project workflow and action policy
-- PD-002: reconcile status and make evidence portable
+- PD-002: keep status documents consistent with the now-portable evidence baseline
 - PD-003: operator enables Secure Boot and captures signed preflight
 - PD-004: prove HYP-001
 - PD-005: prove CHN-001
@@ -20,6 +48,7 @@ Deadline-mode program for an operational, restricted desktop project operator by
 - PD-011: add personality only after correctness and recovery exist
 - PD-012: burn-in
 - PD-013: cut the restricted September release
+- PD-014: convert September-November operation into daily-driver evidence
 
 ## Program rule
 
