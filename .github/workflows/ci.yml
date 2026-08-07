@@ -152,6 +152,17 @@ jobs:
           for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
       - name: Install exact locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --fund=false
+      # Evidence artifacts are committed so a content-addressed record can be
+      # checked by someone other than the machine that produced it. The
+      # reconciliation invariant itself lives in
+      # tests/completionArtifactReconciliation.test.ts and therefore already runs
+      # in the full suite below; only the secret scan needs its own step.
+      #
+      # Both need no private keys, which is what lets hosted CI enforce them at
+      # all — validate:completion cannot run here, it requires the TPM-sealed
+      # signing keys as well as the artifact store.
+      - name: Secret scan over published evidence artifacts
+        run: npm run scan:evidence-artifacts
       - name: Generate deterministic npm SBOM
         shell: bash
         run: |
@@ -361,12 +372,3 @@ jobs:
               exit 1
             }
           echo 'Repository manual and secret-shape contract passed.'
-
-      # Evidence artifacts are committed so a content-addressed record can be
-      # checked by someone other than the machine that made it. These two checks
-      # need no private keys, so hosted CI can enforce them even though it can
-      # never run validate:completion.
-      - name: Completion evidence artifact reconciliation
-        run: npm run validate:evidence-artifacts
-      - name: Secret scan over published evidence artifacts
-        run: npm run scan:evidence-artifacts
