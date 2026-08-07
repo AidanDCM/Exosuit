@@ -43,6 +43,11 @@ import { createFieldProvisioningPlan } from "../fieldProvisioningPlan.js";
 import { tpmStatus } from "./tpmSeal.js";
 import {
   deriveBootId,
+  evaluateCompetingFieldVms,
+  evaluateFreeMemory,
+  FIELD_VM_PREFIX,
+  MINIMUM_FREE_MEMORY_BYTES,
+  type FieldVmState,
   hyp001RunSchema,
   resolveDotnetSdk,
   validateHyp001Run,
@@ -215,6 +220,38 @@ function runPreflight(): PreflightResult {
     };
   })();
 
+  // ---- pre-apply resource gates ----
+  // Both are measured immediately before provisioning rather than at plan time,
+  // because both move. Each probe returns undefined on failure and the pure
+  // evaluator rejects on undefined: an unreadable host is not a clear host.
+  const freeMemoryBytes = (() => {
+    try {
+      // Win32_OperatingSystem reports FreePhysicalMemory in kibibytes.
+      const kib = Number.parseFloat(
+        powershell("(Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory"),
+      );
+      return Number.isFinite(kib) ? kib * 1024 : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const fieldVms: readonly FieldVmState[] | undefined = (() => {
+    try {
+      const raw = powershell(
+        `$vms = @(Get-VM -Name '${FIELD_VM_PREFIX}*' -ErrorAction SilentlyContinue `
+        + "| Select-Object @{n='name';e={$_.Name}}, @{n='state';e={$_.State.ToString()}}); "
+        + "ConvertTo-Json -InputObject $vms -Compress -Depth 3",
+      );
+      if (raw === "" || raw === "null") return [];
+      const parsed: unknown = JSON.parse(raw);
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      return list.map((v) => ({ name: String((v as FieldVmState).name), state: String((v as FieldVmState).state) }));
+    } catch {
+      return undefined;
+    }
+  })();
+
   const checks: Record<string, unknown> = {
     host: hostReport,
     toolchain,
@@ -223,6 +260,14 @@ function runPreflight(): PreflightResult {
     elevated,
     machineId: machineIdentity(),
     trustPosture: { secureBoot, tpm, sealedKeys },
+    resources: {
+      freeMemoryBytes: freeMemoryBytes ?? null,
+      freeMemoryGiB: freeMemoryBytes === undefined ? null : Number((freeMemoryBytes / 1024 ** 3).toFixed(2)),
+      minimumFreeMemoryGiB: Number((MINIMUM_FREE_MEMORY_BYTES / 1024 ** 3).toFixed(2)),
+      // Recorded whatever their state, so the artifact shows what was on the
+      // host at provisioning time rather than only what blocked.
+      fieldVms: fieldVms ?? null,
+    },
   };
 
   const failures: string[] = [];
@@ -253,6 +298,8 @@ function runPreflight(): PreflightResult {
     );
   }
   if (!tpm.available) failures.push(`TPM platform provider unavailable: ${tpm.reason ?? "unknown"}`);
+  failures.push(...evaluateFreeMemory(freeMemoryBytes));
+  failures.push(...evaluateCompetingFieldVms(fieldVms));
 
   return { ok: failures.length === 0, checks: { ...checks, failures } };
 }
