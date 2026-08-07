@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import {
+  BLOCKING_FIELD_VM_STATES,
   deriveBootId,
+  evaluateCompetingFieldVms,
+  evaluateFreeMemory,
+  FIELD_VM_PREFIX,
   hyp001RunSchema,
   resolveDotnetSdk,
   validateHyp001Run,
@@ -175,5 +179,85 @@ describe("validateHyp001Run", () => {
 
   it("rejects a run whose schema is not a HYP-001 run", () => {
     expect(() => hyp001RunSchema.parse({ contractVersion: 1, testId: "CHN-001" })).toThrow();
+  });
+});
+
+describe("pre-apply resource gates", () => {
+  const GIB = 1024 ** 3;
+
+  describe("free memory", () => {
+    it("rejects 3.9 GiB free, naming the measured and required values", () => {
+      const reasons = evaluateFreeMemory(3.9 * GIB);
+      expect(reasons).toHaveLength(1);
+      expect(reasons[0]).toContain("3.90 GiB free");
+      expect(reasons[0]).toContain("need 4.00 GiB");
+    });
+
+    it("allows exactly 4.0 GiB free", () => {
+      // The threshold is inclusive; 4.00 GiB is the documented minimum, not the
+      // first rejected value.
+      expect(evaluateFreeMemory(4 * GIB)).toEqual([]);
+    });
+
+    it("allows more than the threshold", () => {
+      expect(evaluateFreeMemory(8 * GIB)).toEqual([]);
+    });
+
+    it("rejects an unreadable measurement rather than treating it as clear", () => {
+      // A probe that failed is not evidence of sufficient memory.
+      for (const value of [undefined, Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+        const reasons = evaluateFreeMemory(value as number | undefined);
+        expect(reasons).toHaveLength(1);
+        expect(reasons[0]).toContain("could not be measured");
+      }
+    });
+  });
+
+  describe("competing Field VMs", () => {
+    const legacy = `${FIELD_VM_PREFIX}c7dead44-f5e4-48c8-aa2d-a12a8902ea75-G4`;
+
+    it("allows a legacy Field VM that is Off", () => {
+      // Off holds no assigned memory, so it is left alone rather than deleted —
+      // removing it would be an unrelated destructive change before evidence
+      // collection.
+      expect(evaluateCompetingFieldVms([{ name: legacy, state: "Off" }])).toEqual([]);
+    });
+
+    it("allows an empty host", () => {
+      expect(evaluateCompetingFieldVms([])).toEqual([]);
+    });
+
+    it("rejects a Running Field VM", () => {
+      const reasons = evaluateCompetingFieldVms([{ name: legacy, state: "Running" }]);
+      expect(reasons).toHaveLength(1);
+      expect(reasons[0]).toContain(legacy);
+      expect(reasons[0]).toContain("[Running]");
+    });
+
+    it.each(BLOCKING_FIELD_VM_STATES)("rejects a Field VM in state %s", (state) => {
+      expect(evaluateCompetingFieldVms([{ name: legacy, state }])).toHaveLength(1);
+    });
+
+    it("does not reject an unrelated non-Exosuit VM that is running", () => {
+      // Another VM on the host is the operator's business, not this gate's.
+      expect(evaluateCompetingFieldVms([{ name: "Ubuntu-Dev", state: "Running" }])).toEqual([]);
+    });
+
+    it("rejects when several Field VMs exist and only one is active", () => {
+      const reasons = evaluateCompetingFieldVms([
+        { name: `${FIELD_VM_PREFIX}a-G1`, state: "Off" },
+        { name: `${FIELD_VM_PREFIX}b-G2`, state: "Paused" },
+        { name: `${FIELD_VM_PREFIX}c-G3`, state: "Off" },
+      ]);
+      expect(reasons).toHaveLength(1);
+      expect(reasons[0]).toContain("b-G2 [Paused]");
+      expect(reasons[0]).not.toContain("a-G1");
+    });
+
+    it("rejects an unreadable VM list rather than treating it as clear", () => {
+      const reasons = evaluateCompetingFieldVms(undefined);
+      expect(reasons).toHaveLength(1);
+      expect(reasons[0]).toContain("could not be enumerated");
+    });
   });
 });

@@ -41,6 +41,84 @@ export function resolveDotnetSdk(): { readonly path: string; readonly version: s
 /** HYP-001.12 requires three consecutive complete cycles. Not configurable. */
 export const REQUIRED_CYCLES = 3;
 
+/**
+ * Minimum free physical memory before provisioning.
+ *
+ * The harness pins a 2 GiB startup allocation because the plan builder's 8 GiB
+ * default will not start a Field on this host. Three consecutive cycles at
+ * 2 GiB, on a machine measured at 2.93 GB free, is under a gigabyte of
+ * headroom — enough to fail partway through a run whose evidence is
+ * single-use. Checked immediately before `--apply`, not at plan time, because
+ * free memory moves.
+ */
+export const MINIMUM_FREE_MEMORY_BYTES = 4 * 1024 * 1024 * 1024;
+
+/** VM name prefix the harness provisions under. */
+export const FIELD_VM_PREFIX = "Exosuit-Field-";
+
+/**
+ * Hyper-V states in which an existing Field VM competes for memory or for the
+ * Field's own storage. `Off` is not among them: a stopped VM holds no assigned
+ * memory, so it is left alone rather than deleted — removing it would be an
+ * unrelated destructive change immediately before evidence collection.
+ */
+export const BLOCKING_FIELD_VM_STATES: readonly string[] = [
+  "Running",
+  "Starting",
+  "Stopping",
+  "Paused",
+  "Saved",
+];
+
+export interface FieldVmState {
+  readonly name: string;
+  readonly state: string;
+}
+
+/**
+ * Free-memory gate. `undefined` means the probe failed or returned something
+ * unreadable, which is rejected rather than treated as clear — an unreadable
+ * measurement is not evidence of sufficient memory.
+ */
+export function evaluateFreeMemory(
+  freeBytes: number | undefined,
+  minimumBytes: number = MINIMUM_FREE_MEMORY_BYTES,
+): readonly string[] {
+  const gib = (bytes: number) => (bytes / 1024 ** 3).toFixed(2);
+  if (freeBytes === undefined || !Number.isFinite(freeBytes) || freeBytes < 0) {
+    return ["free physical memory could not be measured; refusing to provision on an unknown value"];
+  }
+  if (freeBytes < minimumBytes) {
+    return [
+      `only ${gib(freeBytes)} GiB free physical memory, need ${gib(minimumBytes)} GiB; `
+      + "close other applications before provisioning",
+    ];
+  }
+  return [];
+}
+
+/**
+ * Competing-Field gate. Only VMs under `FIELD_VM_PREFIX` are considered — an
+ * unrelated VM running on the host is the operator's business, not this gate's.
+ * `undefined` means the VM list could not be read, which is rejected.
+ */
+export function evaluateCompetingFieldVms(
+  vms: readonly FieldVmState[] | undefined,
+): readonly string[] {
+  if (vms === undefined) {
+    return ["existing Field VMs could not be enumerated; refusing to provision on an unknown host state"];
+  }
+  const active = vms
+    .filter((vm) => vm.name.startsWith(FIELD_VM_PREFIX))
+    .filter((vm) => BLOCKING_FIELD_VM_STATES.includes(vm.state));
+  if (active.length === 0) return [];
+  return [
+    `competing Field VM(s) not stopped: ${
+      active.map((vm) => `${vm.name} [${vm.state}]`).join(", ")
+    }; stop them before provisioning`,
+  ];
+}
+
 export const hyp001CycleSchema = z.object({
   cycle: z.number().int().positive(),
   fieldId: z.string().min(1),
