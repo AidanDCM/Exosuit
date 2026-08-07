@@ -5,6 +5,26 @@
 **Project operating window:** September through November 2026  
 **Primary target:** a reliable, screen-bound desktop operator for the project, followed by maturation into the broader personal daily driver.
 
+## 0. Current validated baseline
+
+```text
+integration branch              codex/unify-glove-field @ 1ac8488
+merged PRs                      #28, #29, #30
+contract                         frozen v2.3
+M0                               re-attested and proven
+published evidence artifacts     6
+hosted artifact reconciliation   passed on Linux
+hosted evidence secret scan      passed
+full test suite                  624 tests / 91 files
+completion                       18.31 proven / 59.30 ready / 0 live
+current hard blocker             Secure Boot disabled
+next formal gate                 HYP-001
+```
+
+The previous monitoring targets `codex/m1-handoff`, `codex/contract-v23-key-custody`, and `codex/publish-evidence-artifacts` are retired. Monitor `codex/unify-glove-field`, PR #32, issue #31, and exact-head workflow runs.
+
+The authoritative developer entry point is `docs/project-driver/DEVELOPER_HANDOFF.md`.
+
 ## 1. Mission
 
 Deliver a restricted Exosuit release that can perform the project's desktop work through visible keyboard and mouse interaction, verify each meaningful effect from the screen, recover from interruptions, and expose a consistent personality without allowing personality behavior to weaken correctness or safety.
@@ -80,6 +100,13 @@ Deliver:
 - authoritative status/handoff reconciliation
 - completion evidence artifacts made portable and hash-verifiable
 - Secure Boot enabled and signed preflight captured
+
+Current state:
+
+- evidence portability and clean-clone verification are complete through PR #30
+- stale v2.2/v2.3 handoff state is corrected on the deadline branch
+- the exact project workflow remains to be frozen
+- Secure Boot remains the operator-only blocker
 
 Exit:
 
