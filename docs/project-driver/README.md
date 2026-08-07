@@ -17,7 +17,6 @@ integration branch              codex/unify-glove-field @ 1ac8488
 contract                         frozen v2.3
 M0                               re-attested and proven
 published evidence artifacts     6, clean-clone/Linux verified
-hosted CI                        green on merged #30 and PR #32's documented head
 completion                       18.31 proven / 59.30 ready / 0 live
 current hard blocker             host Secure Boot disabled
 next formal gate                 HYP-001
@@ -29,18 +28,19 @@ Merged into the baseline:
 - #29 — v2.3 custody, TPM participation proof, versioned records, M0 re-attestation
 - #30 — portable evidence artifacts, reconciliation invariant, evidence secret scan
 
-Retired development/monitor targets:
+Retired development and monitoring targets:
 
 - `codex/m1-handoff`
 - `codex/contract-v23-key-custody`
 - `codex/publish-evidence-artifacts`
+- monitor IDs `bc89n6uoq` and `b42foy02q`
 
-Use `codex/unify-glove-field`, PR #32, and issue #31 instead.
+Use `codex/unify-glove-field`, PR #32, issue #31, and exact-head workflow status instead.
 
 ## Immediate order
 
 - PD-001: freeze the exact project workflow and action policy
-- PD-002: keep status documents consistent with the now-portable evidence baseline
+- PD-002: complete — portable evidence and authoritative status reconciliation
 - PD-003: operator enables Secure Boot and captures signed preflight
 - PD-004: prove HYP-001
 - PD-005: prove CHN-001
@@ -49,6 +49,10 @@ Use `codex/unify-glove-field`, PR #32, and issue #31 instead.
 - PD-012: burn-in
 - PD-013: cut the restricted September release
 - PD-014: convert September-November operation into daily-driver evidence
+
+## Exact-head rule
+
+Do not copy a prior green claim onto a later commit. Fetch the workflow status for the exact current PR head after every documentation or code update.
 
 ## Program rule
 
