@@ -30,6 +30,13 @@ permissions:
   contents: read
   security-events: write
 
+# This workflow had no concurrency control, so a fast follow-up push left two
+# audits racing on the same branch. Same key as ci.yml: superseded runs of this
+# workflow on this branch are cancelled, and nothing else is.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   npm-audit:
     name: npm dependency vulnerability audit

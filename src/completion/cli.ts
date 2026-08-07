@@ -50,6 +50,15 @@ import { nextLedgerEvent } from "./ledger.js";
 import { nextLifecycleEvent } from "./fieldLifecycle.js";
 import { evaluateBuildCompletion } from "./evaluate.js";
 import type { EvidenceArtifactSource } from "./evidence.js";
+import { loadPrivateKey, type LoadedPrivateKey } from "./keyProtection.js";
+import {
+  EMPTY_RECOVERY_LEDGER,
+  foldRecoveryLedger,
+  keyRecoveryLedgerSchema,
+  nextRecoveryEvent,
+  recoveryConfirmation,
+  type KeyRecoveryLedger,
+} from "./keyRecovery.js";
 
 const ROOT = resolve(process.cwd());
 /**
@@ -69,6 +78,7 @@ const PATHS = {
   ledger: join(DIR, "ledger.json"),
   evidence: join(DIR, "evidence.json"),
   lifecycle: join(DIR, "field-lifecycle.json"),
+  recovery: join(DIR, "key-recovery.json"),
 };
 
 /* ------------------------------------------------------------------ util */
@@ -99,18 +109,49 @@ function privateKeyDir(): string {
 }
 
 /**
- * Reads a private key, preferring a DPAPI-protected vault file over plaintext.
- *
- * DPAPI binds the ciphertext to this Windows user on this machine, so a copied
- * vault file is useless elsewhere. It is a local-vault fallback for the case
- * where no BitLocker removable drive is available; it is not equivalent to an
- * offline root held off the signing machine.
+ * The purpose of the registry this state directory is signed under. It decides
+ * whether the TPM is a requirement or a preference, so it is read from the
+ * registry rather than passed in by a caller who could get it wrong.
  */
+function registryPurpose(): RegistryPurpose {
+  return readJson<KeyRegistry>(PATHS.keys).purpose;
+}
+
+function readRecoveryLedger(): KeyRecoveryLedger {
+  return existsSync(PATHS.recovery)
+    ? keyRecoveryLedgerSchema.parse(readJson(PATHS.recovery))
+    : EMPTY_RECOVERY_LEDGER;
+}
+
+/**
+ * Opens a private key under the protection boundary in `keyProtection.ts`.
+ *
+ * On a live registry this requires the TPM vault and will not fall back. That
+ * is the whole point: with an automatic DPAPI fallback, a live signature proved
+ * nothing about where the key came from, and deleting a vault was enough to
+ * silently downgrade the protection.
+ *
+ * Returns the backend that actually opened the key so callers can bind it into
+ * what they sign — computed, never asserted.
+ */
+function privateKeyWithBackend(keyId: string): LoadedPrivateKey {
+  const state = foldRecoveryLedger(readRecoveryLedger());
+  if (state.failures.length > 0) {
+    // A malformed recovery ledger is treated as "something is wrong with the
+    // key custody record", never as "no grants are open".
+    throw new Error(`Key recovery ledger is not verifiable: ${state.failures.join("; ")}`);
+  }
+  return loadPrivateKey({
+    keyDir: privateKeyDir(),
+    keyId,
+    registryPurpose: registryPurpose(),
+    recoveryGrant: state.openKeyIds.includes(keyId),
+    dpapiUnprotect,
+  });
+}
+
 function privateKey(keyId: string): string {
-  const dir = privateKeyDir();
-  const vaultPath = join(dir, `${keyId}.pem.dpapi`);
-  if (existsSync(vaultPath)) return dpapiUnprotect(vaultPath);
-  return readFileSync(join(dir, `${keyId}.pem`), "utf8");
+  return privateKeyWithBackend(keyId).pem;
 }
 
 function powershell(script: string): string {
@@ -819,11 +860,95 @@ function commandEvaluate(): void {
   }
 }
 
+/* -------------------------------------------------------- key recovery */
+
+/**
+ * Opens or closes a DPAPI recovery grant for one key.
+ *
+ * This is the only way DPAPI is reachable on a live registry. It is deliberately
+ * awkward: an exact typed confirmation, a mandatory written reason, a signed
+ * append-only event, and live attestation blocked until the key is sealed again.
+ *
+ *   recover-key --key-id <id> --reason "<why>" --confirm "RECOVER KEY <id> WITHOUT TPM"
+ *   recover-key --key-id <id> --close --reason "<why>"
+ */
+function commandRecoverKey(): void {
+  const keyId = requireArg("--key-id");
+  const reason = requireArg("--reason");
+  const close = process.argv.includes("--close");
+  const ledger = readRecoveryLedger();
+  const state = foldRecoveryLedger(ledger);
+  if (state.failures.length > 0) {
+    throw new Error(`Key recovery ledger is not verifiable: ${state.failures.join("; ")}`);
+  }
+
+  if (close) {
+    if (!state.openKeyIds.includes(keyId)) throw new Error(`${keyId} has no open recovery grant.`);
+    // Closing means the key is sealed again, so require that to be true rather
+    // than taking the operator's word for it.
+    const probe = loadPrivateKey({
+      keyDir: privateKeyDir(),
+      keyId,
+      registryPurpose: registryPurpose(),
+      recoveryGrant: false,
+      dpapiUnprotect,
+    });
+    if (probe.backend !== "tpm") {
+      throw new Error(`${keyId} did not load from the TPM; re-seal it before closing the grant.`);
+    }
+  } else {
+    if (state.openKeyIds.includes(keyId)) throw new Error(`${keyId} already has an open recovery grant.`);
+    if (requireArg("--confirm") !== recoveryConfirmation(keyId)) {
+      throw new Error(`Opening a grant requires exact typed confirmation: ${recoveryConfirmation(keyId)}`);
+    }
+  }
+
+  const last = [...ledger.events].sort((a, b) => a.sequence - b.sequence).at(-1);
+  const recordedAt = new Date(
+    Math.max(Date.now(), last === undefined ? 0 : Date.parse(last.recordedAt) + 1000),
+  ).toISOString();
+  const unsigned = nextRecoveryEvent({
+    ledger,
+    eventId: arg("--event-id") ?? `recovery-${close ? "closed" : "opened"}-${Date.now()}`,
+    keyId,
+    kind: close ? "closed" : "opened",
+    reason,
+    machineId: machineIdentity(),
+    recordedAt,
+    signingKeyId: keyId,
+  });
+
+  // Signed with the key being recovered: it proves the operator actually
+  // recovered it rather than merely asserting a failure.
+  const grantOpen = close ? false : true;
+  const material = loadPrivateKey({
+    keyDir: privateKeyDir(),
+    keyId,
+    registryPurpose: registryPurpose(),
+    recoveryGrant: grantOpen,
+    dpapiUnprotect,
+  });
+
+  writeJson(PATHS.recovery, keyRecoveryLedgerSchema.parse({
+    contractVersion: 2,
+    events: [...ledger.events, { ...unsigned, signature: signRecord(unsigned, material.pem) }],
+  }));
+
+  if (close) {
+    console.log(`Closed the recovery grant for ${keyId}; it loads from the TPM again.`);
+  } else {
+    console.error(`Opened a DPAPI recovery grant for ${keyId} (backend: ${material.backend}).`);
+    console.error("Live attestation is blocked while any grant is open.");
+    console.error("Re-seal the key, then close the grant with --close.");
+  }
+}
+
 /* ------------------------------------------------------------------ main */
 
 function main(): void {
   const command = process.argv[2];
   switch (command) {
+    case "recover-key": return commandRecoverKey();
     case "root-key": return commandRootKey();
     case "protect-key": return commandProtectKey();
     case "keys": return commandKeys();
