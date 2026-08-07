@@ -167,6 +167,15 @@ work_items:
     acceptance:
       - HYP-001 promoted by non-issuer reviewer
 
+    preparation:
+      # Prepared while PD-003 is outstanding. Execution stays blocked: preflight
+      # refuses --apply while Secure Boot is disabled.
+      - docs/project-driver/HYP001_SESSION_RUNBOOK.md
+    prepared_findings:
+      - "free RAM 2.93 GB of 15.44 GB; 2 GB startup allocation leaves <1 GB headroom"
+      - "legacy VM Exosuit-Field-c7dead44-...-G4 exists, Off, 4096 MB startup; must not start"
+      - "base image v25 digest 5ec795fe...25a2c744 matches host config"
+      - "HYP-001 artifacts must be committed and secret-scanned per PD-002 policy"
   - id: PD-005
     title: Prove CHN-001 channel and emergency stop
     status: blocked
