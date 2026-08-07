@@ -1,7 +1,28 @@
 program: exosuit-project-driver
 start_date: 2026-08-07
 operational_target: 2026-09-01
-integration_branch: codex/project-driver-deadline-mode
+integration_branch: codex/unify-glove-field
+deadline_branch: codex/project-driver-deadline-mode
+control_issue: 31
+program_pr: 32
+current_baseline:
+  integration_sha: 1ac8488
+  contract: "2.3"
+  tests: 624
+  test_files: 91
+  proven_completion_percent: 18.31
+  implementation_readiness_percent: 59.30
+  live_completion_percent: 0
+  evidence_artifacts_committed: 6
+  secure_boot: disabled
+retired_targets:
+  branches:
+    - codex/m1-handoff
+    - codex/contract-v23-key-custody
+    - codex/publish-evidence-artifacts
+  monitor_ids:
+    - bc89n6uoq
+    - b42foy02q
 wip_limits:
   implementation_prs: 2
   validation_prs: 1
@@ -45,6 +66,7 @@ roles:
 work_items:
   - id: PD-001
     title: Freeze project workflow and action policy
+    status: open
     owner: claude_architecture
     reviewer: integrator
     priority: P0
@@ -61,10 +83,17 @@ work_items:
 
   - id: PD-002
     title: Reconcile authoritative status and evidence portability
+    status: complete
     owner: claude_adversarial
     reviewer: codex_validation
     priority: P0
-    due: 2026-08-09
+    completed: 2026-08-07
+    evidence:
+      - PR 30 merged at 1ac8488
+      - six referenced artifacts committed
+      - Linux clean-clone reconciliation passed
+      - evidence secret scan passed
+      - stale M1 handoff replaced on PR 32
     dependencies: []
     outputs:
       - remove stale v2.2/v2.3 contradictions
@@ -76,6 +105,7 @@ work_items:
 
   - id: PD-003
     title: Enable Secure Boot and capture signed preflight
+    status: blocked_operator_action
     owner: integrator
     reviewer: claude_adversarial
     priority: P0
@@ -90,6 +120,7 @@ work_items:
 
   - id: PD-004
     title: Prove HYP-001 three-cycle Field lifecycle
+    status: blocked
     owner: codex_implementation
     reviewer: codex_validation
     priority: P0
@@ -105,6 +136,7 @@ work_items:
 
   - id: PD-005
     title: Prove CHN-001 channel and emergency stop
+    status: blocked
     owner: codex_implementation
     reviewer: claude_adversarial
     priority: P0
@@ -122,6 +154,7 @@ work_items:
 
   - id: PD-006
     title: Implement fresh visual scene observation
+    status: planned
     owner: codex_implementation
     reviewer: codex_validation
     priority: P0
@@ -138,6 +171,7 @@ work_items:
 
   - id: PD-007
     title: Implement visible mouse and keyboard actuator
+    status: planned
     owner: codex_implementation
     reviewer: codex_validation
     priority: P0
@@ -153,6 +187,7 @@ work_items:
 
   - id: PD-008
     title: Implement post-action verification and recovery
+    status: planned
     owner: codex_implementation
     reviewer: claude_adversarial
     priority: P0
@@ -169,6 +204,7 @@ work_items:
 
   - id: PD-009
     title: Build first project vertical slice
+    status: planned
     owner: codex_implementation
     reviewer: claude_architecture
     priority: P0
@@ -184,6 +220,7 @@ work_items:
 
   - id: PD-010
     title: Add cockpit, pause, approval, stop, and resume
+    status: planned
     owner: codex_implementation
     reviewer: codex_validation
     priority: P0
@@ -200,6 +237,7 @@ work_items:
 
   - id: PD-011
     title: Implement bounded personality controller
+    status: planned
     owner: claude_architecture
     reviewer: claude_adversarial
     implementation_support: codex_implementation
@@ -217,6 +255,7 @@ work_items:
 
   - id: PD-012
     title: Run deadline burn-in matrix
+    status: planned
     owner: codex_validation
     reviewer: claude_adversarial
     priority: P0
@@ -234,6 +273,7 @@ work_items:
 
   - id: PD-013
     title: Cut Project Driver 0.1 restricted release
+    status: planned
     owner: integrator
     reviewer: claude_adversarial
     priority: P0
@@ -250,6 +290,7 @@ work_items:
 
   - id: PD-014
     title: Convert project operation into daily-driver evidence
+    status: planned
     owner: codex_validation
     reviewer: claude_architecture
     priority: P1
