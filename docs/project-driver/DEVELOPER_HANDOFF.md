@@ -40,9 +40,9 @@ Secure Boot                    outstanding
 
 PR #30's Linux hosted run proved that committed artifacts retain exact bytes across checkout, match their SHA-256 filenames and recorded lengths, have no committed orphans, and pass the evidence secret scan. This is now independently checkable without access to TPM-sealed private keys.
 
-PR #32's current head also passed hosted Exosuit CI. Do not infer a later head is green; verify the exact SHA after every update.
+PR #32 passed hosted Exosuit CI at an earlier documentation head. Do not infer a later head is green; verify the exact SHA after every update.
 
-## 3. Retired branches and monitors
+## 3. Retired branches and monitoring
 
 The following branches were deleted and must not be used as monitoring or development targets:
 
@@ -52,12 +52,14 @@ The following branches were deleted and must not be used as monitoring or develo
 
 The old monitor IDs `bc89n6uoq` and `b42foy02q` are retired references. They watched deleted branches or a one-shot run and are not an authoritative status source.
 
-Monitor these instead:
+A replacement hourly condition watch now monitors:
 
-- integration activity: `codex/unify-glove-field`
-- deadline program: PR #32 / `codex/project-driver-deadline-mode`
-- execution checklist: issue #31
-- exact-head workflow status, not branch-name assumptions
+- integration activity on `codex/unify-glove-field`
+- PR #32 / `codex/project-driver-deadline-mode`
+- issue #31
+- exact-head CI conclusions, merges, formal gate promotions, completion changes, and newly recorded blockers
+
+It remains silent when nothing meaningful changes.
 
 ## 4. Read order for every Codex or Claude session
 
@@ -92,14 +94,16 @@ No broad actuator work should guess at the first workflow.
 
 ### PD-002 — status and evidence portability
 
-Repository work is substantially complete:
+Complete:
 
 - six referenced artifacts are committed
 - Linux reconciliation is green
 - secret scan is green
 - contract v2.3 and M0 re-attestation are current
+- stale M1 handoff has been replaced
+- deadline documents identify current branches and retired monitoring targets
 
-Remaining requirement: keep all handoff/status documents consistent with code and evaluator output. Any stale count, fingerprint, branch, or contract label is a defect.
+Any future stale count, fingerprint, branch, contract label, or evidence claim is a defect.
 
 ### PD-003 — operator enables Secure Boot
 
