@@ -39,6 +39,15 @@ import {
   type SigningKey,
 } from "../../src/completion/index.js";
 import { artifactSourceFromMap } from "../../src/completion/evidence.js";
+import { nextCustodyEvent, type KeyCustodyLedger } from "../../src/completion/keyCustody.js";
+import {
+  attestationKeyFingerprint,
+  recordDigest,
+  recoveryStateDigest,
+  registryHash,
+  signChallengeWithPrivateKey,
+  type TpmProof,
+} from "../../src/completion/tpmAttestation.js";
 
 export const FIXTURE_COMMIT = "de52ad72b11ddafe969e5923f16c946e49cf04f4";
 export const BASELINE_AT = "2026-08-01T00:00:00.000Z";
@@ -74,6 +83,12 @@ export interface CompletionFixture {
   evidence: EvidenceStore;
   /** Host-signed Field lifecycle; Field-bound evidence is invalid without it. */
   fieldLifecycle: FieldLifecycleLedger;
+  /** Key custody chain (v2.3); live evidence is invalid without a matching event. */
+  keyCustody: KeyCustodyLedger;
+  /** TPM participation proofs (v2.3), one per live signing event. */
+  tpmProofs: TpmProof[];
+  /** Fingerprint of the fixture attestation key the evaluator is told to trust. */
+  attestationFingerprint: string;
   artifacts: Map<string, Uint8Array>;
   secrets: Record<string, string>;
   /** PEM of the fixture's offline root key. */
@@ -158,12 +173,95 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
     };
   });
 
+  // Software stand-in for the TPM attestation key, exactly as the fixture
+  // stands in a software root for the offline root. Structurally identical to
+  // a real proof; only the key custodian differs.
+  const attestation = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const attestationParams = attestation.publicKey.export({ format: "jwk" }) as { n: string; e: string };
+  const attestationPublicKey = {
+    modulus: Buffer.from(attestationParams.n, "base64url").toString("base64"),
+    exponent: Buffer.from(attestationParams.e, "base64url").toString("base64"),
+  };
+  const attestationPem = attestation.privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+  const attestationFp = attestationKeyFingerprint(attestationPublicKey);
+
   const source = JSON.parse(readFileSync(manifestPath, "utf8")) as BuildCompletionManifest;
   let ledgerClock = Date.parse(LEDGER_START);
   let lifecycleClock = Date.parse(LIFECYCLE_START);
   const createdGenerations = new Set<string>();
   const openBoots = new Map<string, string>();
   const seenBoots = new Set<string>();
+
+  let custodyClock = Date.parse(LIFECYCLE_START);
+
+  /**
+   * Appends a custody attestation for a signing key and returns the binding a
+   * record must carry (v2.3). Modelled on the real path in `cli.ts`: the event
+   * is written first, then the record references it and the signature covers
+   * the reference.
+   */
+  const addCustody = (keyId: string): {
+    recordVersion: "2.3";
+    keyProtectionBackend: "tpm";
+    keyCustodyEventId: string;
+    registryPurpose: RegistryPurpose;
+    recoveryGrantId: null;
+  } => {
+    const purpose = fixture.registry.purpose;
+    const unsigned = nextCustodyEvent({
+      ledger: fixture.keyCustody,
+      eventId: `custody-${keyId}-${fixture.keyCustody.events.length}`,
+      keyId,
+      backend: "tpm",
+      registryPurpose: purpose,
+      machineId: MACHINE_ID,
+      recordedAt: new Date((custodyClock += 1000)).toISOString(),
+    });
+    fixture.keyCustody = {
+      contractVersion: 2,
+      events: [...fixture.keyCustody.events, {
+        ...unsigned,
+        signature: signRecord(unsigned, fixture.secrets[keyId] ?? fixture.secrets["k-evidence"]!),
+      }],
+    };
+    return {
+      recordVersion: "2.3",
+      keyProtectionBackend: "tpm",
+      keyCustodyEventId: unsigned.eventId,
+      registryPurpose: purpose,
+      // Explicit null, not omission: "no grant was open" is a fact the
+      // signature should cover.
+      recoveryGrantId: null,
+    };
+  };
+
+  /**
+   * Issues a TPM participation proof for a record. Mirrors the real path: the
+   * challenge names the exact record, key, registry, machine, custody event and
+   * recovery state, so nothing about it can be reused elsewhere.
+   */
+  const addProof = (record: Record<string, unknown>, custodyEventId: string): string => {
+    const challenge = {
+      recordDigest: recordDigest(record),
+      completionKeyId: String(record["signingKeyId"]),
+      registryHash: registryHash(fixture.registry),
+      machineId: MACHINE_ID,
+      custodyEventId,
+      recoveryStateDigest: recoveryStateDigest([]),
+      nonce: randomBytes(16).toString("hex"),
+      timestamp: new Date((custodyClock += 1000)).toISOString(),
+    };
+    const proofId = `proof-${fixture.tpmProofs.length}-${randomBytes(3).toString("hex")}`;
+    fixture.tpmProofs.push({
+      proofId,
+      challenge,
+      attestationKeyName: "fixture-attestation",
+      attestationKeyFingerprint: attestationFp,
+      attestationPublicKey,
+      signature: signChallengeWithPrivateKey(challenge, attestationPem),
+    });
+    return proofId;
+  };
 
   const sealRegistry = (input: { keys: SigningKey[]; revocations?: KeyRevocation[]; purpose?: RegistryPurpose }): KeyRegistry => {
     const core = {
@@ -191,6 +289,9 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
     ledger: { contractVersion: 2, events: [] },
     evidence: { contractVersion: 2, records: [] },
     fieldLifecycle: { contractVersion: 2, events: [] },
+    keyCustody: { contractVersion: 2, events: [] },
+    tpmProofs: [],
+    attestationFingerprint: attestationFp,
     artifacts: new Map<string, Uint8Array>(),
     secrets,
 
@@ -297,9 +398,24 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         signingKeyId: input.signingKeyId ?? (isLive ? "k-host" : "k-evidence"),
       };
 
+      // Custody binding (v2.3). Emitted for live records so the fixture models
+      // the real signing path, where the backend is reported by whatever opened
+      // the key rather than asserted by the caller.
+      // The proof binds to the record content, then the record references the
+      // proof, then the signature covers both — same nesting as the real path.
+      let bound: Record<string, unknown> = { ...unsigned };
+      if (unsigned.designation === "live") {
+        const bindingFields = addCustody(unsigned.signingKeyId);
+        const withCustody = { ...unsigned, ...bindingFields };
+        bound = { ...withCustody, tpmProofId: addProof(withCustody, bindingFields.keyCustodyEventId) };
+      } else {
+        // Synthetic records stay on the legacy shape: no custody fields, so
+        // `.strict()` on the 2.2 member is what keeps them honest.
+      }
+
       const record = {
-        ...unsigned,
-        signature: signRecord(unsigned, secrets[unsigned.signingKeyId] ?? secrets["k-evidence"]!),
+        ...bound,
+        signature: signRecord(bound, secrets[unsigned.signingKeyId] ?? secrets["k-evidence"]!),
       } as CompletionEvidence;
       fixture.evidence = { contractVersion: 2, records: [...fixture.evidence.records, record] };
       return record;
@@ -325,14 +441,23 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         signingKeyId: "k-ledger",
       });
 
+      // Custody is bound BEFORE the reviewer signs, mirroring cli.ts.
+      //
+      // The fixture previously stopped at `unsigned` here, so no test exercised
+      // a reviewer approving an event that also carries custody fields — and a
+      // real promotion built the other way round shipped with a reviewer
+      // signature that could not verify. The fixture has to model the order the
+      // CLI actually uses or it cannot catch that class of bug.
+      const withCustody = { ...unsigned, ...addCustody("k-ledger"), tpmProofId: null };
+
       // The reviewer signs first; the issuer's signature then covers that
       // approval, matching the real two-party flow.
       const approved = reviewerKeyId !== undefined && input.reviewerSigns !== false
         ? {
-          ...unsigned,
-          reviewerSignature: signAsReviewer(unsigned, secrets[reviewerKeyId] ?? secrets["k-tech-review"]!),
+          ...withCustody,
+          reviewerSignature: signAsReviewer(withCustody, secrets[reviewerKeyId] ?? secrets["k-tech-review"]!),
         }
-        : unsigned;
+        : withCustody;
 
       fixture.ledger = {
         contractVersion: 2,
@@ -393,6 +518,9 @@ export function createCompletionFixture(manifestPath = "docs/qa/completion/manif
         artifacts: artifactSourceFromMap(fixture.artifacts),
         target,
         fieldLifecycle: fixture.fieldLifecycle,
+        keyCustody: fixture.keyCustody,
+        tpmProofs: fixture.tpmProofs,
+        acceptedAttestationFingerprints: [fixture.attestationFingerprint],
         now,
         acceptedRootFingerprints: [fixture.rootFingerprint],
       });

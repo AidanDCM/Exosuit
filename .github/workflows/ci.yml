@@ -57,6 +57,34 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
+# Jobs are serialised rather than run in parallel.
+#
+# Hosted runner availability for this account has proven INTERMITTENT, and that
+# is the actual reason, not a fixed capacity limit.
+#
+# 2026-08-06: repeated runs where one job was assigned a runner and finished in
+# under a minute while every sibling sat with runner_name="" and zero steps and
+# was killed at a uniform ~15 minutes. That ceiling was not the jobs' own
+# configuration — timeout-minutes of 30, 25 and 10 all died at 15:00 — and the
+# run was reported as a failure even though the job that ran had succeeded.
+#
+# 2026-08-07: the same unserialised configuration ran all three jobs
+# concurrently on three distinct runners and passed.
+#
+# An earlier version of this comment claimed the account schedules "roughly one
+# hosted job at a time". That was wrong — it generalised a standing limit from a
+# few hours of a transient throttle. Recorded here because the mistaken version
+# was committed and reviewed.
+#
+# Serialising is therefore insurance, not a fix for a known cap: it costs
+# wall-clock when capacity is plentiful (jobs run in sequence rather than
+# parallel) and it keeps runs correct when capacity is not, instead of
+# reporting false failures for jobs that never executed.
+#
+# `!cancelled()` is worth keeping on its own merits, independent of capacity:
+# plain `needs` skips a job when its predecessor fails, so one real failure
+# would hide every downstream result. This keeps the chain running through a
+# failure while still honouring a genuine cancellation of the run.
 jobs:
   typescript:
     name: TypeScript Glove and Field validation
@@ -205,6 +233,8 @@ jobs:
 
   windows-agent:
     name: Windows agent and Field cross-language validation
+    needs: typescript
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
@@ -274,6 +304,8 @@ jobs:
 
   repository-contract:
     name: Required manuals, audits, and operational controls
+    needs: windows-agent
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -408,3 +408,129 @@ It does not touch §8.1 — the provisional root still lives on the machine it
 vouches for. Sealing binds the key to this TPM; it does not make an
 on-host-generated root into an offline one. `trustPosture` remains
 `provisional_personal_mvp` and `productionEligible` remains `false`.
+
+---
+
+## 14. Contract v2.3 — implemented, frozen pin deliberately NOT bumped
+
+Key custody binding. TPM enforcement at load (§13) stops a weaker backend from
+*producing* a live signature; it does not let a verifier, later and elsewhere,
+tell how the key was protected. v2.3 closes that.
+
+Every signed record may carry:
+
+```
+keyProtectionBackend   tpm | dpapi | plaintext
+keyCustodyEventId      the custody event attesting that backend for that key
+registryPurpose        development | live
+recoveryGrantId?       set only when signed under an explicit recovery grant
+```
+
+For a **live** record the verifier requires all of: `keyProtectionBackend` is
+`tpm`; no recovery grant open for the signing key; the custody event exists,
+names the same key, and reports the same backend; the custody chain verifies;
+and the registry purpose is `live`. It rejects a false TPM claim, missing
+backend information, a record signed under an open grant, a custody event that
+describes a different key, and any live signature from DPAPI or plaintext.
+
+| | |
+| --- | --- |
+| Custody ledger | `src/completion/keyCustody.ts`, state in `docs/qa/completion/key-custody.json` |
+| Binding check | `verifyCustodyBinding`, shared by the evidence and ledger verifiers |
+| Tests | `tests/security/keyCustody.adversarial.test.ts` (23) |
+
+### Why the fields are optional in the schema
+
+They are optional structurally and **mandatory for live records in the
+verifier**. Making them structurally required would invalidate every record
+signed under v2.2 — including the recorded M0 attestation — turning a
+protection improvement into a forced re-attestation of unrelated evidence. A
+live record that omits them is rejected, so omission buys nothing.
+
+### The freeze pin is intentionally stale
+
+`tests/completionContractFrozen.test.ts` **fails right now, by design**. The
+contract surface moved and the pin was deliberately left alone:
+
+```
+pinned    8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0
+computed  700b41653a12d51004b23398ed5b46022a87977da908e3ed7e4e9badcce00291
+```
+
+Do **not** update the pin as a cleanup. Bumping `FROZEN_CONTRACT_LABEL` to 2.3
+and re-attesting M0 is a separate deliberate act, held until there is a green
+hosted CI run on the exact integrated head. Re-attesting against a contract no
+CI has independently validated would manufacture exactly the kind of unverified
+authoritative baseline the gate exists to prevent.
+
+Consequently `git push` is blocked by the pre-push parity hook while this
+stands. That is the freeze mechanism working, not a defect.
+
+### State
+
+```
+v2.3 schema and verifier      implemented, 581/582 tests pass
+frozen fingerprint            NOT bumped (held)
+M0 re-attestation             NOT done (held)
+HYP-001 live evidence         NOT recorded (held)
+exact-head hosted green run   required before the bump
+```
+
+
+### TPM participation proof (added after review)
+
+The custody event is signed by the *same Ed25519 key whose custody it
+describes*, so a holder of that key could mint record and custody event
+together and have them agree. The backend claim was still a self-report.
+
+`src/completion/tpmAttestation.ts` closes that. A separate RSA key is created
+inside the TPM (`exosuit-completion-attestation-v1`, non-exportable) and signs a
+challenge per live signing event naming the record digest, completion key,
+registry hash, machine, custody event, recovery state, a nonce and a timestamp.
+Verification is pure — no TPM needed — so another machine can check it.
+
+Rejected: a missing proof, a reused proof, a proof for another record or
+completion key, an unapproved or self-inconsistent attestation key, a mismatched
+registry, machine, custody event or recovery state, and a forged signature.
+16 adversarial tests in `tests/security/tpmAttestation.adversarial.test.ts`.
+
+**What it still does not prove.** The completion key and the attestation key are
+distinct objects, so this shows the TPM *participated in this signing event*,
+not that *this Ed25519 key was unwrapped by that TPM*. Binding those together
+needs the completion key itself to be a TPM key, which TPM 2.0 cannot do for
+Ed25519. The residual gap is narrow and stated rather than papered over.
+
+### Versioned record schemas (added after review)
+
+Records are a **union of two shapes**, not one shape with optional fields.
+Optionality meant a v2.3 record could omit a custody field and still parse,
+leaving the verifier as the only thing between a partial record and acceptance.
+
+```
+2.2   no custody fields at all; `.strict()` rejects them
+2.3   recordVersion "2.3", custody fields structurally required,
+      recoveryGrantId and tpmProofId explicitly nullable
+```
+
+The discriminator is **optional on the legacy shape**. Every record signed
+before v2.3 has no `recordVersion`, and a signature is taken over the canonical
+record — defaulting the field in would change the bytes and invalidate the very
+signatures the union is meant to preserve. Absent therefore means 2.2.
+
+`recoveryGrantId: null` and `tpmProofId: null` are explicit rather than omitted:
+"no grant was open" is a fact the signature should cover, and an absent field is
+indistinguishable from one someone stripped.
+
+`LEGACY_LIVE_RECORD_CUTOFF` (2026-08-07) stops the legacy shape being used to
+*create* new live evidence, while leaving existing attestations verifiable.
+Without it, omitting `recordVersion` would be a permanent opt-out of custody and
+TPM proof.
+
+`custodyBindingOf()` is the single place that answers "what does this record
+report?", so no consumer hand-rolls field tests.
+
+20 tests in `tests/security/recordVersioning.adversarial.test.ts`, including the
+cutoff cases — which re-sign the relegated record rather than merely stripping
+fields, so they fail on the shape rule and not on a broken signature.
+
+### v2.3 is now complete

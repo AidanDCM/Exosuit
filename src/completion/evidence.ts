@@ -14,13 +14,22 @@ import {
   evidenceClassAllowedForGate,
   fieldBoundEvidenceClasses,
   liveEvidenceClasses,
+  LEGACY_LIVE_RECORD_CUTOFF,
   maximumClockSkewSeconds,
   TEST_DEFINITION_VERSION,
   type CompletionEvidenceClass,
 } from "./policy.js";
 import { requiredRoleForLiveEvidence, verifyRecordSignature } from "./signing.js";
-import type { BuildCompletionManifest, CompletionEvidence, KeyRegistry } from "./contracts.js";
+import { custodyBindingOf, type BuildCompletionManifest, type CompletionEvidence, type KeyRegistry } from "./contracts.js";
 import { checkAgainstLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
+import { verifyCustodyBinding, type CustodyVerificationResult } from "./keyCustody.js";
+import { registryHash, verifyTpmProofBinding, type TpmProof } from "./tpmAttestation.js";
+
+/** No custody ledger supplied: live records fail closed against this. */
+const EMPTY_CUSTODY_VERIFICATION: CustodyVerificationResult = {
+  byId: new Map(),
+  failures: ["no key custody ledger supplied"],
+};
 
 /** Read an artifact by its content address. Returns undefined when absent. */
 export interface EvidenceArtifactSource {
@@ -43,6 +52,24 @@ export interface EvidenceVerificationRequest {
    * naming a destroyed generation cannot be distinguished from a live one.
    */
   readonly lifecycle?: LifecycleVerificationResult;
+  /**
+   * Verified key custody chain. Live evidence fails closed without it: with no
+   * verifiable account of how a signing key was protected, a record claiming
+   * `tpm` cannot be distinguished from one that fell back.
+   */
+  readonly custody?: CustodyVerificationResult;
+  /** Keys with an open recovery grant. Their live signatures are not acceptable. */
+  readonly openRecoveryKeyIds?: readonly string[];
+  /** TPM participation proofs, one per live signing event. */
+  readonly tpmProofs?: readonly TpmProof[];
+  /** Attestation keys this deployment trusts. Empty means no proof can pass. */
+  readonly acceptedAttestationFingerprints?: readonly string[];
+  /**
+   * Escape hatch for fixtures that predate v2.3 and for the migration window.
+   * Defaults to requiring a proof; setting it false is a deliberate downgrade
+   * and is never done by the CLI.
+   */
+  readonly requireTpmProof?: boolean;
 }
 
 export interface EvidenceVerificationResult {
@@ -62,6 +89,8 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
   const seenEvidenceIds = new Set<string>();
   const seenArtifacts = new Map<string, string>();
   const seenNonces = new Map<string, string>();
+  // One TPM proof may vouch for exactly one record.
+  const consumedProofIds = new Set<string>();
   const knownTestIds = new Set(request.manifest.tests.map((test) => test.id));
 
   const nowMs = Date.parse(request.now);
@@ -112,6 +141,49 @@ export function verifyEvidenceStore(request: EvidenceVerificationRequest): Evide
 
     // ---- live evidence must describe a real execution environment ----
     const isLiveClass = liveEvidenceClasses.has(record.evidenceClass);
+
+    // ---- key custody (v2.3): how was the signing key protected? ----
+    // Checked on every record but only binding for live ones, so v2.2 records
+    // stay verifiable. Without it a live signature said nothing about whether
+    // the TPM produced the key.
+    const treatAsLive = isLiveClass || record.designation === "live";
+    const binding = custodyBindingOf(record);
+    reasons.push(...verifyCustodyBinding({
+      record: binding,
+      live: treatAsLive,
+      registryPurpose: request.registry.purpose,
+      custody: request.custody ?? EMPTY_CUSTODY_VERIFICATION,
+      openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
+    }));
+
+    // ---- TPM participation proof (v2.3) ----
+    // Custody alone is a self-report: the custody event is signed by the same
+    // Ed25519 key it vouches for. The proof comes from a separate
+    // non-exportable TPM key, so holding the completion key is not enough.
+    // A legacy record may not be used to create new live evidence. Existing
+    // ones stay verifiable; without the cutoff, omitting `recordVersion` would
+    // be a permanent opt-out of custody and TPM proof.
+    if (treatAsLive && binding.recordVersion === "2.2"
+      && Date.parse(record.observedAt) >= Date.parse(LEGACY_LIVE_RECORD_CUTOFF)) {
+      reasons.push(
+        `live record uses legacy shape 2.2 but was observed at ${record.observedAt}, `
+        + `after the ${LEGACY_LIVE_RECORD_CUTOFF} migration cutoff`,
+      );
+    }
+
+    if (treatAsLive && request.requireTpmProof !== false) {
+      reasons.push(...verifyTpmProofBinding({
+        record: record as unknown as Record<string, unknown> & { signingKeyId: string; tpmProofId?: string },
+        proofs: request.tpmProofs ?? [],
+        registryHash: registryHash(request.registry),
+        machineId: record.environment.machineId,
+        openRecoveryKeyIds: request.openRecoveryKeyIds ?? [],
+        ...(binding.keyCustodyEventId === undefined ? {} : { custodyEventId: binding.keyCustodyEventId }),
+        acceptedAttestationFingerprints: request.acceptedAttestationFingerprints ?? [],
+        consumedProofIds,
+      }));
+    }
+
     if (isLiveClass) {
       if (record.designation !== "live") {
         reasons.push(`gate requires live evidence but record is designated ${record.designation}`);

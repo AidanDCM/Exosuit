@@ -1,5 +1,5 @@
 /**
- * The frozen contract surface (v2.2).
+ * The frozen contract surface (v2.3).
  *
  * Freezing is only meaningful if a change is detected rather than merely
  * discouraged. This module reduces the parts of the contract that M1 evidence
@@ -13,8 +13,14 @@
  * longer mean what it did. Changing the pin is therefore a deliberate,
  * reviewable act: bump the label, state why, and re-attest.
  *
- * Frozen 2026-08-06, after M0.5 live attestation and reboot verification passed
- * 18/18 on a genuine restart.
+ * Frozen 2026-08-06 at v2.2, after M0.5 live attestation and reboot
+ * verification passed 18/18 on a genuine restart.
+ *
+ * Re-frozen 2026-08-06 at v2.3, after key custody binding, TPM participation
+ * proof, and versioned record schemas were added. The surface moved because
+ * signed records gained `recordVersion` and the custody fields, and because
+ * policy gained the protection backends and the legacy-live cutoff. M0 was
+ * re-attested against this surface in the same change — see the commit.
  */
 
 import { sha256Canonical } from "../fieldContracts.js";
@@ -43,8 +49,10 @@ import {
 } from "./policy.js";
 import {
   buildCompletionManifestSchema,
-  completionEvidenceSchema,
-  completionLedgerEventSchema,
+  completionEvidenceV22Schema,
+  completionEvidenceV23Schema,
+  completionLedgerEventV22Schema,
+  completionLedgerEventV23Schema,
   completionTestSchema,
   completionTrialBundleSchema,
   completionTrialSchema,
@@ -55,7 +63,7 @@ import {
 } from "./contracts.js";
 
 /** The human-facing label. `contractVersion` on the wire stays 2. */
-export const FROZEN_CONTRACT_LABEL = "2.2" as const;
+export const FROZEN_CONTRACT_LABEL = "2.3" as const;
 
 function fields(schema: { shape: Record<string, unknown> }): string[] {
   return Object.keys(schema.shape).sort();
@@ -97,9 +105,9 @@ export function frozenContractSurface(): Record<string, unknown> {
     schemaFields: {
       manifest: fields(buildCompletionManifestSchema),
       test: fields(completionTestSchema),
-      evidence: fields(completionEvidenceSchema),
+      evidence: fields(completionEvidenceV23Schema),
       environment: fields(executionEnvironmentSchema),
-      ledgerEvent: fields(completionLedgerEventSchema),
+      ledgerEvent: fields(completionLedgerEventV23Schema),
       lifecycleEvent: fields(fieldLifecycleEventSchema),
       trial: fields(completionTrialSchema),
       trialBundle: fields(completionTrialBundleSchema),
@@ -119,4 +127,4 @@ export function frozenContractFingerprint(): string {
  * the old surface.
  */
 export const FROZEN_CONTRACT_FINGERPRINT =
-  "8b4f4cc8003141f8b69ca59d555dabb9aa121fc1a50f24f837f63844fdcc92c0";
+  "2d16a0c5bba40a424b001b770ef8988a0b178d764ba53e3606ecc11c1d322f67";

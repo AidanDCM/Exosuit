@@ -59,6 +59,26 @@ import {
   recoveryConfirmation,
   type KeyRecoveryLedger,
 } from "./keyRecovery.js";
+import {
+  EMPTY_CUSTODY_LEDGER,
+  keyCustodyLedgerSchema,
+  nextCustodyEvent,
+  type KeyCustodyLedger,
+} from "./keyCustody.js";
+import {
+  EMPTY_TPM_PROOF_STORE,
+  ensureAttestationKey,
+  attestationKeyFingerprint,
+  recordDigest,
+  recoveryStateDigest,
+  registryHash,
+  signTpmChallenge,
+  tpmAttestationStatus,
+  tpmProofStoreSchema,
+  TPM_ATTESTATION_KEY_NAME,
+  type TpmProofStore,
+} from "./tpmAttestation.js";
+import type { KeyProtectionBackend } from "./policy.js";
 
 const ROOT = resolve(process.cwd());
 /**
@@ -79,6 +99,8 @@ const PATHS = {
   evidence: join(DIR, "evidence.json"),
   lifecycle: join(DIR, "field-lifecycle.json"),
   recovery: join(DIR, "key-recovery.json"),
+  custody: join(DIR, "key-custody.json"),
+  tpmProofs: join(DIR, "tpm-proofs.json"),
 };
 
 /* ------------------------------------------------------------------ util */
@@ -152,6 +174,125 @@ function privateKeyWithBackend(keyId: string): LoadedPrivateKey {
 
 function privateKey(keyId: string): string {
   return privateKeyWithBackend(keyId).pem;
+}
+
+function readCustodyLedger(): KeyCustodyLedger {
+  return existsSync(PATHS.custody)
+    ? keyCustodyLedgerSchema.parse(readJson(PATHS.custody))
+    : EMPTY_CUSTODY_LEDGER;
+}
+
+/**
+ * Opens a key and appends a custody attestation for that use (contract v2.3).
+ *
+ * Emitting the event here, at the moment the key is actually opened, is what
+ * makes the record's `keyProtectionBackend` a report rather than a claim: the
+ * value comes from `loadPrivateKey`, not from a caller's argument, and the same
+ * value is written to an append-only chain the verifier reads independently.
+ *
+ * Returns everything a signed record needs to bind itself to that event.
+ */
+function attestCustody(keyId: string): {
+  readonly pem: string;
+  readonly binding: {
+    readonly recordVersion: "2.3";
+    readonly keyProtectionBackend: KeyProtectionBackend;
+    readonly keyCustodyEventId: string;
+    readonly registryPurpose: RegistryPurpose;
+    readonly recoveryGrantId: string | null;
+  };
+} {
+  const material = privateKeyWithBackend(keyId);
+  const purpose = registryPurpose();
+  const ledger = readCustodyLedger();
+  const last = [...ledger.events].sort((a, b) => a.sequence - b.sequence).at(-1);
+  const recordedAt = new Date(
+    Math.max(Date.now(), last === undefined ? 0 : Date.parse(last.recordedAt) + 1),
+  ).toISOString();
+
+  const grantId = material.underRecoveryGrant === true ? `grant-${keyId}` : undefined;
+  const unsigned = nextCustodyEvent({
+    ledger,
+    eventId: `custody-${keyId}-${Date.now()}`,
+    keyId,
+    backend: material.backend,
+    registryPurpose: purpose,
+    ...(grantId === undefined ? {} : { recoveryGrantId: grantId }),
+    machineId: machineIdentity(),
+    recordedAt,
+  });
+  writeJson(PATHS.custody, keyCustodyLedgerSchema.parse({
+    contractVersion: 2,
+    events: [...ledger.events, { ...unsigned, signature: signRecord(unsigned, material.pem) }],
+  }));
+
+  return {
+    pem: material.pem,
+    binding: {
+      recordVersion: "2.3",
+      keyProtectionBackend: material.backend,
+      keyCustodyEventId: unsigned.eventId,
+      registryPurpose: purpose,
+      // Explicit null rather than an omitted field: an absent value is
+      // indistinguishable from one someone stripped.
+      recoveryGrantId: grantId ?? null,
+    },
+  };
+}
+
+/**
+ * Attestation keys this host trusts. Derived from the key currently in the TPM
+ * rather than pinned in the repository: pinning would make the file a second
+ * trust root that code review alone protects, which is the weakness already
+ * recorded against the key registry. The verifier still refuses any proof from
+ * a key this host cannot produce.
+ */
+function acceptedAttestationFingerprints(): readonly string[] {
+  const status = tpmAttestationStatus();
+  return status.publicKey === undefined ? [] : [attestationKeyFingerprint(status.publicKey)];
+}
+
+function readTpmProofs(): TpmProofStore {
+  return existsSync(PATHS.tpmProofs)
+    ? tpmProofStoreSchema.parse(readJson(PATHS.tpmProofs))
+    : EMPTY_TPM_PROOF_STORE;
+}
+
+/**
+ * Issues a TPM participation proof for an assembled-but-unsigned record.
+ *
+ * Ordering matters and is not incidental: the proof commits to the record's
+ * content, the record then references the proof id, and the Ed25519 signature
+ * covers both. Signing first would let a proof be swapped afterwards; proving
+ * first without referencing would leave the proof unattached.
+ */
+function issueTpmProof(record: Record<string, unknown>, custodyEventId: string): string {
+  const store = readTpmProofs();
+  const publicKey = ensureAttestationKey();
+  const state = foldRecoveryLedger(readRecoveryLedger());
+  const challenge = {
+    recordDigest: recordDigest(record),
+    completionKeyId: String(record["signingKeyId"]),
+    registryHash: registryHash(readJson<KeyRegistry>(PATHS.keys)),
+    machineId: machineIdentity(),
+    custodyEventId,
+    recoveryStateDigest: recoveryStateDigest(state.openKeyIds),
+    nonce: randomBytes(16).toString("hex"),
+    timestamp: new Date().toISOString(),
+  };
+  const proofId = `proof-${Date.now()}-${randomBytes(3).toString("hex")}`;
+  writeJson(PATHS.tpmProofs, tpmProofStoreSchema.parse({
+    contractVersion: 2,
+    proofs: [...store.proofs, {
+      proofId,
+      challenge,
+      attestationKeyName: TPM_ATTESTATION_KEY_NAME,
+      attestationKeyFingerprint: attestationKeyFingerprint(publicKey),
+      attestationPublicKey: publicKey,
+      signature: signTpmChallenge(challenge),
+    }],
+  }));
+  return proofId;
 }
 
 function powershell(script: string): string {
@@ -638,9 +779,15 @@ function commandRecord(): void {
     signingKeyId: keyId,
   };
 
+  const custody = attestCustody(keyId);
+  const withCustody = { ...unsigned, ...custody.binding };
+  const bound = {
+    ...withCustody,
+    tpmProofId: isLive ? issueTpmProof(withCustody, custody.binding.keyCustodyEventId) : null,
+  };
   const record: CompletionEvidence = {
-    ...unsigned,
-    signature: signRecord(unsigned, privateKey(keyId)),
+    ...bound,
+    signature: signRecord(bound, custody.pem),
   };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
@@ -699,7 +846,15 @@ function commandRecordArtifact(): void {
     signingKeyId: keyId,
   };
 
-  const record: CompletionEvidence = { ...unsigned, signature: signRecord(unsigned, privateKey(keyId)) };
+  // Custody is attested before the record is sealed, so the signature covers
+  // the binding and it cannot be attached to an existing record afterwards.
+  const custody = attestCustody(keyId);
+  const withCustody = { ...unsigned, ...custody.binding };
+  const bound = {
+    ...withCustody,
+    tpmProofId: isLive ? issueTpmProof(withCustody, custody.binding.keyCustodyEventId) : null,
+  };
+  const record: CompletionEvidence = { ...bound, signature: signRecord(bound, custody.pem) };
   writeJson(PATHS.evidence, evidenceStoreSchema.parse({
     contractVersion: 2,
     records: [...store.records, record],
@@ -748,26 +903,36 @@ function commandTransition(): void {
     signingKeyId: KEY.ledger(),
   });
 
-  // The reviewer signs the approval first; the issuer's signature then seals
-  // the event including that approval.
-  const approved = to === "passed"
+  // Custody of the ledger key is attested first, so the binding is part of the
+  // content the reviewer approves.
+  //
+  // Order is load-bearing. Adding custody fields *after* the reviewer signed
+  // silently invalidated their signature: the verifier recomputes the approval
+  // over the event minus its two signatures, and that now includes these
+  // fields. The reviewer must approve what actually gets sealed, not a prefix.
+  const custody = attestCustody(KEY.ledger());
+  const withCustody = { ...unsigned, ...custody.binding, tpmProofId: null };
+
+  // The reviewer signs the approval; the issuer's signature then seals the
+  // event including that approval.
+  const bound = to === "passed"
     ? {
-      ...unsigned,
+      ...withCustody,
       reviewerSignature: signAsReviewer(
-        unsigned,
+        withCustody,
         privateKey(unsigned.reviewerKeyId ?? APPROVAL_KEY_IDS[requiredApprovalRole(testId)]),
       ),
     }
-    : unsigned;
+    : withCustody;
 
   writeJson(PATHS.ledger, completionLedgerSchema.parse({
     contractVersion: 2,
     events: [...ledger.events, {
-      ...approved,
-      signature: signRecord(approved, privateKey(KEY.ledger())),
+      ...bound,
+      signature: signRecord(bound, custody.pem),
     }],
   }));
-  console.log(`Recorded ${testId}: ${from} -> ${to}`);
+  console.log(`Recorded ${testId}: ${from} -> ${to} (key backend: ${custody.binding.keyProtectionBackend})`);
 }
 
 /* ------------------------------------------------------ field lifecycle */
@@ -836,6 +1001,10 @@ function commandEvaluate(): void {
       artifacts: filesystemArtifactSource(),
       target,
       fieldLifecycle: readLifecycle(),
+      keyCustody: readCustodyLedger(),
+      keyRecovery: readRecoveryLedger(),
+      tpmProofs: readTpmProofs().proofs,
+      acceptedAttestationFingerprints: acceptedAttestationFingerprints(),
     });
     console.log(`\n${result.headline}`);
     console.log(`- proven gates: ${result.provenTestCount}/${result.requiredTestCount}`);

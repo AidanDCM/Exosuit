@@ -69,8 +69,17 @@ const base = store.records;
 const target = base.find((record) => record.evidenceId === "m05-field-attestation");
 if (target === undefined) throw new Error("m05-field-attestation evidence not found");
 
-function mutate(changes: Partial<CompletionEvidence>): CompletionEvidence[] {
-  return base.map((record) => record.evidenceId === target!.evidenceId ? { ...record, ...changes } : record);
+/**
+ * Records are a union of the 2.2 and 2.3 shapes, so `Partial<CompletionEvidence>`
+ * collapses to a type that no longer assigns back to either member. This
+ * harness exists to build deliberately malformed records, so it takes a loose
+ * patch and casts: what matters is what the verifier does with the result, not
+ * whether the mutation typechecks.
+ */
+function mutate(changes: Record<string, unknown>): CompletionEvidence[] {
+  return base.map((record) => (
+    record.evidenceId === target!.evidenceId ? { ...record, ...changes } as CompletionEvidence : record
+  ));
 }
 
 const cases: Case[] = [
