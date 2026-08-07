@@ -1,0 +1,14 @@
+# Completion evidence artifacts are content-addressed: the filename IS the
+# SHA-256 of the bytes, and a signed evidence record commits to both that hash
+# and the exact byte length.
+#
+# This repository has core.autocrlf=true, so without `-text` git would normalise
+# line endings on commit and convert them back on checkout. The bytes on disk
+# would then differ per platform — LF on a Linux runner, CRLF on Windows — and
+# the artifact would no longer hash to its own filename. The reconciliation test
+# would fail on one platform or the other, and worse, the signed record would be
+# unverifiable through no fault of the signer.
+#
+# These files must round-trip byte-for-byte on every platform. Never remove this.
+docs/qa/completion/artifacts/** -text
+docs/qa/completion-m05/artifacts/** -text

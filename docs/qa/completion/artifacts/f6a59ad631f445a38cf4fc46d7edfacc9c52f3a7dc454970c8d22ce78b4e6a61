@@ -1,0 +1,14 @@
+{
+  "command": "npm run test:completion",
+  "exitCode": 0,
+  "startedAt": "2026-08-06T15:04:58.776Z",
+  "endedAt": "2026-08-06T15:05:07.165Z",
+  "environment": {
+    "machineId": "machine-9c62d678dd970f15",
+    "osEdition": "Windows_NT win32",
+    "osBuild": "10.0.26200"
+  },
+  "testId": "SRC-003",
+  "evidenceClass": "unit",
+  "output": "\n> exosuit@0.1.0 test:completion\n> vitest run tests/completionGateV2.test.ts tests/security/buildCompletionPlanV2.adversarial.test.ts tests/security/liveAttestation.adversarial.test.ts tests/buildCompletionPlan.test.ts\n\n\n\u001b[1m\u001b[46m RUN \u001b[49m\u001b[22m \u001b[36mv3.2.7 \u001b[39m\u001b[90mC:/Users/Aidan/AppData/Local/Temp/exorev\u001b[39m\n\n \u001b[32m✓\u001b[39m tests/buildCompletionPlan.test.ts \u001b[2m(\u001b[22m\u001b[2m9 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 110\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m✓\u001b[39m tests/completionGateV2.test.ts \u001b[2m(\u001b[22m\u001b[2m11 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 1050\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[33m\u001b[2m✓\u001b[22m\u001b[39m completion gate v2 — contract behaviour\u001b[2m > \u001b[22mreaches full promotion only when every required gate is proven \u001b[33m 303\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[33m\u001b[2m✓\u001b[22m\u001b[39m completion gate v2 — contract behaviour\u001b[2m > \u001b[22mkeeps production denied even at full production completion \u001b[33m 337\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m✓\u001b[39m tests/security/buildCompletionPlanV2.adversarial.test.ts \u001b[2m(\u001b[22m\u001b[2m46 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 2134\u001b[2mms\u001b[22m\u001b[39m\n   \u001b[33m\u001b[2m✓\u001b[22m\u001b[39m v2 adversarial — the total forgery from the v1 review\u001b[2m > \u001b[22mcannot declare full MVP completion without real evidence \u001b[33m 300\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m✓\u001b[39m tests/security/liveAttestation.adversarial.test.ts \u001b[2m(\u001b[22m\u001b[2m40 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 3016\u001b[2mms\u001b[22m\u001b[39m\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m4 passed\u001b[39m\u001b[22m\u001b[90m (4)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m106 passed\u001b[39m\u001b[22m\u001b[90m (106)\u001b[39m\n\u001b[2m   Start at \u001b[22m 11:05:00\n\u001b[2m   Duration \u001b[22m 6.26s\u001b[2m (transform 1.46s, setup 0ms, collect 5.55s, tests 6.31s, environment 2ms, prepare 2.14s)\u001b[22m\n\n"
+}
