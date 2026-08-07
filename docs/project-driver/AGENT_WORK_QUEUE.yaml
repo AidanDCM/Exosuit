@@ -80,6 +80,39 @@ work_items:
     acceptance:
       - one complete workflow can be described without ambiguous verbs
       - every consequential action has an approval rule
+    progress:
+      # Three of four outputs are application-independent and are frozen.
+      # PD-001 stays open: the target application is a product decision, and
+      # the acceptance criteria cannot be met until it is named.
+      - docs/project-driver/ACTION_POLICY.md
+      - docs/project-driver/OUTCOME_TAXONOMY.md
+      - docs/project-driver/WORKFLOW_SCHEMA.md
+    blocked_on:
+      - exact target application and end-to-end task (owner decision)
+
+  - id: PD-NET-001
+    title: Create the Exosuit-Field-NAT switch for network-dependent workflows
+    status: conditional
+    activates_when: "PD-001 freezes a workflow with network_required: yes"
+    owner: operator
+    reviewer: codex_validation
+    priority: P0-if-activated
+    dependencies: [PD-001]
+    context: >
+      The Field runs on Exosuit-Field-Isolated, a Private switch with no
+      internet. Exosuit-Field-NAT is declared in vm/field-host-config.local.json
+      but does not exist on the host. Creating it is a host networking change,
+      so it cannot be done by the agent and is not covered by any current item.
+      A local-application workflow does not activate this; any browser or
+      hosted-service workflow does, and it then blocks PD-006.
+    outputs:
+      - NAT switch created and named exactly as the host config declares
+      - Field provisioning verified against the NAT profile
+      - egress boundary documented: what the Field may reach, and what it may not
+    acceptance:
+      - a Field on the NAT profile reaches only the declared target application
+      - host LAN access and inbound connections remain refused
+      - HYP-001 preflight passes unchanged on the isolated profile
 
   - id: PD-002
     title: Reconcile authoritative status and evidence portability
