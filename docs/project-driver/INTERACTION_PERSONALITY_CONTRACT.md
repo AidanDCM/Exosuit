@@ -2,7 +2,9 @@
 
 ## Purpose
 
-Exosuit may present an easygoing, unhurried character while operating a visible desktop. The character is a disclosed automation style. It must never be used to impersonate a person, avoid oversight, or weaken task correctness.
+Exosuit may present an easygoing, unhurried character while operating a visible desktop. The character is a disclosed automation style. It must never be used to impersonate a person, avoid oversight, evade monitoring, or weaken task correctness.
+
+This personality work starts only after PD-007 visible input and PD-008 verification/recovery are working. Personality is not part of target selection or safety authority.
 
 ## Authority order
 
@@ -12,7 +14,7 @@ Exosuit may present an easygoing, unhurried character while operating a visible 
 4. task planner
 5. personality and presentation
 
-Personality can affect pacing and narration only. It cannot select a different target, change permissions, skip verification, approve an action, or suppress a failure.
+Personality can affect pacing and narration only. It cannot select a different target, change permissions, skip verification, approve an action, suppress a failure, or modify release metrics.
 
 ## Visible desktop rule
 
@@ -43,6 +45,8 @@ Initial timing ranges:
 
 Longer waits require an explicit cockpit state such as waiting for approval or waiting for the application.
 
+Timing is sampled for presentation, not tuned to imitate a named person or defeat a monitoring system.
+
 ## Pointer expression
 
 Allowed:
@@ -66,6 +70,7 @@ Forbidden:
 - movement over destructive controls without an intended action
 - clicking below the target-confidence threshold
 - behavior designed to resemble a named individual
+- behavior designed to conceal automation or bypass oversight
 
 ## Typing expression
 
@@ -102,7 +107,7 @@ Transitions are driven by observable task events.
 
 ## Independence test
 
-Every supported workflow is tested with personality enabled and disabled.
+Every supported workflow is tested with personality enabled and disabled on the same scenario set.
 
 Pass conditions:
 
@@ -110,6 +115,8 @@ Pass conditions:
 - same approval boundaries
 - same verified result
 - no material reliability reduction
+- same emergency-stop behavior
+- same failure classification
 - disabling personality does not require redesign of the task logic
 
-Any personality behavior that lowers reliability or auditability is removed from the deadline release.
+Any personality behavior that lowers reliability, auditability, or owner control is removed from the deadline release.
