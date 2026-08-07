@@ -31,7 +31,16 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { hostname } from "node:os";
 import {
@@ -112,8 +121,29 @@ function writeJsonFile(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+/**
+ * SHA-256 of a file, read in chunks.
+ *
+ * `readFileSync` refuses anything over 2 GiB with ERR_FS_FILE_TOO_LARGE, and the
+ * base image is an 11 GiB VHDX — so the obvious one-liner fails on the only file
+ * this function is actually used for. It is called once in preflight and again
+ * after every cycle to prove the immutable base did not change, so a failure
+ * here blocks the whole gate rather than degrading it.
+ */
 function sha256File(path: string): string {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
+  const hash = createHash("sha256");
+  const buffer = Buffer.allocUnsafe(8 * 1024 * 1024);
+  const fd = openSync(path, "r");
+  try {
+    let bytesRead = readSync(fd, buffer, 0, buffer.length, null);
+    while (bytesRead > 0) {
+      hash.update(buffer.subarray(0, bytesRead));
+      bytesRead = readSync(fd, buffer, 0, buffer.length, null);
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return hash.digest("hex");
 }
 
 function machineIdentity(): string {
