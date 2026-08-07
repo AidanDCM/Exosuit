@@ -4,7 +4,7 @@ Deadline-mode program for an operational, restricted desktop project operator by
 
 ## Start here
 
-1. [`DEVELOPER_HANDOFF.md`](./DEVELOPER_HANDOFF.md) — current baseline, merged work, retired branches, exact next actions, commands, and developer ownership.
+1. [`DEVELOPER_HANDOFF.md`](./DEVELOPER_HANDOFF.md) — current baseline, merged work, retired branches, monitoring, exact next actions, commands, and developer ownership.
 2. [`DEADLINE_EXECUTION_PLAN.md`](./DEADLINE_EXECUTION_PLAN.md) — scope, calendar, critical path, agent lanes, daily rhythm, and stop conditions.
 3. [`AGENT_WORK_QUEUE.yaml`](./AGENT_WORK_QUEUE.yaml) — machine-readable owner/dependency/acceptance queue for Codex and Claude sessions.
 4. [`INTERACTION_PERSONALITY_CONTRACT.md`](./INTERACTION_PERSONALITY_CONTRACT.md) — visible-input and bounded personality rules.
@@ -35,7 +35,7 @@ Retired development and monitoring targets:
 - `codex/publish-evidence-artifacts`
 - monitor IDs `bc89n6uoq` and `b42foy02q`
 
-Use `codex/unify-glove-field`, PR #32, issue #31, and exact-head workflow status instead.
+A replacement hourly condition watch monitors `codex/unify-glove-field`, PR #32, issue #31, and exact-head CI/gate/blocker changes.
 
 ## Immediate order
 
