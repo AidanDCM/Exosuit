@@ -53,7 +53,9 @@
     "hyp001:preflight": "tsx src/completion/hyp001Harness.ts preflight",
     "hyp001:cycles": "tsx src/completion/hyp001Harness.ts cycles",
     "hyp001:record": "tsx src/completion/hyp001Harness.ts record",
-    "test:hyp001": "vitest run tests/hyp001Harness.test.ts"
+    "test:hyp001": "vitest run tests/hyp001Harness.test.ts",
+    "validate:evidence-artifacts": "vitest run tests/completionArtifactReconciliation.test.ts",
+    "scan:evidence-artifacts": "node scripts/scan-evidence-artifacts.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

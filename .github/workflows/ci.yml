@@ -361,3 +361,12 @@ jobs:
               exit 1
             }
           echo 'Repository manual and secret-shape contract passed.'
+
+      # Evidence artifacts are committed so a content-addressed record can be
+      # checked by someone other than the machine that made it. These two checks
+      # need no private keys, so hosted CI can enforce them even though it can
+      # never run validate:completion.
+      - name: Completion evidence artifact reconciliation
+        run: npm run validate:evidence-artifacts
+      - name: Secret scan over published evidence artifacts
+        run: npm run scan:evidence-artifacts

@@ -9,10 +9,25 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
-bin/
-obj/
+**/bin/
+**/obj/
 TestResults/
-artifacts/
+# Root build output.
+/artifacts/
+# Nested artifact directories stay ignored by default. This was previously the
+# unanchored `artifacts/`, which also matched docs/qa/completion/artifacts/ and
+# silently excluded the evidence the completion gate is built on — a
+# content-addressed record whose artifact is not in the repository is only a
+# signed pointer. Anchoring alone would have un-ignored EVERY nested artifacts
+# directory, including the docs/qa/completion-m05/ smoke-test store, so the
+# broad rule is kept and only the one directory we publish is negated.
+**/artifacts/
 apps/windows-agent/data/
 apps/windows-agent/screenshots/
+
+# Completion evidence is intentionally versioned. The negation is kept even
+# though `/artifacts/` is now anchored, as a defence against a future broader
+# pattern re-excluding it by accident.
+!docs/qa/completion/artifacts/
+!docs/qa/completion/artifacts/**
 vm/field-host-config.local.json

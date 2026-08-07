@@ -534,3 +534,73 @@ cutoff cases — which re-sign the relegated record rather than merely stripping
 fields, so they fail on the shape rule and not on a broken signature.
 
 ### v2.3 is now complete
+
+---
+
+## 15. Evidence artifact publication policy
+
+Evidence is content-addressed: a record commits to the SHA-256 of an artifact,
+and the verifier rejects the record if that artifact is absent. Until now the
+artifacts were never in the repository — `.gitignore` carried an unanchored
+`artifacts/` rule that also matched `docs/qa/completion/artifacts/`. The records
+verified, because signatures are over public material, but the content they were
+bound to lived on one machine. **A content-addressed record without its content
+is only a signed pointer.**
+
+The rule is now anchored to `/artifacts/` (the root build directory it was meant
+for) with an explicit negation for the evidence store, kept as a defence against
+a future broader pattern.
+
+### What gets committed
+
+Exactly the artifacts referenced by records in `evidence.json` — no more, no
+less. Both halves are enforced by
+`tests/completionArtifactReconciliation.test.ts`:
+
+```
+every referenced artifact exists
+filename equals the SHA-256 of the contents
+byte length equals the record's artifactBytes
+no unreferenced artifact is committed
+no private key material is present
+```
+
+Superseded records stay referenced by the ledger's revoked transitions, so their
+artifacts stay committed too — a reviewer checking why an attestation was
+withdrawn needs the evidence it rested on. What the invariant forbids is
+*orphans*: artifacts with no record, which a reviewer could mistake for current
+proof.
+
+This test needs no private keys. Signature verification uses the public
+registry and artifact verification uses committed files, so hosted CI can
+enforce it — which matters, because CI can never run `validate:completion`: that
+needs both the TPM-sealed signing keys and this artifact store.
+
+### Never redact in place
+
+`npm run scan:evidence-artifacts` scans published artifacts for private keys,
+cloud and platform tokens, bearer tokens, credential-bearing URLs, private IPs,
+MAC addresses and email addresses. RFC 2606 reserved domains
+(`.example`/`.test`/`.invalid`/`.localhost`) are allowed, because the
+support-bundle suite uses them as fixtures asserting such text is *rejected*.
+
+**A finding is not a cleanup task.** The filename is the artifact's SHA-256 and
+a signed record commits to it, so editing the file breaks the record. Instead:
+
+1. treat that evidence record as unpublishable
+2. re-run the command with deterministic redaction
+3. record a new artifact and a new signed evidence record
+4. replace the authoritative record through the normal transition path
+
+### Review performed for the first publication
+
+The six artifacts committed here were scanned and manually reviewed. Three
+matches were traced to source and cleared:
+
+| Match | Verdict |
+| --- | --- |
+| `aidan.miller@acme.example` | Fixture in `supportBundle.test.ts`, in a test name asserting rejection. RFC 2606 domain. |
+| `password` ×2 | Test titles — "hard-denies password fields…", "Ignore previous instructions…". Prose. |
+| `C:/Users/Aidan/...` | Real home-directory path in the vitest banner. Already committed in §1 and §4 of this document, so publication discloses nothing new. |
+
+No private keys, tokens, credentials, IP/MAC addresses or environment dumps.
