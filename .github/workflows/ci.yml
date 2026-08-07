@@ -59,19 +59,32 @@ concurrency:
 
 # Jobs are serialised rather than run in parallel.
 #
-# Measured 2026-08-06: this account schedules roughly one hosted job at a time.
-# In a parallel run exactly one job was assigned a runner and finished in under
-# a minute, while every sibling sat with runner_name="" and was killed at a
-# uniform ~15 minutes — regardless of its own timeout-minutes (30, 25 and 10 all
-# died at 15:00). The run was then reported as a failure even though the job
-# that ran had succeeded.
+# Hosted runner availability for this account has proven INTERMITTENT, and that
+# is the actual reason, not a fixed capacity limit.
 #
-# Chaining with `needs` means each job only becomes eligible once the previous
-# one has released the slot, so none of them race and starve. `!cancelled()`
-# keeps the chain going when an upstream job *fails* — otherwise one real
-# failure would hide every downstream result — while still honouring a genuine
-# cancellation of the run.
-
+# 2026-08-06: repeated runs where one job was assigned a runner and finished in
+# under a minute while every sibling sat with runner_name="" and zero steps and
+# was killed at a uniform ~15 minutes. That ceiling was not the jobs' own
+# configuration — timeout-minutes of 30, 25 and 10 all died at 15:00 — and the
+# run was reported as a failure even though the job that ran had succeeded.
+#
+# 2026-08-07: the same unserialised configuration ran all three jobs
+# concurrently on three distinct runners and passed.
+#
+# An earlier version of this comment claimed the account schedules "roughly one
+# hosted job at a time". That was wrong — it generalised a standing limit from a
+# few hours of a transient throttle. Recorded here because the mistaken version
+# was committed and reviewed.
+#
+# Serialising is therefore insurance, not a fix for a known cap: it costs
+# wall-clock when capacity is plentiful (jobs run in sequence rather than
+# parallel) and it keeps runs correct when capacity is not, instead of
+# reporting false failures for jobs that never executed.
+#
+# `!cancelled()` is worth keeping on its own merits, independent of capacity:
+# plain `needs` skips a job when its predecessor fails, so one real failure
+# would hide every downstream result. This keeps the chain running through a
+# failure while still honouring a genuine cancellation of the run.
 jobs:
   typescript:
     name: TypeScript Glove and Field validation
