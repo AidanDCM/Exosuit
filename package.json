@@ -54,6 +54,7 @@
     "hyp001:cycles": "tsx src/completion/hyp001Harness.ts cycles",
     "hyp001:record": "tsx src/completion/hyp001Harness.ts record",
     "test:hyp001": "vitest run tests/hyp001Harness.test.ts",
+    "test:chn001": "vitest run tests/chn001.test.ts tests/fieldChannel.test.ts tests/fieldHeartbeat.test.ts tests/fieldLiveReadiness.test.ts",
     "validate:evidence-artifacts": "vitest run tests/completionArtifactReconciliation.test.ts",
     "scan:evidence-artifacts": "node scripts/scan-evidence-artifacts.mjs"
   },

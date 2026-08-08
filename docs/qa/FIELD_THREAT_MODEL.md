@@ -94,7 +94,10 @@
 
 - HMAC attestation is local software binding, not hardware-rooted remote attestation.
 - Replay state has a bounded atomic persistence implementation; protected-state operational validation and key rotation are not proven live.
-- Actual Hyper-V socket or private transport is not implemented.
+- Hyper-V KVP provides the existing bounded guest-to-host metadata transport;
+  CHN-001 now has a fail-closed acceptance schema, but its complete production
+  failure-injection matrix remains unexecuted. No general Hyper-V socket or
+  bidirectional command transport is claimed.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
 - Personal-state encryption ownership and key rotation are not implemented.

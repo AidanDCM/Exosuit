@@ -164,4 +164,7 @@ A release candidate must have:
 2. every W/H row either passing with evidence or explicitly held out of the promoted capability;
 3. no Critical or High row marked “unknown” for a capability being enabled;
 4. emergency stop, generation isolation, guest authentication, base-image immutability, destruction confinement, and no-blind-retry tests passing;
+5. CHN-001 promotion requires one machine-checkable run satisfying every row
+   CHN-001.1 through CHN-001.12; source tests or partial KVP captures cannot
+   substitute for live lock, Secure Desktop, display, heartbeat-loss, and stop evidence;
 5. owner verdict recorded.
