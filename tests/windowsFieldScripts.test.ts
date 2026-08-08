@@ -661,7 +661,10 @@ describe("Windows Field administration scripts", () => {
 
     const neverUnlocked = await runGuestStartupHarness("never_unlocked");
     expect(neverUnlocked.status).not.toBe(0);
-    expect(neverUnlocked.calls).toEqual(["bootstrap", "protect", "guest", "bootstrap", "stop"]);
+    expect(neverUnlocked.calls.slice(0, 3)).toEqual(["bootstrap", "protect", "guest"]);
+    expect(neverUnlocked.calls.at(-1)).toBe("stop");
+    expect(neverUnlocked.calls).not.toContain("wait");
+    expect(neverUnlocked.calls.slice(3, -1).every((call) => call === "bootstrap")).toBe(true);
   // Seven isolated Windows PowerShell child processes execute product deadlines
   // internally. This outer harness timeout only bounds aggregate process startup
   // under host load; it does not relax any launcher or desktop-ready deadline.

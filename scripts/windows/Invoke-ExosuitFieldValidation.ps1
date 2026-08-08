@@ -118,7 +118,10 @@ try {
     Invoke-ValidationStep -Name 'typescript-typecheck' -Action { npm run typecheck }
     Invoke-ValidationStep -Name 'field-tests' -Action { npm run test:field -- --reporter=verbose }
     Invoke-ValidationStep -Name 'field-system-pulse' -Action { npm run test:field-pulse -- --reporter=verbose }
-    Invoke-ValidationStep -Name 'full-typescript-tests' -Action { npm test -- --reporter=verbose }
+    Invoke-ValidationStep -Name 'full-typescript-tests' -Action {
+        $vitest = Join-Path $RepositoryRoot 'node_modules\.bin\vitest.cmd'
+        & $vitest run --reporter=verbose --maxWorkers=1 --minWorkers=1
+    }
     Invoke-ValidationStep -Name 'typescript-build' -Action { npm run build }
     Invoke-ValidationStep -Name 'glove-system-pulse' -Action { npm run test:pulse -- --reporter=verbose }
     Invoke-ValidationStep -Name 'dotnet-restore' -Action { & $dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj }
