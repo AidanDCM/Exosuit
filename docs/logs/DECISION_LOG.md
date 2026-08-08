@@ -138,3 +138,21 @@ jobs are fresh, exact-generation, capacity-bound proposals to the service. Insta
 inputs are verified before every job. Static/unit or successful installation evidence
 does not promote L1-L3; live lifecycle, tamper, cancellation, immutability, destruction,
 and rollback evidence remains mandatory. Uninstall preserves sanitized evidence.
+
+## 2026-08-08 — Derive component-only bases offline from an accepted immutable source
+
+**Decision:** For guest-agent/script-only updates, create a new base version by copying
+the last accepted generalized read-only image and mounting only the copy offline. The
+source is never writable, existing targets are never overwritten, permitted paths are
+fixed, per-generation configuration is denied, and publication requires digest and
+read-only verification.
+
+**Reason:** Re-running the Audit Mode account-cleanup and Sysprep ceremony for unchanged
+Windows/application state adds time and fresh credential handling without strengthening
+a component-only update. Offline copy derivation narrows the mutation surface and makes
+the unchanged source independently rehashable.
+
+**Consequences:** A derived image does not inherit acceptance. It needs a unique image
+ID/digest, explicit host-registry entry, disposable guest acceptance, lifecycle/base
+immutability evidence, and rollback. Any Windows feature, account, application, service
+registration, or machine-state change still requires the full maintenance/Sysprep path.

@@ -492,6 +492,11 @@ Rules:
 - base and personal-state paths are never accepted as generation-deletion targets;
 - rollback or rebuild increments `fieldGeneration`;
 - traffic from an older generation is rejected.
+- a new base version may be derived offline only by copying an already accepted,
+  generalized, read-only base; the source is never mounted writable, the target never
+  overwrites an existing image, only fixed reviewed guest components may change, no
+  per-generation configuration may exist, and the new target requires its own digest,
+  acceptance evidence, host-registry update, and rollback path before use;
 
 ### 11.3 Display and input contract
 

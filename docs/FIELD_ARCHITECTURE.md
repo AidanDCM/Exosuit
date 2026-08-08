@@ -71,6 +71,13 @@ Authorized pilot: ChatGPT / Claude / other MCP host
 
 Contains Windows, guest integration, Exosuit agent, approved applications, stable desktop settings, and versioned configuration. The base image is not modified during ordinary tasks.
 
+A component-only base update may derive a new version from an already accepted,
+generalized base. The source must remain read-only and must never be the writable mount;
+the derived copy is mounted offline with no network or VM, changes are confined to the
+fixed agent/launcher/SetupComplete paths, per-generation configuration must be absent,
+and the target is content-addressed and made read-only before publication. Derivation
+does not inherit acceptance: the new digest needs its own guest and lifecycle evidence.
+
 ### Encrypted personal-state disk
 
 Contains approved persistent state such as application settings, browser profile, personal dictionary, sanitized application maps, demonstration indexes, learned behavior profiles, and approved persistent sessions. This disk must be separable from disposable task data and protected at rest.

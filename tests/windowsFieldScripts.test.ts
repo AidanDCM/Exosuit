@@ -144,6 +144,23 @@ $passed = if ($unlocked) { 'true' } else { 'false' }
 }
 
 describe("Windows Field administration scripts", () => {
+  it("derives a new immutable base only from an exact read-only source copy", async () => {
+    const derive = await script("New-ExosuitDerivedFieldBase.ps1");
+    expect(derive).toContain("BUILD FIELD BASE $TargetImageId FROM $SourceImageId");
+    expect(derive).toContain("Derived base requires the exact clean source commit");
+    expect(derive).toContain("if (-not $sourceItem.IsReadOnly)");
+    expect(derive).toContain("if (Test-Path -LiteralPath $target)");
+    expect(derive).toContain("Mount-VHD -Path $temporary");
+    expect(derive).not.toContain("Mount-VHD -Path $source");
+    expect(derive).toContain("per-generation configuration or secrets");
+    expect(derive).toContain("Dismount-VHD -Path $temporary");
+    expect(derive).toContain("$temporaryItem.IsReadOnly = $true");
+    expect(derive).toContain("Move-Item -LiteralPath $temporary -Destination $target");
+    expect(derive).toContain("if ($targetPublished -and (Test-Path -LiteralPath $target))");
+    expect(derive).not.toContain("Invoke-Expression");
+    expect(derive).not.toMatch(/New-VM|Start-VM|Connect-VMNetworkAdapter/);
+  });
+
   it("installs a narrow hash-bound Field owner service with one visible UAC launch", async () => {
     const show = await script("Show-ExosuitFieldOwnerInstallPlan.ps1");
     const start = await script("Start-ExosuitFieldOwnerInstall.ps1");

@@ -85,6 +85,34 @@ Do not commit the local registry if it contains private paths or machine-specifi
 
 ## Provisioning plan review
 
+Before provisioning against a component-only base update, derive a new immutable image
+from the last accepted generalized base. Review the dry-run first:
+
+```powershell
+./scripts/windows/New-ExosuitDerivedFieldBase.ps1 `
+  -SourceImagePath C:\ProgramData\Exosuit\Images\exosuit-field-base-v25.vhdx `
+  -SourceImageId exosuit-field-base-v25 `
+  -SourceImageSha256 5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744 `
+  -TargetImagePath C:\ProgramData\Exosuit\Images\exosuit-field-base-v26.vhdx `
+  -TargetImageId exosuit-field-base-v26 `
+  -SourceCommit <exact-clean-commit> `
+  -AgentPath <exact-published-agent.exe> `
+  -EvidenceDirectory <exact-evidence-directory>
+```
+
+Apply is one elevated, typed transaction. The exact phrase is printed by dry-run. The
+script copies v25, mounts only the temporary copy, updates fixed guest components,
+refuses per-generation configuration, verifies component digests and ACLs, dismounts,
+hashes, marks the copy read-only, and publishes v26 without overwriting. On failure it
+removes only the exact unpublished temporary/target copy. It never creates or starts a
+VM and never mounts v25 writable.
+
+The receipt is build evidence, not acceptance. Add v26 to the host registry only after
+reviewing it, then run disposable guest acceptance and immutable-base lifecycle checks.
+Rollback removes the v26 registry entry and, after proving no overlay references it,
+only v26; v25 remains unchanged.
+
+
 Generate the plan through the TypeScript contract, then resolve it without mutation:
 
 ```powershell

@@ -117,6 +117,11 @@
   artifacts and independently checks cleanup/base immutability at finalize, but it
   cannot prove the truth of owner-observed lock, Secure Desktop, display, or stop
   ceremonies without their reviewed live artifacts and independent review.
+- Component-only base derivation mounts only a temporary copy of an accepted,
+  generalized read-only image and confines writes to fixed guest component paths. It
+  denies overwrite and per-generation config and rolls back the exact derived copy;
+  live elevated derivation, source immutability, target boot, and acceptance remain
+  required before the new image may enter a production plan.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
 - Personal-state encryption ownership and key rotation are not implemented.
