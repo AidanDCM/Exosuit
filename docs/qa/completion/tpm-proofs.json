@@ -60,6 +60,66 @@
         "exponent": "AQAB"
       },
       "signature": "xrDyMqbvwdkvesYE83z+0oivVp3eNELJcKpge9atRSLtcn2Qgl3C/DcIrONClgwG4txWa4haC+X7NV05GlDySKmvb3PqyJnR7MwCd3ldWE4jRSb0ZLXIFWZw+n6phImrUq8n9hPtZ0VII/DfOduMdyUtvC0TwXv3W1ze8J2rz2GsIvDeSG4yhVQSFlKPjpvZE88NQnO+M6YZ/enmhoVtMRIwDU9H5nL+XkRkTRYic5HjiTd0NykZZgJ2pD/xSOHYoO6taTIPW8KqIXrZ3M0kpCFVXTGfiExIq2L/SIAzsG+7Bv6bJ9yzC6evvVyRjC8DlOsvWKNV3rM61KA/m3aQHg=="
+    },
+    {
+      "proofId": "proof-1786226785211-2d840c",
+      "challenge": {
+        "recordDigest": "3df5a7fa778ad9064beb4fe22fe41270ca3e0c061e42883042a643a9bfb30dbb",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786226784710",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "bd7cb9da744aa6282123d2528d300d4b",
+        "timestamp": "2026-08-08T22:06:25.211Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "aBUB8QxgRbNcTS6nRX7F774O3cAMekTXhcEZy5r3bZsoahRprtMDKMAjDP4Rv9akcCPEo8umXU+tt1QnMAQo0inY0esFkoQ4WvnZvT0X0tlvaDQWAJdkG1AbLmT/UGxT7SUmgToCV08u4dpTzjAMbljMkb1XOR84NRcQGAaBOM0rZRYdV2tyIATT3QsBYW85bqf/EPaIJ0VFqUST5W2QS+Oaz3Ld8uev8wc79IZRMEpboyJnZHNhPDk58pbHgqFci8FcqkQMMTxUaTOYY2doh/xN1cYoOFVBaqzTf/Y6C25pQLMmMcZKfSFwC5IcTTBQkNTYNe68BYXNVMFNrSXLlw=="
+    },
+    {
+      "proofId": "proof-1786226789692-89bae3",
+      "challenge": {
+        "recordDigest": "8032558fb0bbef4287f193676baa3f038a4d818a25184f7e390f9121d6839c36",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786226789159",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "d4f4f2b8e88df5a413e0c35656b2189c",
+        "timestamp": "2026-08-08T22:06:29.692Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "SX6sf1nTKsw+8h/cfPjpHQxh4CUkaB0o3fmeCTINsMYXeQ4ZnoJwrlwWtq08+u7JYcxv9ZLxo5W6QEn+HcJeQyCtomXtWrcGVQK/BmtFS0yU+bAvKxkd0gXl4JfU2esXVvUAy1RwqCt0/5x/FEv7Y7UHSLhKC5oP7gxu5sBGkXy1UHhTNF1+TWjejPoe8FX9RXo7NJd9p5KJfULKQQUYQYh9MTg2N9K0Ie32JN8rbQ3b8Vx6emO4fNBfYi4Y9LjblLwM/ec7moVST/yAHTOjbASPmz9VeTU8/3zAUHvyuotKhbuKyK6oPzRbgpEAhESIWd+weR7XU1CkvPBUQ79bGg=="
+    },
+    {
+      "proofId": "proof-1786226793673-edede9",
+      "challenge": {
+        "recordDigest": "62d5dcf4e84a470ee57e37b9c73e8a7f2c8e7d340036971512693554531aace7",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786226793239",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "0acc8bd130bab17204e6bd4448edfc8e",
+        "timestamp": "2026-08-08T22:06:33.673Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "bYVrTQskKEHxJw2xE1nJh3kpHlsUMeTbVbipq1pEUpbyTb2o4CuVqZ3ZQa5oT4gOWkNMN+X5t/iDg3aeqgJ5KHC8Zw6QN8OkXQOmkpCDFOey/fnONk2AdpikEnIOIYj55muU5f/mrEqiD9rOlhPO123r6Ivf4e1oaSsHjHFwbg3djeU+GDb9NskaO7aQ7GhLoufke0aHwBTSB07zqFNFVNB/CS6aIek8NHKv6j8leA5phX0cQj0IwVRGsQHx5+NyalgaleYog4n3WBSdFOWq+b+lUx1OGs5P5IbBVHKsNjGariNHvy0Oj0z898q4SwxD9sYhi5CtS6YtbUT/d8wTow=="
     }
   ]
 }

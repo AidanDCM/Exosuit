@@ -3,7 +3,7 @@
 **Date:** 2026-08-08
 **Gate:** HYP-001, M1
 **Status:** three evidence records valid; independent technical promotion pending
-**Field ID:** `75e54955-9e75-4d3e-aa03-3054139a6e36`
+**Field ID:** `59e1bf4e-7ea5-4132-8178-756465b1c86f`
 **Machine ID:** `machine-9c62d678dd970f15`
 **Evidence baseline:** `8efb63aa1452ebdb84f910309bbb284b2d25a980`
 
@@ -25,7 +25,7 @@ This packet does not promote HYP-001. Promotion requires an independent
 - TPM-sealed live keys: 8/8
 - isolated switch: Private
 - base digest: `5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744`
-- free memory at final apply preflight: 4.20 GiB (minimum 4.00 GiB)
+- free memory at final apply preflight: 5.15 GiB (minimum 4.00 GiB)
 - competing Field VMs: legacy G4 Off, non-blocking and untouched
 - preflight failures: none
 
@@ -33,9 +33,9 @@ This packet does not promote HYP-001. Promotion requires an independent
 
 | Cycle | Generation | Boot ID prefix | Ready | Lifecycle result | Base unchanged |
 | ---: | ---: | --- | ---: | --- | --- |
-| 1 | 1 | `6f4d91c494bc` | 11 s | created → booted → stopped → destroyed | yes |
-| 2 | 2 | `38ed7a7e1998` | 13 s | created → booted → stopped → destroyed | yes |
-| 3 | 3 | `9c6794c66a2e` | 12 s | created → booted → stopped → destroyed | yes |
+| 1 | 1 | `74721d7d8f7f` | 11 s | created → booted → stopped → destroyed | yes |
+| 2 | 2 | `db07e411894b` | 11 s | created → booted → stopped → destroyed | yes |
+| 3 | 3 | `ba133795922d` | 12 s | created → booted → stopped → destroyed | yes |
 
 Every `readyAt` is within its half-open `[booted, stopped)` window. The three
 generations and boot IDs are unique and increasing/non-overlapping. After the
@@ -45,12 +45,12 @@ run, the only matching VM was the pre-existing G4 VM in state Off.
 
 | Evidence ID | Artifact SHA-256 | TPM proof |
 | --- | --- | --- |
-| `hyp001-cycle-1-6f4d91c494bc` | `566619fafe75ab6dc1a12b44db51fcedcd1d3443c4ecf2800a382e4787e88735` | `proof-1786225464823-d5bb41` |
-| `hyp001-cycle-2-38ed7a7e1998` | `3ec4d216a2d09927ded16a43f6b667528fcab26a22f57b9683e3c5670ca0a975` | `proof-1786225468938-a97ea6` |
-| `hyp001-cycle-3-9c6794c66a2e` | `04f7dda428a5eb071b59daa3f81673506c2342ad2b4db201d99a9af7f3bffae9` | `proof-1786225473147-ede5bd` |
+| `hyp001-cycle-1-74721d7d8f7f` | `3eca75a6634e216a53fc1686c6ab80ef9402a5cd90cb0a66aefe7db5e9b37eb7` | `proof-1786226785211-2d840c` |
+| `hyp001-cycle-2-db07e411894b` | `f64519fb70f51563b2c91f2951993662c4094a070ac927f072b32b40c39a7ce6` | `proof-1786226789692-89bae3` |
+| `hyp001-cycle-3-ba133795922d` | `d1e8481e8ebef6101e26dfcce1c15b274563d40184cfcd25926c85baf1b92fc1` | `proof-1786226793673-edede9` |
 
 All three are designation `live`, signed by `live-host-1`, TPM-backed, bound to
-run `hyp001-1786225460962`, and use distinct nonces and custody events.
+run `hyp001-1786226780943`, and use distinct nonces and custody events.
 
 ## Fail-closed discoveries before the successful run
 
@@ -66,11 +66,16 @@ The final implementation uses the schema-valid 2048/4096/4096 MiB profile and
 a bounded encoded invocation restricted to the two exact lifecycle scripts and
 their fixed parameter allowlist. Exact typed confirmations remain mandatory.
 
-The checkout was on `f1bb9b67290c61212c5c375c85ecd63a93eabb98` with the
-harness fixes uncommitted during execution. The completion manifest deliberately
-binds evidence to system baseline `8efb63aa1452ebdb84f910309bbb284b2d25a980`;
-the reviewer must decide whether the harness-only execution fixes and dirty
-checkout are acceptable for this promotion or require a clean-head rerun.
+The accepted candidate run started with a clean worktree at committed harness
+head `a05bfd3fa092c5b2c0a61bcf386038f951bafcc9`. No source, test, or script file
+changed during execution; only expected completion lifecycle/evidence state was
+appended. The manifest binds the system under test to baseline
+`8efb63aa1452ebdb84f910309bbb284b2d25a980`.
+
+An earlier run from Field `75e54955-9e75-4d3e-aa03-3054139a6e36` remains in the
+append-only evidence store for audit history. It was rejected by the owner for
+promotion because the harness fixes were uncommitted during execution. Do not
+cite its evidence IDs for the HYP-001 transition.
 
 ## Validation actually run
 
@@ -82,15 +87,13 @@ checkout are acceptable for this promotion or require a clean-head rerun.
 - system pulse: 1/1 passed
 - Field pulse: 1/1 passed
 - evidence reconciliation: 6/6 passed
-- evidence scan: 9 artifacts, zero warnings or blockers
+- evidence scan: 12 artifacts, zero warnings or blockers
 - completion evaluation: zero integrity failures; HYP-001 remains
   `ready_for_live` pending review
 
 ## Reviewer decision
 
 The independent reviewer should inspect this packet, the three content-addressed
-artifacts, the lifecycle ledger, and the source diff. If accepted, promote with
-the three evidence IDs above, reviewer role `technical_review`, and a reviewer
-principal other than `hyp001-harness`. If the dirty checkout is rejected, do
-not promote; commit the harness fixes and collect a fresh run under the approved
-baseline policy.
+artifacts, the lifecycle ledger, and commit `a05bfd3`. If accepted, promote with
+only the three clean-head evidence IDs above, reviewer role `technical_review`,
+and a reviewer principal other than `hyp001-harness`.

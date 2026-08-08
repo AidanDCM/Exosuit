@@ -320,6 +320,6 @@ Merged today: #28 (M1 prep), #29 (contract v2.3 + M0 re-attestation), #30
    content-addressed and single-use.
 3. Secure Boot and HYP-001 evidence collection are done. **Independent review
    of `docs/qa/HYP001_LIVE_EVIDENCE_2026-08-08.md` is the next action.**
-4. The reviewer must decide whether the disclosed dirty harness checkout is
-   acceptable or requires a clean-head rerun.
+4. Cite only the clean-head evidence IDs in the review packet; the earlier
+   dirty-checkout run remains historical and was rejected for promotion.
 5. Promotion needs a reviewer who is not the issuer.

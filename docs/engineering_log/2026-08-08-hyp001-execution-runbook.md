@@ -99,9 +99,8 @@ created by the change. A failed dry run provisions nothing.
 ## Next recommended slice
 
 Have an independent technical reviewer inspect
-`docs/qa/HYP001_LIVE_EVIDENCE_2026-08-08.md`, especially the disclosed dirty
-harness checkout. Promote only if accepted; otherwise rerun from a clean
-approved commit. After HYP passes, proceed to CHN-001.
+`docs/qa/HYP001_LIVE_EVIDENCE_2026-08-08.md` and cite only its three clean-head
+evidence IDs. After HYP passes, proceed to CHN-001.
 
 ## Actual results
 
@@ -118,3 +117,10 @@ approved commit. After HYP passes, proceed to CHN-001.
 - .NET: build 0 warnings/errors, 48/48 tests passed;
 - system and Field pulses: 1/1 each;
 - promotion: not performed; independent reviewer required.
+
+The owner rejected the first run for promotion because its harness fixes were
+uncommitted. A second run began from a clean worktree at committed head
+`a05bfd3fa092c5b2c0a61bcf386038f951bafcc9`, used Field
+`59e1bf4e-7ea5-4132-8178-756465b1c86f`, completed 3/3 cycles in 11/11/12
+seconds, and produced three new TPM-backed evidence records. The earlier
+records remain append-only history and are excluded from the reviewer packet.
