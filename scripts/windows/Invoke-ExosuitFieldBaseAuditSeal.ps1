@@ -45,7 +45,7 @@ try {
         [string]$receipt.maintenanceScriptSha256 -cne $expectedMaintenanceSha256 -or
         $receipt.runtimeService.name -cne 'ExosuitFieldGuest' -or
         $receipt.runtimeService.principal -cne 'SYSTEM' -or
-        $receipt.runtimeService.startMode -cne 'Automatic' -or
+        $receipt.runtimeService.startMode -cne 'ManualUntilSetupComplete' -or
         $receipt.sysprep -cne 'pending_audit_administrator') {
         throw 'Field base SYSTEM maintenance receipt is incomplete or invalid for Audit administrator Sysprep.'
     }

@@ -28,6 +28,7 @@
 7. optional visual sensor to external visual blob storage;
 8. immutable base image to disposable runtime overlay;
 9. one Field generation to another.
+10. local build scheduler to owner-installed Field lifecycle service.
 
 ## Primary attackers and failures
 
@@ -49,8 +50,10 @@
 | Threat | Existing source control | Evidence written | Live proof still required |
 |---|---|---|---|
 | Pilot grants itself VM or consent authority | `FieldAdminAuthority` blocks `pilot_model`; review cannot be satisfied by model | unit tests and static validator | local admin UI/transport acceptance |
+| Build scheduler expands lifecycle authority | owner-installed expiring policy; only provision/authenticated read-only observe/destroy; exact generation; fixed hash-bound scripts/config/observer; no command/path/MCP field | .NET policy/job/command tests and PowerShell static tests | installed-service queue, ACL, tamper, replay, cancellation, and lifecycle acceptance |
+| Privileged service becomes a general shell | no executable/argument/script field; command factory chooses fixed scripts and derives confirmations; prompt suppression is accepted only by those scripts under LocalSystem after exact typed confirmation | source/static tests | process-monitor observation on installed service |
 | Command tampering | HMAC-SHA256 envelope, payload hash, key ID, expiration | TS/.NET tests and shared fixture | actual transport fault injection |
-| Replay or reordering | message ID, nonce, strictly increasing sequence, and bounded atomic replay state | replay/restart tests in both languages | protected-state operational validation and rotation |
+| Replay or reordering | compiled snapshot verification checks message ID, nonce, strictly increasing sequence, expected message types, and an atomic HMAC-protected KVP ledger that permits only exact retained-record rereads after fresh cryptographic/expiry verification | replay/restart tests in both languages; v21 compiled-agent restart and negative live evidence; protected-state corruption/key/generation unit tests; v22 live copy-based protected-state corruption/cross-binding and recovery | actual stale-generation replacement and owner-authorized key rotation |
 | Cross-generation action | every channel, heartbeat, command, scene, artifact, episode, and visual reference binds Field generation | unit tests | stale live process and rollback tests |
 | Stale desktop state | exact expected scene version required for action | command and scene tests | live focus/window race injection |
 | Arbitrary shell execution | no shell field in provisioning plan; guest routes exclude shell; scripts reject arbitrary evaluation | schemas, validator, script tests | command-line and process-monitor observation |
@@ -67,6 +70,8 @@
 | Blind retry | recovery allows only bounded idempotent no-effect retry; uncertain effect requires reconciliation | recovery tests | live timeout and partial-effect fixtures |
 | Heartbeat spoof/staleness | signed channel, expected agent/boot, sequence, time thresholds | tests | guest crash, pause, sleep, and network interruption |
 | Secure Desktop/lock operation | scene and heartbeat reject ready input state | tests | actual lock/UAC acceptance |
+| Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20/v21 SYSTEM/Audit receipts and authenticated development canaries | production-authenticated repeated lifecycle matrix |
+| Protection command and launcher receipt schemas drift | exact six-property serialized schema plus cross-layer compiled/launcher contract; mismatch denies before emitter | v23/v24 negative live diagnosis and source tests | rebuilt-image authenticated KVP and restart matrix |
 | Diagnostic privacy leak | Field support bundle accepts only hashes and aggregate counts; forbidden fields/values | tests | support bundle manual inspection |
 | Emergency-stop failure | recovery marks release blocking and denies automated recovery | tests | physical end-to-end stop test |
 
@@ -76,6 +81,14 @@
 - A policy, consent, channel key, or attestation cannot be created by model text.
 - Every mutable action is tied to one Field generation and one current scene version.
 - Live channel replay state is bounded, atomically persisted, and bound to exact Field generation, direction, and key ID; corrupt or mismatched state fails closed.
+- Retained Hyper-V KVP records are observations, not re-executed commands: exact
+  envelope digest/message/sequence rereads are idempotent only after fresh
+  authentication and expiry checks; any changed record must advance strictly.
+- A locked session does not grant readiness or action authority. After initial
+  bootstrap and exact protected-secret receipt validation, the guest may report
+  authenticated non-ready/provisioning state while bootstrap refreshes. Timeout
+  or early exit stops the exact child. Source harness evidence passes; rebuilt-
+  base lock/Secure Desktop evidence remains pending.
 - Signed channel timestamps use one canonical UTC representation with exactly millisecond precision.
 - Field policies authorize canonical origins and reviewed executable name/hash identities, not arbitrary URLs or process-name strings.
 - No Field command accepts arbitrary shell or PowerShell strings.
@@ -93,7 +106,7 @@
 ## Residual risks
 
 - HMAC attestation is local software binding, not hardware-rooted remote attestation.
-- Replay state has a bounded atomic persistence implementation; protected-state operational validation and key rotation are not proven live.
+- Replay state has bounded atomic persistence and the KVP observation ledger has an HMAC-protected, Field/generation/key-bound envelope. A transactional owner-only rotation coordinator has fake-provider reconciliation/rollback and old-key rejection tests; its metadata store is atomically HMAC-protected and generation-bound. A bounded Windows primitive adds LocalMachine DPAPI plus an exact SYSTEM/Administrators DACL for channel-secret bytes and is used by the explicit conversion command and guest reader. A SYSTEM-only conversion transaction has source tests for confinement, corruption denial, atomic replacement, and idempotent exact-binding verification. Its fixed CLI requires literal runtime-config location, LocalSystem-before-read, strict bounded unambiguous configuration, exact derived binding, and metadata-only output. The fixed launcher invokes it before the guest KVP emitter and validates an exact Field/generation/key/status/digest/freshness receipt; the emitter then uses a protected-only reader with no plaintext fallback. A Windows PowerShell subprocess harness proves converted/already-protected continuation and nonzero/malformed/no-receipt fail-before-emitter behavior through inert process adapters, without a production injection switch. Combined guest execution, configuration/secret ACL and TOCTOU resistance, real startup process faults, managed-string retirement, host protected-key storage, forensic seed erasure, and the host/guest ceremony are not proven live.
 - Hyper-V KVP provides the existing bounded guest-to-host metadata transport;
   CHN-001 now has a fail-closed acceptance schema, but its complete production
   failure-injection matrix remains unexecuted. No general Hyper-V socket or
@@ -109,7 +122,7 @@
 
 1. stale-generation signed command;
 2. replay after guest and host restart;
-3. channel key rotation with old-key rejection;
+3. live channel-key rotation with protected storage, crash reconciliation, and old-key rejection;
 4. guest process crash and heartbeat expiry;
 5. Secure Desktop and locked-session input denial;
 6. wrong display scaling and dynamic-resolution denial;

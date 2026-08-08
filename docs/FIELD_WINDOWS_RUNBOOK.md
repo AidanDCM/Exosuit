@@ -166,6 +166,18 @@ Bootstrap checks identity, exact directory layout, display dimensions, agent bin
 
 A Field becomes ready only after the host validates:
 
+Before the guest can publish item 1, the fixed LocalSystem launcher converts or
+verifies `C:\Exosuit\Config\channel-secret.txt`, validates the metadata receipt
+against the runtime Field generation and key, and starts the protected-only KVP
+emitter. Any protection or receipt failure stops before heartbeat. Do not invoke
+the emitter manually or restore plaintext fallback.
+
+The emitter may publish an authenticated `provisioning` lifecycle after the
+initial bootstrap precheck while the interactive session is still locked. That
+is diagnostic state only, not readiness or action authority. The launcher keeps
+refreshing bootstrap until unlock and stops the exact child on timeout or early
+exit. Host acceptance must still require every readiness item below.
+
 1. bootstrap report identity and manifest digest;
 2. authenticated channel handshake;
 3. replay-resistant sequence state;
@@ -236,6 +248,83 @@ It may remove only:
 - files beneath that exact generation directory.
 
 It must not remove the base image or personal-state registry objects. It refuses deletion through a reparse point.
+
+## Installing the accelerated Field owner service
+
+Run all source gates before installation. The launcher publishes the service and the
+fixed compiled KVP observer, displays the complete expiring owner policy, and opens
+exactly one UAC prompt:
+
+```powershell
+.\scripts\windows\Start-ExosuitFieldOwnerInstall.ps1 `
+  -HostConfigPath .\vm\field-host-config.local.json `
+  -ValidityDays 180 `
+  -MaxActiveFields 2 `
+  -AllowDevelopmentAccess
+```
+
+The installation copies fixed lifecycle scripts, the compiled observer, and a snapshot
+of the host configuration beneath administrator/SYSTEM-owned roots. Only the owner SID
+receives Modify access to `Queue\Pending`. Policy replacement requires another elevated
+installation; do not edit installed policy or binaries in place.
+
+Submit a provision job without elevation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation provision `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -PlanPath '<plan.json>' `
+  -GuestSeedDirectory '<seed-directory>' `
+  -DevelopmentAccess `
+  -Wait
+```
+
+Authenticated KVP observation uses a copied host runtime configuration and host secret.
+The submitter rewrites the copied secret path to the exact protected processing package;
+the service invokes only its hash-bound observer and deletes the consumed exact package
+from the active namespace after a terminal result. Do not claim forensic secure erase.
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation observe `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -RuntimeConfigPath '<host-runtime.json>' `
+  -HostSecretPath '<host-secret.txt>' `
+  -Wait
+```
+
+Destroy remains confined to the exact disposable generation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation destroy `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -Wait
+```
+
+Stop `ExosuitFieldOwner` to disable new jobs immediately. To remove the service, use an
+elevated owner console and the exact uninstall phrase documented in the owner manual.
+The installing owner SID must be able to read `Results` and sanitized `Evidence` without
+elevation, but only SYSTEM/Administrators may write them. `Queue\Pending` remains the
+only owner-writable service path.
+
+## Protected-secret startup preflight
+
+Before a live protected-secret guest attempt, run the Windows Field script test
+and confirm its startup-transaction harness passes. That harness must report
+that `converted` and `already_protected` receipts invoke the emitter, while
+nonzero protection exit, malformed receipt, and post-publication/no-receipt
+interruption do not. This is a preflight check only; preserve separate live
+evidence for LocalSystem identity, DPAPI/DACL state, restart, and heartbeat
+absence on denial.
+
+```powershell
+npm test -- --run tests/windowsFieldScripts.test.ts --reporter=verbose
+```
 
 ## Emergency handling
 

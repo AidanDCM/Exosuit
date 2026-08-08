@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,6 +18,23 @@ public sealed record FieldKvpRuntimeConfiguration(
     string BootstrapReportPath,
     int HeartbeatIntervalMilliseconds);
 
+public sealed record KvpObservationEntry(Guid MessageId, long Sequence, string EnvelopeSha256);
+
+public sealed record KvpObservationState(
+    int ContractVersion,
+    FieldReference Field,
+    string KeyId,
+    long LastSequence,
+    IReadOnlyDictionary<string, KvpObservationEntry> Entries);
+
+public sealed record ProtectedKvpObservationState(
+    int ContractVersion,
+    FieldReference Field,
+    string KeyId,
+    string Algorithm,
+    string PayloadBase64,
+    string AuthenticationTag);
+
 public static class FieldKvpRuntime
 {
     public const string HandshakeValueName = "Exosuit.Field.Handshake";
@@ -27,101 +45,117 @@ public static class FieldKvpRuntime
     // below 1,000 characters so a heartbeat fits atomically with safety margin.
     private const int KvpChunkCharacters = 1000;
     private const long MaximumSafeWireSequence = 9_007_199_254_740_991;
+    private const int MaximumObservationStateBytes = 32 * 1_024;
+    private const int MaximumObservationPayloadBase64Characters = 16 * 1_024;
+    private const string ObservationStateAlgorithm = "hmac-sha256";
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
 
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Field KVP runtime requires Windows.");
-        var configuration = ReadConfiguration(configurationPath);
-        var secret = ReadSecret(configuration.SecretPath);
-        var bootId = Guid.NewGuid();
-        long heartbeatSequence = 0;
+        var callerSid = WindowsIdentity.GetCurrent().User?.Value;
+        FieldGuestServiceHost.AssertSystemIdentity(callerSid);
+        var configuration = FieldChannelSecretProtectionCommand.ReadValidatedRuntimeConfiguration(
+            FieldChannelSecretProtectionCommand.ProductionConfigRoot,
+            configurationPath,
+            callerSid);
+        var secretBytes = ProtectedFieldKvpSecretReader.CreateProduction().Read(configurationPath, configuration, callerSid);
 
-        using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
-            ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
-
-        WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
-            new Dictionary<string, object?>
-            {
-                ["agentId"] = configuration.AgentId,
-                ["bootId"] = bootId.ToString(),
-                ["transport"] = "hyperv_kvp",
-            }));
-
-        // Sent without runtime attestation: the heartbeat has not started, so
-        // claiming heartbeat_started here would be false rather than merely
-        // incomplete. The host evaluator reports not_ready until the completing
-        // report below arrives.
-        var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
-        WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-            configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
-        var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
-        var heartbeatStarted = false;
-        var lastSecureDesktopActive = false;
-
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            if (DateTimeOffset.UtcNow >= nextControlRefresh)
-            {
-                WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
-                    new Dictionary<string, object?>
-                    {
-                        ["agentId"] = configuration.AgentId,
-                        ["bootId"] = bootId.ToString(),
-                        ["transport"] = "hyperv_kvp",
-                    }));
-                bootstrap = ReadBootstrapStatus(
-                    configuration.BootstrapReportPath,
-                    heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
-                WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
-                nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
-            }
-            var activeSessionId = GetActiveInteractiveSessionId();
-            var locked = IsSessionLocked(activeSessionId);
-            var secureDesktop = Process.GetProcessesByName("consent").Any(process => process.SessionId == activeSessionId);
-            var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
-            var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
-            var process = Process.GetCurrentProcess();
-            var heartbeat = new Dictionary<string, object?>
-            {
-                ["contractVersion"] = 1,
-                ["field"] = new Dictionary<string, object?>
-                {
-                    ["fieldId"] = configuration.Field.FieldId.ToString(),
-                    ["fieldGeneration"] = configuration.Field.FieldGeneration,
-                },
-                ["agentId"] = configuration.AgentId,
-                ["bootId"] = bootId.ToString(),
-                ["sequence"] = heartbeatSequence++,
-                ["observedAt"] = WireDate(DateTimeOffset.UtcNow),
-                ["lifecycle"] = desktopReady ? "ready" : "provisioning",
-                ["desktopReady"] = desktopReady,
-                ["sessionLocked"] = locked,
-                ["secureDesktopActive"] = secureDesktop,
-                ["inputQueueDepth"] = 0,
-                ["pendingCommandCount"] = 0,
-                ["workingSetBytes"] = process.WorkingSet64,
-            };
-            WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
-                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
-            lastSecureDesktopActive = secureDesktop;
+            var secret = Encoding.ASCII.GetString(secretBytes);
+            var bootId = Guid.NewGuid();
+            long heartbeatSequence = 0;
+            using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
+                ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
 
-            // The first heartbeat is the evidence for heartbeat_started, so the
-            // completing bootstrap report is sent immediately after it rather
-            // than waiting up to four minutes for the next control refresh.
-            if (!heartbeatStarted)
+            WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
+                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
+                new Dictionary<string, object?>
+                {
+                    ["agentId"] = configuration.AgentId,
+                    ["bootId"] = bootId.ToString(),
+                    ["transport"] = "hyperv_kvp",
+                }));
+
+            // Sent without runtime attestation: the heartbeat has not started, so
+            // claiming heartbeat_started here would be false rather than merely
+            // incomplete. The host evaluator reports not_ready until the completing
+            // report below arrives.
+            var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
+            WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+            var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
+            var heartbeatStarted = false;
+            var lastSecureDesktopActive = false;
+
+            while (!cancellationToken.IsCancellationRequested)
             {
-                heartbeatStarted = true;
-                bootstrap = ReadBootstrapStatus(
-                    configuration.BootstrapReportPath,
-                    new FieldRuntimeAttestation(secureDesktop, true));
-                WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
-                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                if (DateTimeOffset.UtcNow >= nextControlRefresh)
+                {
+                    WriteEnvelope(guestKey, HandshakeValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Handshake,
+                        new Dictionary<string, object?>
+                        {
+                            ["agentId"] = configuration.AgentId,
+                            ["bootId"] = bootId.ToString(),
+                            ["transport"] = "hyperv_kvp",
+                        }));
+                    bootstrap = ReadBootstrapStatus(
+                        configuration.BootstrapReportPath,
+                        heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
+                    WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                    nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
+                }
+                var activeSessionId = GetActiveInteractiveSessionId();
+                var locked = IsSessionLocked(activeSessionId);
+                var secureDesktop = Process.GetProcessesByName("consent").Any(process => process.SessionId == activeSessionId);
+                var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
+                var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
+                var process = Process.GetCurrentProcess();
+                var heartbeat = new Dictionary<string, object?>
+                {
+                    ["contractVersion"] = 1,
+                    ["field"] = new Dictionary<string, object?>
+                    {
+                        ["fieldId"] = configuration.Field.FieldId.ToString(),
+                        ["fieldGeneration"] = configuration.Field.FieldGeneration,
+                    },
+                    ["agentId"] = configuration.AgentId,
+                    ["bootId"] = bootId.ToString(),
+                    ["sequence"] = heartbeatSequence++,
+                    ["observedAt"] = WireDate(DateTimeOffset.UtcNow),
+                    ["lifecycle"] = desktopReady ? "ready" : "provisioning",
+                    ["desktopReady"] = desktopReady,
+                    ["sessionLocked"] = locked,
+                    ["secureDesktopActive"] = secureDesktop,
+                    ["inputQueueDepth"] = 0,
+                    ["pendingCommandCount"] = 0,
+                    ["workingSetBytes"] = process.WorkingSet64,
+                };
+                WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
+                    configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
+                lastSecureDesktopActive = secureDesktop;
+
+                // The first heartbeat is the evidence for heartbeat_started, so the
+                // completing bootstrap report is sent immediately after it rather
+                // than waiting up to four minutes for the next control refresh.
+                if (!heartbeatStarted)
+                {
+                    heartbeatStarted = true;
+                    bootstrap = ReadBootstrapStatus(
+                        configuration.BootstrapReportPath,
+                        new FieldRuntimeAttestation(secureDesktop, true));
+                    WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
+                        configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
+                }
+                await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
             }
-            await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(secretBytes);
         }
     }
 
@@ -236,6 +270,184 @@ public static class FieldKvpRuntime
         return verified;
     }
 
+    public static IReadOnlyList<FieldChannelEnvelope> ObserveSnapshot(
+        string configurationPath,
+        string handshakeEnvelopePath,
+        string bootstrapEnvelopePath,
+        string heartbeatEnvelopePath,
+        string observationStatePath,
+        DateTimeOffset? now = null)
+    {
+        var configuration = ReadConfiguration(configurationPath);
+        var secret = ReadSecret(configuration.SecretPath);
+        var expected = new[]
+        {
+            (Name: "handshake", Path: handshakeEnvelopePath, Type: FieldChannelMessageType.Handshake),
+            (Name: "bootstrap", Path: bootstrapEnvelopePath, Type: FieldChannelMessageType.BootstrapStatus),
+            (Name: "heartbeat", Path: heartbeatEnvelopePath, Type: FieldChannelMessageType.Heartbeat),
+        };
+        var guard = new FieldChannelReplayGuard(
+            configuration.Field,
+            FieldChannelDirection.GuestToHost,
+            configuration.KeyId);
+        var verified = new List<(string Name, string Digest, FieldChannelEnvelope Envelope)>(3);
+        foreach (var item in expected)
+        {
+            var bytes = File.ReadAllBytes(item.Path);
+            var envelope = JsonSerializer.Deserialize<FieldChannelEnvelope>(bytes, WireJson)
+                ?? throw new InvalidOperationException($"Field KVP {item.Name} envelope is empty.");
+            var accepted = guard.Accept(envelope, secret, now ?? DateTimeOffset.UtcNow);
+            if (accepted.MessageType != item.Type)
+                throw new InvalidOperationException($"Field KVP {item.Name} envelope has the wrong message type.");
+            verified.Add((item.Name, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), accepted));
+        }
+
+        var state = File.Exists(observationStatePath)
+            ? ReadObservationState(observationStatePath, configuration, secret)
+            : new KvpObservationState(1, configuration.Field, configuration.KeyId, -1, new Dictionary<string, KvpObservationEntry>(StringComparer.Ordinal));
+        ValidateObservationState(state, configuration);
+        var entries = new Dictionary<string, KvpObservationEntry>(state.Entries, StringComparer.Ordinal);
+        var lastSequence = state.LastSequence;
+        foreach (var item in verified)
+        {
+            entries.TryGetValue(item.Name, out var previous);
+            var idempotent = previous is not null &&
+                string.Equals(previous.EnvelopeSha256, item.Digest, StringComparison.Ordinal) &&
+                previous.MessageId == item.Envelope.MessageId &&
+                previous.Sequence == item.Envelope.Sequence;
+            if (idempotent) continue;
+            if (item.Envelope.Sequence <= lastSequence)
+                throw new InvalidOperationException($"Field KVP {item.Name} observation sequence did not increase strictly.");
+            if (entries.Values.Any(entry => entry.MessageId == item.Envelope.MessageId))
+                throw new InvalidOperationException($"Field KVP {item.Name} observation reused a prior message ID.");
+            entries[item.Name] = new KvpObservationEntry(item.Envelope.MessageId, item.Envelope.Sequence, item.Digest);
+            lastSequence = item.Envelope.Sequence;
+        }
+
+        var updated = new KvpObservationState(1, configuration.Field, configuration.KeyId, lastSequence, entries);
+        var fullObservationPath = Path.GetFullPath(observationStatePath);
+        var directory = Path.GetDirectoryName(fullObservationPath)
+            ?? throw new InvalidOperationException("Field KVP observation state path has no parent directory.");
+        Directory.CreateDirectory(directory);
+        var temporary = $"{fullObservationPath}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            WriteDurableState(temporary, ProtectObservationState(updated, configuration, secret));
+            File.Move(temporary, fullObservationPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+        return verified.Select(item => item.Envelope).ToArray();
+    }
+
+    public static string SerializeVerificationResults(IReadOnlyList<FieldChannelEnvelope> verified) =>
+        JsonSerializer.Serialize(verified.Select(VerificationResult).ToArray(), WireJson);
+
+    private static object VerificationResult(FieldChannelEnvelope verified) => new
+    {
+        status = "verified",
+        field = verified.Field,
+        verified.MessageId,
+        verified.Sequence,
+        messageType = verified.MessageType,
+        verified.SentAt,
+        verified.ExpiresAt,
+        verified.PayloadHash,
+        verified.Payload,
+    };
+
+    private static void ValidateObservationState(KvpObservationState state, FieldKvpRuntimeConfiguration configuration)
+    {
+        if (state.ContractVersion != 1 || state.Field != configuration.Field ||
+            !string.Equals(state.KeyId, configuration.KeyId, StringComparison.Ordinal) || state.LastSequence < -1 ||
+            state.Entries is null || state.Entries.Count > 3 ||
+            state.Entries.Keys.Any(key => key is not ("handshake" or "bootstrap" or "heartbeat")) ||
+            state.Entries.Values.Any(entry => entry is null || entry.MessageId == Guid.Empty || entry.Sequence < 0 ||
+                string.IsNullOrWhiteSpace(entry.EnvelopeSha256) || entry.EnvelopeSha256.Length != 64 ||
+                entry.EnvelopeSha256.Any(character => !Uri.IsHexDigit(character))) ||
+            state.Entries.Values.Select(entry => entry.MessageId).Distinct().Count() != state.Entries.Count ||
+            (state.Entries.Count > 0 && state.LastSequence != state.Entries.Values.Max(entry => entry.Sequence)))
+        {
+            throw new InvalidOperationException("Persisted Field KVP observation state is invalid or belongs to another channel.");
+        }
+    }
+
+    private static string ProtectObservationState(
+        KvpObservationState state,
+        FieldKvpRuntimeConfiguration configuration,
+        string secret)
+    {
+        ValidateObservationState(state, configuration);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(state, WireJson);
+        var protectedState = new ProtectedKvpObservationState(
+            1,
+            configuration.Field,
+            configuration.KeyId,
+            ObservationStateAlgorithm,
+            Convert.ToBase64String(payload),
+            ComputeObservationStateTag(configuration, secret, payload));
+        return JsonSerializer.Serialize(protectedState, WireJson);
+    }
+
+    private static KvpObservationState ReadObservationState(
+        string path,
+        FieldKvpRuntimeConfiguration configuration,
+        string secret)
+    {
+        try
+        {
+            var fileLength = new FileInfo(path).Length;
+            if (fileLength is <= 0 or > MaximumObservationStateBytes)
+                throw new InvalidOperationException("Protected Field KVP observation state exceeds its byte limit.");
+            var protectedState = JsonSerializer.Deserialize<ProtectedKvpObservationState>(File.ReadAllText(path), WireJson)
+                ?? throw new InvalidOperationException("Persisted Field KVP observation state is empty.");
+            if (protectedState.ContractVersion != 1 ||
+                protectedState.Field != configuration.Field ||
+                !string.Equals(protectedState.KeyId, configuration.KeyId, StringComparison.Ordinal) ||
+                !string.Equals(protectedState.Algorithm, ObservationStateAlgorithm, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(protectedState.PayloadBase64) ||
+                protectedState.PayloadBase64.Length > MaximumObservationPayloadBase64Characters ||
+                string.IsNullOrWhiteSpace(protectedState.AuthenticationTag) ||
+                protectedState.AuthenticationTag.Length != 64 ||
+                protectedState.AuthenticationTag.Any(character => !Uri.IsHexDigit(character)))
+            {
+                throw new InvalidOperationException("Protected Field KVP observation state is invalid or belongs to another channel.");
+            }
+            var payload = Convert.FromBase64String(protectedState.PayloadBase64);
+            var expectedTag = Convert.FromHexString(ComputeObservationStateTag(configuration, secret, payload));
+            var actualTag = Convert.FromHexString(protectedState.AuthenticationTag);
+            if (!CryptographicOperations.FixedTimeEquals(expectedTag, actualTag))
+                throw new InvalidOperationException("Protected Field KVP observation state authentication failed.");
+            return JsonSerializer.Deserialize<KvpObservationState>(payload, WireJson)
+                ?? throw new InvalidOperationException("Persisted Field KVP observation state payload is empty.");
+        }
+        catch (Exception exception) when (exception is JsonException or FormatException)
+        {
+            throw new InvalidOperationException("Persisted Field KVP observation state is malformed.", exception);
+        }
+    }
+
+    private static string ComputeObservationStateTag(
+        FieldKvpRuntimeConfiguration configuration,
+        string secret,
+        byte[] payload)
+    {
+        var scope = Encoding.UTF8.GetBytes(string.Join('\n',
+            "exosuit-field-kvp-observation-v1",
+            configuration.Field.FieldId.ToString("D"),
+            configuration.Field.FieldGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            configuration.KeyId,
+            ObservationStateAlgorithm,
+            string.Empty));
+        var authenticated = new byte[scope.Length + payload.Length];
+        Buffer.BlockCopy(scope, 0, authenticated, 0, scope.Length);
+        Buffer.BlockCopy(payload, 0, authenticated, scope.Length, payload.Length);
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        return Convert.ToHexString(hmac.ComputeHash(authenticated)).ToLowerInvariant();
+    }
+
     public static string SerializeEnvelope(FieldChannelEnvelope envelope) =>
         JsonSerializer.Serialize(envelope, WireJson);
 
@@ -248,7 +460,7 @@ public static class FieldKvpRuntime
         return configuration;
     }
 
-    private static void ValidateConfiguration(FieldKvpRuntimeConfiguration configuration)
+    internal static void ValidateConfiguration(FieldKvpRuntimeConfiguration configuration)
     {
         if (configuration.ContractVersion != 1) throw new InvalidOperationException("Unsupported Field KVP runtime contract version.");
         configuration.Field.Validate();

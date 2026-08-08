@@ -20,6 +20,18 @@ public static class Program
                 FieldKvpRuntime.VerifyEnvelope(args[1], args[2], args[3]);
                 return 0;
             }
+            if (args.Length == 2 && string.Equals(args[0], "--field-protect-channel-secret", StringComparison.Ordinal))
+            {
+                var result = FieldChannelSecretProtectionCommand.RunProduction(args[1]);
+                Console.WriteLine(FieldChannelSecretProtectionCommand.SerializeResult(result));
+                return 0;
+            }
+            if (args.Length == 6 && string.Equals(args[0], "--field-observe-kvp-snapshot", StringComparison.Ordinal))
+            {
+                var verified = FieldKvpRuntime.ObserveSnapshot(args[1], args[2], args[3], args[4], args[5]);
+                Console.WriteLine(FieldKvpRuntime.SerializeVerificationResults(verified));
+                return 0;
+            }
             await AgentHost.RunAsync(args);
             return 0;
         }

@@ -20,6 +20,54 @@ function ConvertFrom-JsonDocument {
     return $json | ConvertFrom-Json
 }
 
+# START FIELD PROCESS ADAPTERS
+# These narrow adapters keep process effects separate from receipt validation so
+# the complete startup transaction can be exercised with inert subprocess fakes.
+function Invoke-FieldSecretProtectionProcess {
+    param(
+        [Parameter(Mandatory)][string]$AgentPath,
+        [Parameter(Mandatory)][string]$RuntimeConfigPath,
+        [Parameter(Mandatory)][string]$RuntimeErrorLog
+    )
+    $output = @(& $AgentPath --field-protect-channel-secret $RuntimeConfigPath 2>> $RuntimeErrorLog)
+    [pscustomobject]@{ output = $output; exitCode = $LASTEXITCODE }
+}
+
+function Start-FieldGuestProcess {
+    param(
+        [Parameter(Mandatory)][string]$AgentPath,
+        [Parameter(Mandatory)][string]$RuntimeConfigPath,
+        [Parameter(Mandatory)][string]$RuntimeErrorLog
+    )
+    Start-Process -FilePath $AgentPath `
+        -ArgumentList @('--field-guest-kvp', $RuntimeConfigPath) `
+        -RedirectStandardError $RuntimeErrorLog `
+        -NoNewWindow `
+        -PassThru
+}
+
+function Test-FieldGuestProcessExited {
+    param([Parameter(Mandatory)]$Process)
+    [bool]$Process.HasExited
+}
+
+function Wait-FieldGuestProcess {
+    param([Parameter(Mandatory)]$Process)
+    $Process.WaitForExit()
+    [int]$Process.ExitCode
+}
+
+function Stop-FieldGuestProcess {
+    param([Parameter(Mandatory)]$Process)
+    if (-not $Process.HasExited) {
+        $Process.Kill()
+        if (-not $Process.WaitForExit(10000)) {
+            throw 'Timed out stopping the exact Field guest process after startup denial.'
+        }
+    }
+}
+# END FIELD PROCESS ADAPTERS
+
 $allowedRoot = [IO.Path]::GetFullPath('C:\Exosuit').TrimEnd('\') + '\'
 function Assert-ExosuitPath {
     param([Parameter(Mandatory)][string]$Path)
@@ -63,21 +111,83 @@ if (Test-Path -LiteralPath $developmentConfigPath -PathType Leaf) {
     if (-not $?) { throw 'Development access initialization failed.' }
 }
 $manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)
-do {
+function Invoke-FieldBootstrapPrecheck {
     & $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -ReportPath $bootstrapReportPath -Confirm:$false
     if (-not $?) { throw 'Guest bootstrap precheck did not complete successfully.' }
     $bootstrapReport = ConvertFrom-JsonDocument -Path $bootstrapReportPath -Depth 50
     $sessionCheck = @($bootstrapReport.checks | Where-Object name -EQ 'session_unlocked')
     if ($sessionCheck.Count -ne 1) { throw 'Guest bootstrap report did not contain exactly one session_unlocked check.' }
-    if ([bool]$sessionCheck[0].passed) { break }
-    if ([DateTimeOffset]::UtcNow -ge $desktopDeadline) {
-        throw "Interactive desktop did not become ready within $DesktopReadyTimeoutSeconds seconds."
-    }
-    Start-Sleep -Seconds 2
-} while ($true)
+    [bool]$sessionCheck[0].passed
+}
+
+$desktopDeadline = [DateTimeOffset]::UtcNow.AddSeconds($DesktopReadyTimeoutSeconds)
+$sessionUnlocked = Invoke-FieldBootstrapPrecheck
 $runtimeErrorLog = 'C:\Exosuit\Logs\guest-runtime-error.log'
-& $agentPath --field-guest-kvp $runtimeConfigPath 2>> $runtimeErrorLog
-$agentExitCode = $LASTEXITCODE
+$protectionProcess = Invoke-FieldSecretProtectionProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
+$protectionOutput = @($protectionProcess.output)
+$protectionExitCode = [int]$protectionProcess.exitCode
+if ($protectionExitCode -ne 0) {
+    throw "Field channel-secret protection failed with exit code $protectionExitCode. See the bounded guest runtime error log."
+}
+if ($protectionOutput.Count -ne 1) { throw 'Field channel-secret protection did not return exactly one metadata receipt.' }
+try {
+    $protectionReceipt = $protectionOutput[0] | ConvertFrom-Json
+} catch {
+    throw 'Field channel-secret protection returned a malformed metadata receipt.'
+}
+$expectedReceiptProperties = @('completedAt', 'contractVersion', 'ciphertextEnvelopeSha256', 'field', 'keyId', 'status') | Sort-Object
+$actualReceiptProperties = @($protectionReceipt.PSObject.Properties.Name) | Sort-Object
+if (($actualReceiptProperties -join "`n") -cne ($expectedReceiptProperties -join "`n")) {
+    throw 'Field channel-secret protection returned an unexpected metadata receipt schema.'
+}
+$expectedReceiptFieldProperties = @('fieldGeneration', 'fieldId') | Sort-Object
+$actualReceiptFieldProperties = @($protectionReceipt.field.PSObject.Properties.Name) | Sort-Object
+if (($actualReceiptFieldProperties -join "`n") -cne ($expectedReceiptFieldProperties -join "`n")) {
+    throw 'Field channel-secret protection returned an unexpected Field receipt schema.'
+}
+$runtimeFieldId = [guid]::Empty
+$receiptFieldId = [guid]::Empty
+if (-not [guid]::TryParse([string]$runtime.field.fieldId, [ref]$runtimeFieldId) -or
+    -not [guid]::TryParse([string]$protectionReceipt.field.fieldId, [ref]$receiptFieldId) -or
+    $receiptFieldId -ne $runtimeFieldId -or
+    [long]$protectionReceipt.field.fieldGeneration -ne [long]$runtime.field.fieldGeneration -or
+    [string]$protectionReceipt.keyId -cne [string]$runtime.keyId) {
+    throw 'Field channel-secret protection receipt does not match the runtime Field generation and key.'
+}
+if ([int]$protectionReceipt.contractVersion -ne 1 -or
+    @('converted', 'already_protected') -cnotcontains [string]$protectionReceipt.status -or
+    [string]$protectionReceipt.ciphertextEnvelopeSha256 -cnotmatch '^[0-9a-f]{64}$') {
+    throw 'Field channel-secret protection receipt status or digest is invalid.'
+}
+$receiptCompletedAt = [DateTimeOffset]::MinValue
+if (-not [DateTimeOffset]::TryParse(
+        [string]$protectionReceipt.completedAt,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$receiptCompletedAt)) {
+    throw 'Field channel-secret protection receipt completion time is invalid.'
+}
+$receiptNow = [DateTimeOffset]::UtcNow
+if ($receiptCompletedAt -lt $receiptNow.AddMinutes(-5) -or $receiptCompletedAt -gt $receiptNow.AddSeconds(30)) {
+    throw 'Field channel-secret protection receipt is stale or from the future.'
+}
+$guestProcess = Start-FieldGuestProcess -AgentPath $agentPath -RuntimeConfigPath $runtimeConfigPath -RuntimeErrorLog $runtimeErrorLog
+if ($null -eq $guestProcess) { throw 'Field guest process did not return a process handle.' }
+try {
+    while (-not $sessionUnlocked) {
+        if (Test-FieldGuestProcessExited -Process $guestProcess) {
+            throw 'Field guest runtime exited before the interactive desktop became ready.'
+        }
+        if ([DateTimeOffset]::UtcNow -ge $desktopDeadline) {
+            throw "Interactive desktop did not become ready within $DesktopReadyTimeoutSeconds seconds."
+        }
+        Start-Sleep -Seconds 2
+        $sessionUnlocked = Invoke-FieldBootstrapPrecheck
+    }
+    $agentExitCode = Wait-FieldGuestProcess -Process $guestProcess
+} catch {
+    Stop-FieldGuestProcess -Process $guestProcess
+    throw
+}
 if ($agentExitCode -ne 0) { throw "Guest runtime failed with exit code $agentExitCode. See the bounded guest runtime error log." }
 exit 0

@@ -12,14 +12,7 @@ param(
     [string]$AgentPath,
 
     [Parameter(Mandatory)]
-    [string]$EvidenceDirectory,
-
-    [Parameter()]
-    [ValidateSet('handshake', 'bootstrap', 'heartbeat')]
-    [string[]]$MessageTypes = @('handshake', 'bootstrap', 'heartbeat'),
-
-    [Parameter()]
-    [string]$ReplayStatePath
+    [string]$EvidenceDirectory
 )
 
 Set-StrictMode -Version Latest
@@ -43,16 +36,10 @@ function Get-FieldKvpItems {
     return $currentItems
 }
 
-$entries = @(
-    @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
-    @{ name = 'bootstrap'; key = 'Exosuit.Field.Bootstrap' },
-    @{ name = 'heartbeat'; key = 'Exosuit.Field.Heartbeat' }
-)
-$selectedEntries = @($entries | Where-Object { $_.name -in $MessageTypes })
-if ($selectedEntries.Count -ne $MessageTypes.Count) { throw 'Requested guest KVP message types must be unique.' }
 $items = Get-FieldKvpItems
-foreach ($entry in $selectedEntries) {
-    if (-not $items.ContainsKey($entry.key)) { throw "Required guest KVP item is missing: $($entry.key)" }
+$required = @('Exosuit.Field.Handshake', 'Exosuit.Field.Bootstrap', 'Exosuit.Field.Heartbeat')
+foreach ($name in $required) {
+    if (-not $items.ContainsKey($name)) { throw "Required guest KVP item is missing: $name" }
 }
 
 function Resolve-KvpEnvelope {
@@ -96,22 +83,28 @@ function Resolve-KvpEnvelope {
 }
 
 New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
-$replayPath = if ([string]::IsNullOrWhiteSpace($ReplayStatePath)) {
-    Join-Path $EvidenceDirectory 'guest-to-host-replay.json'
-} else {
-    $resolvedReplay = [IO.Path]::GetFullPath($ReplayStatePath)
-    New-Item -ItemType Directory -Path (Split-Path -Parent $resolvedReplay) -Force | Out-Null
-    $resolvedReplay
+$observationPath = Join-Path $EvidenceDirectory 'guest-to-host-observation.json'
+$envelopePaths = @{}
+foreach ($entry in @(
+    @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
+    @{ name = 'bootstrap'; key = 'Exosuit.Field.Bootstrap' },
+    @{ name = 'heartbeat'; key = 'Exosuit.Field.Heartbeat' }
+)) {
+    $envelopePaths[$entry.name] = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
+    [IO.File]::WriteAllText($envelopePaths[$entry.name], (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
 }
-$verified = [ordered]@{}
-foreach ($entry in $selectedEntries) {
-    $envelopePath = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
-    [IO.File]::WriteAllText($envelopePath, (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
-    $output = & $AgentPath --field-verify-envelope $RuntimeConfigPath $envelopePath $replayPath 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Guest $($entry.name) envelope verification failed: $($output -join ' ')"
-    }
-    $verified[$entry.name] = ($output -join [Environment]::NewLine) | ConvertFrom-Json
+$output = & $AgentPath --field-observe-kvp-snapshot `
+    $RuntimeConfigPath `
+    $envelopePaths.handshake `
+    $envelopePaths.bootstrap `
+    $envelopePaths.heartbeat `
+    $observationPath 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "Guest KVP snapshot verification failed: $($output -join ' ')"
+}
+$verified = [object[]](($output -join [Environment]::NewLine) | ConvertFrom-Json)
+if ($verified.Count -ne 3) {
+    throw "Guest KVP snapshot verifier returned $($verified.Count) results; exactly three are required."
 }
 
 $result = [ordered]@{
@@ -119,8 +112,10 @@ $result = [ordered]@{
     capturedAtUtc = [DateTimeOffset]::UtcNow.ToString('O')
     vmName = $VmName
     transport = 'hyperv_kvp'
+    handshake = $verified[0]
+    bootstrap = $verified[1]
+    heartbeat = $verified[2]
 }
-foreach ($entry in $selectedEntries) { $result[$entry.name] = $verified[$entry.name] }
 $resultPath = Join-Path $EvidenceDirectory 'verified-guest-kvp.json'
 [IO.File]::WriteAllText($resultPath, ($result | ConvertTo-Json -Depth 50), [Text.UTF8Encoding]::new($false))
 $result | ConvertTo-Json -Depth 50

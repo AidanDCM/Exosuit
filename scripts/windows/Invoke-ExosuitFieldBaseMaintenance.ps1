@@ -183,7 +183,7 @@ Set-MaintenanceStage 'components_verified'
 
 $runtimeServiceName = 'ExosuitFieldGuest'
 $runtimeInstallerPath = 'C:\Exosuit\Agent\Install-ExosuitFieldGuest.ps1'
-& $runtimeInstallerPath -Confirm:$false
+& $runtimeInstallerPath -StartupType Manual -Confirm:$false
 if (-not $?) { throw 'Field base maintenance could not install the Field guest runtime service.' }
 $runtimeService = Get-CimInstance Win32_Service -Filter "Name='$runtimeServiceName'" -ErrorAction Stop
 $runtimeAgentPath = 'C:\Exosuit\Agent\Exosuit.Agent.exe'
@@ -192,7 +192,7 @@ $allowedRuntimeBinaryPaths = @(
     "$runtimeAgentPath --field-guest-service"
 )
 if ([string]$runtimeService.StartName -cne 'LocalSystem' -or
-    [string]$runtimeService.StartMode -cne 'Auto' -or
+    [string]$runtimeService.StartMode -cne 'Manual' -or
     $allowedRuntimeBinaryPaths -cnotcontains [string]$runtimeService.PathName) {
     throw 'Field base maintenance runtime service does not match the reviewed LocalSystem contract.'
 }
@@ -264,7 +264,7 @@ $receipt = [ordered]@{
     runtimeService = [ordered]@{
         name = $runtimeServiceName
         principal = 'SYSTEM'
-        startMode = 'Automatic'
+        startMode = 'ManualUntilSetupComplete'
         command = 'Exosuit.Agent.exe --field-guest-service'
     }
     componentDigests = $componentDigests

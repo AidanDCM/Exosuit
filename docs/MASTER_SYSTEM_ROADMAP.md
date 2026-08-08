@@ -284,9 +284,66 @@ The preserved Field development line contains substantial source, fake/pure foun
 - synthetic acceptance application;
 - manuals, audits, and CI contracts;
 - unattended base-image sealing and generation provisioning;
-- a v13 development generation that produced authenticated handshake, bootstrap, and heartbeat evidence.
+- v13 and v20 development generations that produced authenticated handshake,
+  bootstrap, heartbeat, and bounded lifecycle evidence;
+- a v21 development generation that exercised the compiled observation ledger
+  across restart, retained polling, live-captured negative transitions, exact
+  destruction, and post-destruction base immutability;
+- an authenticated-at-rest observation-state envelope bound to the exact Field
+  generation and channel key, with fail-closed corruption, rotation, and stale-
+  generation source tests;
+- a v22 development generation that persisted that protected envelope, rejected
+  live copy-based tag, payload, key-ID, generation, plaintext, and oversize
+  mutations without changing any rejected copy or the authoritative ledger,
+  then advanced the untouched ledger and passed exact destruction/base checks.
+- a compiled Windows protected channel-secret store primitive that binds the
+  exact Field generation and key ID into DPAPI LocalMachine optional entropy,
+  publishes through a pre-sealed atomic temporary file, and requires an exact
+  SYSTEM/Administrators DACL. Fake-provider tests and separate local DPAPI/ACL
+  checks pass; combined LocalSystem guest execution is not yet proven.
+- an explicit SYSTEM-only seed-conversion transaction primitive that confines
+  conversion to exact `Config/channel-secret.txt`, rejects reparse paths and
+  protected-looking corruption, atomically replaces one printable seed, reloads
+  it for fixed-time verification, and verifies idempotent restart binding. It is
+  not wired into provisioning or service startup, and namespace replacement is
+  not forensic secure erasure.
+- a fixed `--field-protect-channel-secret` command boundary that requires the
+  literal `C:\Exosuit\Config\guest-runtime.json` path, checks LocalSystem before
+  configuration access, rejects reparse points, duplicate or unknown JSON
+  properties, and derives Field generation, key ID, and the one eligible seed
+  path only from the bounded validated configuration. It emits a metadata-only
+  receipt and remains absent from ordinary KVP startup and provisioning.
+- a protected-only guest KVP secret reader that rechecks LocalSystem, exact
+  runtime-config and secret paths, reparse endpoints, Field generation, key ID,
+  DPAPI envelope, DACL, bounds, and printable channel-secret format. The guest
+  emitter no longer reads a plaintext file. Host-side verification has a
+  separate key lifecycle, and live startup evidence remains pending.
+- a guest startup transaction that invokes the fixed protection command before
+  the KVP emitter, captures exactly one metadata receipt, validates its exact
+  schema, Field generation, key ID, status, ciphertext digest, and freshness,
+  and publishes no heartbeat if conversion or receipt verification fails.
+  A Windows PowerShell subprocess harness now proves first conversion and
+  already-protected restart reach the emitter while command failure, malformed
+  receipt, and post-publication/no-receipt interruption stop before it; live
+  guest LocalSystem and heartbeat evidence remain pending. Exact v23 timing
+  evidence then showed that withholding authenticated observation behind
+  `session_unlocked` can consume the complete desktop-ready window. The source
+  launcher now starts authenticated provisioning observation only after one
+  bootstrap precheck and exact protected-secret receipt validation, refreshes
+  bootstrap until unlock, and stops the exact child on timeout or early exit.
+  Harness evidence passes; rebuilt-base live evidence remains required.
+  Actual generation replacement and owner-authorized key rotation remain pending.
 
-Exact-head Field L0 validation passed on `e10e921` before consolidation and again on the hardened consolidated commit `7a7c435` on 2026-07-28. The consolidated run recorded 15/15 runner steps passed, including locked install, validators, all tests/builds/pulses, dependency reports, and the read-only host capability check. The existing live evidence still used development access and one generation, so it is evidence of feasibility, not production acceptance. Production-configured repeatability and negative cases remain outstanding.
+Exact-head Field L0 validation passed on `e10e921` before consolidation, on the
+hardened consolidated commit `7a7c435`, and on compiled-ledger commit `454fc85`.
+Adapter commit `26251da` also passed an exact-head 15-step runner. The latest run
+for protected-state commit `6de98c9` passed the same exact-head 15-step runner.
+The v22 live canary is bounded development evidence and does not change those
+promotion gates. Those runs recorded locked install, validators, all
+tests/builds/pulses, and the read-only host capability check.
+Live evidence still uses development access and does not prove production
+authentication or the complete failure matrix, so it remains feasibility and
+bounded implementation evidence rather than production acceptance.
 
 ### 7.3 Current promotion posture
 
@@ -598,7 +655,11 @@ Required protections:
 - wrong direction rejection;
 - wrong generation rejection;
 - expiration;
-- key rotation;
+- owner-authorized key rotation with exact request/generation binding,
+  prepare/commit receipts, fail-closed reconciliation, rollback, and old-key
+  rejection (transactional fake-provider foundation and authenticated atomic
+  metadata store implemented; protected secret storage and live provider
+  ceremony pending);
 - durable replay state;
 - boot replacement invalidation;
 - bounded message and payload sizes;
@@ -1411,6 +1472,8 @@ Prove creation, start, stop, rollback, destruction, and replacement of one dispo
 ### Deliverables
 
 - approved base-image registry entry and digest;
+- owner-installed, expiring local lifecycle-service policy with fixed script/configuration digests;
+- non-model-facing service queue limited to exact-generation provision, authenticated read-only observation, and destruction;
 - immutable parent VHDX;
 - disposable differencing OS overlay;
 - separate disposable task disk;
@@ -1427,6 +1490,10 @@ Prove creation, start, stop, rollback, destruction, and replacement of one dispo
 ### Failure injection
 
 - wrong image digest;
+- altered installed lifecycle script or host configuration;
+- stale, replayed, future-dated, wrong-policy, or wrong-generation service job;
+- unexpected job-package entry, reparse point, or active-Field capacity overflow;
+- service stop during lifecycle execution;
 - existing VM name;
 - existing generation directory;
 - wrong switch type;

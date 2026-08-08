@@ -26,7 +26,18 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Reuse nonce with a new ID | replay denial | U | transport-level replay |
 | Decrease or repeat sequence | deny | U | restart and reconnect sequence tests |
 | Wrong direction | deny | U | host-to-guest message on guest-to-host receiver |
-| Wrong key ID | deny | U | old-key traffic after rotation |
+| Wrong key ID | deny | U plus fake owner-rotation/replay-guard integration | old-key traffic after live rotation |
+| Pilot/service/remote/stale rotation request | deny before provider effect | U | local owner UI/transport acceptance |
+| Rotation commit fails after prepare | reconcile; roll back prepared key or adopt only proven next-active state | U fake provider | Windows provider crash/fault injection |
+| Rotation reconciliation unknown or rollback fails | trust neither key; block continuation for owner review | U fake provider | host/guest restart and storage fault injection |
+| Corrupt, wrong-secret, legacy, oversized, or cross-generation rotation metadata | reject before authority-state hydration; preserve bytes | U protected file store | Windows ACL, crash/power-loss, and vault injection |
+| Wrong generation/key, malformed/plaintext/oversized envelope, corrupt DPAPI ciphertext, or unexpected secret-file ACL | deny before returning secret; preserve prior published envelope on pre-publication failure | U fake providers plus separate local DPAPI and exact ACL checks | combined guest LocalSystem, reparse, crash/power-loss, and live rotation injection |
+| Non-SYSTEM seed conversion, escaped/noncanonical path, reparse endpoint, protected-looking corruption, weak/control/oversized seed, wrong restart generation/key, or pre-publication policy failure | deny; do not interpret corrupt JSON as plaintext; preserve input before publication | U conversion transaction with fake protected store | live fixed guest CLI, combined LocalSystem DPAPI/DACL, post-publication interruption, secure retirement, and live restart |
+| Non-SYSTEM protection command, alternate config spelling, Config/config-file reparse, malformed/oversized/unknown/duplicate config property, or noncanonical seed binding | deny before converter effect; emit no receipt or secret | U fixed-command suite with fake converter and path inspector | combined guest LocalSystem command, config ACL/TOCTOU, provisioning order, and live restart |
+| Non-SYSTEM guest emitter, alternate runtime/secret path, Config/secret reparse, wrong Field generation/key, protected-store denial, or invalid returned bytes | deny before KVP publication; never read plaintext fallback; zero rejected/owned byte buffers | U protected-reader suite and compiled emitter wiring | guest LocalSystem DPAPI/DACL, concurrent namespace change, cancellation/restart, and pre-heartbeat denial evidence |
+| Protection process failure or zero/multiple/malformed/extra-property/stale/future/wrong-Field/wrong-key/bad-status/bad-digest startup receipt | stop launcher before emitter; publish no heartbeat; retain bounded error only | W PowerShell subprocess adapter harness for nonzero/malformed/no-receipt denial and converted/already-protected success; S remaining receipt variants | combined guest LocalSystem process faults, idempotent restart, and observed heartbeat absence |
+| Compiled protection receipt and launcher use different digest property names | stop before emitter; exact schema mismatch must be caught by a cross-layer contract before image build | v23/v24 missing-handshake H diagnosis; exact .NET serialized schema U plus compiled/launcher source contract S; v25 generation-3 LocalSystem authenticated handshake/bootstrap/heartbeat and restart H | production-repeatable H |
+| Session remains locked during guest startup | after one valid precheck and protected-secret receipt, publish authenticated provisioning only; keep readiness denied; refresh bootstrap; stop exact child on timeout/early exit | W locked-then-unlocked and never-unlocked subprocess harness; v23 live negative timing diagnosis | rebuilt-base live provisioning KVP, unlock transition, Secure Desktop, crash, and service-recovery W/H |
 | Expired message | deny | U | delayed transport delivery |
 | Prior Field generation | deny and plan new generation if trust changed | U | stale guest process after rollback |
 | Guest boot ID changes inside generation | fault | U | reboot guest without generation transition |
@@ -40,6 +51,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Heartbeat stale beyond fault threshold | fault and stop/reprovision plan | U | guest kill/network break |
 | Locked session reports ready | reject heartbeat | U | lock guest session |
 | Secure Desktop reports ready | reject heartbeat | U | UAC/Secure Desktop |
+| Guest service is Automatic in sealed base | reject base receipt/promotion; do not boot as trusted | S/U | offline base inspection and fresh canary |
 | Fault code present | fault state and diagnostic code only | U | guest provider failure |
 | Huge queue depth | accepted only within schema max; health monitoring may degrade later | U schema | load fixture |
 
@@ -74,7 +86,15 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Rollback itself fails | `failed_rollback_incomplete`, preserve evidence | script | H |
 | Destroy path contains reparse point | refuse deletion | script/static | H |
 | Destroy wrong typed confirmation | refuse | script/static | H |
-| Base image changes after guest use | acceptance failure | design | H |
+| Base image changes after guest use | acceptance failure | v24 remained read-only and digest-identical across exact generation-1/generation-2 lifecycle; v25 remained read-only and digest-identical across generation-3 provision/restart/observe/destroy H | repeated production matrix H |
+| Owner-service policy expired, future-dated, over 180 days, wrong SID, or unknown operation | deny before service/job effect | .NET policy tests | installed-service W/H |
+| Owner-service job stale, replayed, wrong policy, wrong generation, or wrong plan digest | deny before lifecycle command | .NET job/command tests | installed-service W/H |
+| Installed owner-service script or host config changed | service refuses job before process start | .NET digest validation plus installer static tests | installed-file tamper W/H |
+| Owner-service package has unexpected entry or reparse point | deny; do not traverse or execute | .NET command/static tests | NTFS reparse W/H |
+| Active Field bound reached | deny provisioning | .NET source test plus installed-service capacity denial H | production multiple-generation matrix H |
+| Owner service stops during lifecycle child | cancel and kill exact process tree; preserve terminal result | .NET source test | live cancellation H |
+| Windows PowerShell 5.1 receives a string-valued common `Confirm` switch through the native `-File` boundary | lifecycle command fails before mutation; fixed service uses a LocalSystem-only noninteractive flag after exact typed confirmation | S/U, installed-service pre-effect failure, and successful exact generation-1/generation-2 provision/destroy H | repeated production matrix H |
+| Installed provisioning script's fixed host-capability dependency is absent or changed | fail before Hyper-V mutation; installer and service policy hash-bind and verify the dependency | installed-service pre-effect failure, S/U repair, reviewed reinstall, and successful generation-1/generation-2 provision H | installed-file tamper and production-repeatable H |
 
 ## Teach and visual recording
 
@@ -155,6 +175,10 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Tamper demonstration ciphertext | authentication failure | U | W |
 | Wrong demonstration key | hide from list and fail direct load | U | W |
 | Corrupt Field Manager audit event | chain verification failure | U foundation | W |
+| Poll retained KVP handshake/bootstrap twice | freshly authenticate; accept only exact idempotent records; require heartbeat sequence advance when it changes | S/U plus v20, v21, and v25 generation-3 live repeated observation; v25 heartbeat wire sequence advanced from `1785773057626023` to `1785773057626040` | production-repeatable W/H |
+| Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured equal-sequence rejection | production-repeatable W/H |
+| Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured rejection | production-repeatable W/H |
+| Corrupt or cross-bind the KVP observation ledger | authenticate before payload use; fail closed before update; preserve prior bytes | HMAC-protected envelope plus .NET corruption/key/generation tests; v22 live copy-based tag/payload/key-ID/generation/plaintext/oversize rejection, byte preservation, and authoritative-ledger recovery | actual stale-generation replacement and owner-authorized key-rotation W/H |
 
 ## Promotion rule
 
