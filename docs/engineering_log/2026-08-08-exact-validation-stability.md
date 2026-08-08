@@ -35,6 +35,15 @@ a passing claim.
 Required follow-up is a focused repeated startup-harness run and a complete clean
 exact-head rerun. Live Windows/Hyper-V behavior remains unvalidated by this slice.
 
+The repaired runner subsequently passed every exact-head lane: Field tests 259/259,
+full TypeScript tests 673/673, both system pulses, TypeScript build, .NET tests 81/81
+with zero build warnings/errors, and the read-only host capability check. During that
+run npm reported the newly published `GHSA-2v37-7h3g-55p8` advisory against transitive
+development dependency `nanoid` 3.3.16 (`vitest` → `vite` → `postcss` → `nanoid`).
+`npm audit fix` changed only the lockfile entry to 3.3.18; `npm audit
+--audit-level=high` then reported zero vulnerabilities. Because the lockfile changed,
+the final exact-head run must be repeated after this dependency-only commit.
+
 ## Security and privacy
 
 The revised assertion remains fail-closed: success requires a nonzero launcher exit,

@@ -16,3 +16,8 @@ feedback remains parallel; promotional validation favors deterministic completen
 
 CHN-001 remains source-validated and blocked on its complete live matrix and
 independent authorization.
+
+The same exact run detected `GHSA-2v37-7h3g-55p8` in transitive development-only
+`nanoid` 3.3.16. The lockfile is pinned to fixed 3.3.18 without changing direct
+dependencies. A post-fix audit reports zero vulnerabilities; exact validation must be
+rerun on the resulting commit before it is treated as the final source evidence.
