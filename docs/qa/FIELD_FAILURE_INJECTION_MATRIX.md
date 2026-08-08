@@ -179,6 +179,9 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Mutate a validly signed retained KVP record at an old sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured equal-sequence rejection | production-repeatable W/H |
 | Reuse a prior KVP message ID at a greater sequence | compiled snapshot rejection; prior ledger unchanged | .NET unit plus v21 live-captured rejection | production-repeatable W/H |
 | Corrupt or cross-bind the KVP observation ledger | authenticate before payload use; fail closed before update; preserve prior bytes | HMAC-protected envelope plus .NET corruption/key/generation tests; v22 live copy-based tag/payload/key-ID/generation/plaintext/oversize rejection, byte preservation, and authoritative-ledger recovery | actual stale-generation replacement and owner-authorized key-rotation W/H |
+| Omit boot ID or acquisition metadata from any accepted KVP result | compiled serialization fails; candidate cannot be finalized | .NET boot-binding/metadata tests and CHN harness schema tests | production-repeatable W/H |
+| Reuse a CHN capture message ID/nonce or change a retained message | acquisition session rejects before write | CHN harness unit tests | production-repeatable H |
+| Claim cleanup while VM or exact generation root remains | finalize performs read-only host checks and denies | CHN harness source tests/inspection | production-repeatable H |
 
 ## Promotion rule
 
@@ -191,4 +194,4 @@ A release candidate must have:
 5. CHN-001 promotion requires one machine-checkable run satisfying every row
    CHN-001.1 through CHN-001.12; source tests or partial KVP captures cannot
    substitute for live lock, Secure Desktop, display, heartbeat-loss, and stop evidence;
-5. owner verdict recorded.
+6. owner verdict recorded.

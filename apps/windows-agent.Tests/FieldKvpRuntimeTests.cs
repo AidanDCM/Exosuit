@@ -258,4 +258,53 @@ public sealed class FieldKvpRuntimeTests
             if (File.Exists(path)) File.Delete(path);
         }
     }
+
+    [Fact]
+    public void BootstrapAndVerificationResultsBindExactBootAndEvidenceMetadata()
+    {
+        var field = new FieldReference(Guid.NewGuid(), 4);
+        var bootId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        var configuration = new FieldKvpRuntimeConfiguration(
+            1, field, "field-agent-test", "field-key-test", "secret.txt", "bootstrap.json", 1_000);
+        var payload = FieldKvpRuntime.BindBootstrapToBoot(
+            new Dictionary<string, object?> { ["status"] = "ready" }, bootId);
+        var envelope = FieldKvpRuntime.CreateEnvelope(
+            configuration,
+            "field-kvp-test-secret-that-is-long-enough",
+            bootId,
+            11,
+            FieldChannelMessageType.BootstrapStatus,
+            payload,
+            now);
+
+        using var result = JsonDocument.Parse(FieldKvpRuntime.SerializeVerificationResults(new[] { envelope }));
+        var item = result.RootElement[0];
+        Assert.Equal(bootId, item.GetProperty("bootId").GetGuid());
+        Assert.Equal(envelope.Nonce, item.GetProperty("nonce").GetString());
+        Assert.Equal(envelope.KeyId, item.GetProperty("keyId").GetString());
+        Assert.True(item.GetProperty("payloadHashValid").GetBoolean());
+        Assert.Equal("hyperv_kvp", item.GetProperty("transport").GetString());
+        Assert.Equal("verified", item.GetProperty("status").GetString());
+        Assert.True(item.GetProperty("verifiedAt").GetDateTimeOffset() >= now);
+    }
+
+    [Fact]
+    public void VerificationResultsRejectPayloadWithoutBootBinding()
+    {
+        var configuration = new FieldKvpRuntimeConfiguration(
+            1, new FieldReference(Guid.NewGuid(), 1), "field-agent-test", "field-key-test",
+            "secret.txt", "bootstrap.json", 1_000);
+        var envelope = FieldKvpRuntime.CreateEnvelope(
+            configuration,
+            "field-kvp-test-secret-that-is-long-enough",
+            Guid.NewGuid(),
+            1,
+            FieldChannelMessageType.Heartbeat,
+            new Dictionary<string, object?> { ["healthy"] = true });
+        Assert.Throws<InvalidOperationException>(() =>
+            FieldKvpRuntime.SerializeVerificationResults(new[] { envelope }));
+        Assert.Throws<ArgumentException>(() =>
+            FieldKvpRuntime.BindBootstrapToBoot(new Dictionary<string, object?>(), Guid.Empty));
+    }
 }

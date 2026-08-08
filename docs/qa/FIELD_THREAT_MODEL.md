@@ -111,6 +111,12 @@
   CHN-001 now has a fail-closed acceptance schema, but its complete production
   failure-injection matrix remains unexecuted. No general Hyper-V socket or
   bidirectional command transport is claimed.
+- The CHN-001 acquisition driver binds a clean exact commit, production plan,
+  protected runtime configuration, running VM GUID, immutable base digest, and
+  compiled authenticated snapshot observer. It content-addresses imported ceremony
+  artifacts and independently checks cleanup/base immutability at finalize, but it
+  cannot prove the truth of owner-observed lock, Secure Desktop, display, or stop
+  ceremonies without their reviewed live artifacts and independent review.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
 - Personal-state encryption ownership and key rotation are not implemented.

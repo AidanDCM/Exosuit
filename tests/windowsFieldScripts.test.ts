@@ -459,6 +459,8 @@ describe("Windows Field administration scripts", () => {
     expect(readKvp).toContain("for ($attempt = 1; $attempt -le 20; $attempt++)");
     expect(readKvp).toContain("$snapshot = Get-FieldKvpItems");
     expect(readKvp).toContain("guest-to-host-observation.json");
+    expect(readKvp).toContain("[string]$ObservationStatePath");
+    expect(readKvp).toContain("[IO.Path]::GetFullPath($ObservationStatePath)");
     expect(readKvp).toContain("--field-observe-kvp-snapshot");
     expect(readKvp).toContain("$envelopePaths.handshake");
     expect(readKvp).toContain("$envelopePaths.bootstrap");

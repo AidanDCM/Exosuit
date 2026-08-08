@@ -58,9 +58,43 @@ npm run test:field -- --reporter=verbose
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release
 ```
 
-The acquisition runner remains the next implementation slice. Until it emits a
-`chn001RunSchema` document with zero validation failures, CHN-001 stays
-`source_validated` and no promotion command is permitted.
+## Acquisition driver
+
+The driver is intentionally split from Field/Glove authorities. It cannot create or
+destroy a VM, alter the guest, lock or unlock a session, invoke Secure Desktop, change
+the display, inject input, record, or stop execution. It binds a clean exact commit,
+validates the production plan/runtime/base/VM, captures compiled authenticated KVP
+snapshots, content-addresses ceremony artifacts, and refuses incomplete finalization.
+
+```powershell
+npm run chn001:harness -- plan --config C:\path\to\chn001-config.json
+npm run chn001:harness -- start --config C:\path\to\chn001-config.json --confirm "START CHN-001 EVIDENCE SESSION"
+npm run chn001:harness -- capture --run-id <run-id> # repeat for >=3 distinct heartbeats
+npm run chn001:harness -- add-injection --run-id <run-id> --id CHN-001.1 --artifact C:\path\to\typed-injection-artifact.json
+npm run chn001:harness -- add-stop --run-id <run-id> --scenario healthy --artifact C:\path\to\typed-stop-artifact.json
+npm run chn001:harness -- finalize --run-id <run-id>
+```
+
+Repeat `add-injection` for all 12 IDs and `add-stop` for healthy, degraded, and
+recording. Finalize independently verifies the VM and exact generation root are absent
+and rehashes the immutable base. It writes a candidate only; it does not record
+completion evidence or promote the gate.
+
+Injection and stop artifacts are strict, closed-schema documents. Each binds the exact
+commit, machine, Field/generation, VM GUID, evidence mode/scenario, outcome and timing,
+plus the SHA-256 of its underlying raw observation. Unknown fields and cross-bound
+artifacts are rejected.
+
+The configuration must bind the exact VM name/GUID, Field/generation, v26-or-later
+base image and digest, production provisioning plan, host config, protected guest
+runtime config, channel key ID, and reviewed agent executable. All production flags
+are literal deny-by-default values. The driver also parses the plan and runtime files;
+the flags cannot override development access or a mismatched identity.
+
+Until the driver emits a `chn001RunSchema` document with zero validation failures and
+an independent reviewer authorizes it, CHN-001 stays `source_validated` and no
+promotion command is permitted. v25 cannot satisfy the updated bootstrap boot-binding
+contract; rebuild and acceptance of a new immutable base are required first.
 
 ## Rollback
 

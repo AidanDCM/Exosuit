@@ -82,7 +82,7 @@ public static class FieldKvpRuntime
             // claiming heartbeat_started here would be false rather than merely
             // incomplete. The host evaluator reports not_ready until the completing
             // report below arrives.
-            var bootstrap = ReadBootstrapStatus(configuration.BootstrapReportPath);
+            var bootstrap = BindBootstrapToBoot(ReadBootstrapStatus(configuration.BootstrapReportPath), bootId);
             WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
                 configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
             var nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
@@ -101,9 +101,11 @@ public static class FieldKvpRuntime
                             ["bootId"] = bootId.ToString(),
                             ["transport"] = "hyperv_kvp",
                         }));
-                    bootstrap = ReadBootstrapStatus(
-                        configuration.BootstrapReportPath,
-                        heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null);
+                    bootstrap = BindBootstrapToBoot(
+                        ReadBootstrapStatus(
+                            configuration.BootstrapReportPath,
+                            heartbeatStarted ? new FieldRuntimeAttestation(lastSecureDesktopActive, true) : null),
+                        bootId);
                     WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
                         configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
                     nextControlRefresh = DateTimeOffset.UtcNow.AddMinutes(4);
@@ -144,9 +146,11 @@ public static class FieldKvpRuntime
                 if (!heartbeatStarted)
                 {
                     heartbeatStarted = true;
-                    bootstrap = ReadBootstrapStatus(
-                        configuration.BootstrapReportPath,
-                        new FieldRuntimeAttestation(secureDesktop, true));
+                    bootstrap = BindBootstrapToBoot(
+                        ReadBootstrapStatus(
+                            configuration.BootstrapReportPath,
+                            new FieldRuntimeAttestation(secureDesktop, true)),
+                        bootId);
                     WriteEnvelope(guestKey, BootstrapValueName, CreateEnvelope(
                         configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.BootstrapStatus, bootstrap));
                 }
@@ -342,21 +346,51 @@ public static class FieldKvpRuntime
         return verified.Select(item => item.Envelope).ToArray();
     }
 
-    public static string SerializeVerificationResults(IReadOnlyList<FieldChannelEnvelope> verified) =>
-        JsonSerializer.Serialize(verified.Select(VerificationResult).ToArray(), WireJson);
-
-    private static object VerificationResult(FieldChannelEnvelope verified) => new
+    public static string SerializeVerificationResults(IReadOnlyList<FieldChannelEnvelope> verified)
     {
-        status = "verified",
-        field = verified.Field,
-        verified.MessageId,
-        verified.Sequence,
-        messageType = verified.MessageType,
-        verified.SentAt,
-        verified.ExpiresAt,
-        verified.PayloadHash,
-        verified.Payload,
-    };
+        var verifiedAt = DateTimeOffset.UtcNow;
+        return JsonSerializer.Serialize(verified.Select(item => VerificationResult(item, verifiedAt)).ToArray(), WireJson);
+    }
+
+    private static object VerificationResult(FieldChannelEnvelope verified, DateTimeOffset verifiedAt)
+    {
+        if (!verified.Payload.TryGetValue("bootId", out var bootValue) ||
+            !Guid.TryParse(Convert.ToString(bootValue, System.Globalization.CultureInfo.InvariantCulture), out var bootId) ||
+            bootId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Verified Field KVP payload does not bind a valid guest boot ID.");
+        }
+        return new
+        {
+            status = "verified",
+            field = verified.Field,
+            verified.MessageId,
+            verified.Nonce,
+            verified.Sequence,
+            messageType = verified.MessageType,
+            verified.SentAt,
+            verified.ExpiresAt,
+            verified.KeyId,
+            verified.PayloadHash,
+            payloadHashValid = true,
+            verifiedAt,
+            transport = "hyperv_kvp",
+            bootId,
+            verified.Payload,
+        };
+    }
+
+    internal static IReadOnlyDictionary<string, object?> BindBootstrapToBoot(
+        IReadOnlyDictionary<string, object?> bootstrap,
+        Guid bootId)
+    {
+        if (bootId == Guid.Empty) throw new ArgumentException("Guest boot ID cannot be empty.", nameof(bootId));
+        var bound = new Dictionary<string, object?>(bootstrap, StringComparer.Ordinal)
+        {
+            ["bootId"] = bootId.ToString(),
+        };
+        return bound;
+    }
 
     private static void ValidateObservationState(KvpObservationState state, FieldKvpRuntimeConfiguration configuration)
     {

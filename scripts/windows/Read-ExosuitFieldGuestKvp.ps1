@@ -12,7 +12,10 @@ param(
     [string]$AgentPath,
 
     [Parameter(Mandatory)]
-    [string]$EvidenceDirectory
+    [string]$EvidenceDirectory,
+
+    [Parameter()]
+    [string]$ObservationStatePath
 )
 
 Set-StrictMode -Version Latest
@@ -83,7 +86,13 @@ function Resolve-KvpEnvelope {
 }
 
 New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
-$observationPath = Join-Path $EvidenceDirectory 'guest-to-host-observation.json'
+$observationPath = if ([string]::IsNullOrWhiteSpace($ObservationStatePath)) {
+    Join-Path $EvidenceDirectory 'guest-to-host-observation.json'
+} else {
+    $resolvedObservation = [IO.Path]::GetFullPath($ObservationStatePath)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $resolvedObservation) -Force | Out-Null
+    $resolvedObservation
+}
 $envelopePaths = @{}
 foreach ($entry in @(
     @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
