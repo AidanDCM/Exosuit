@@ -55,6 +55,7 @@ import {
   evaluateCompetingFieldVms,
   evaluateFreeMemory,
   FIELD_VM_PREFIX,
+  HYP001_MEMORY,
   MINIMUM_FREE_MEMORY_BYTES,
   type FieldVmState,
   hyp001RunSchema,
@@ -73,9 +74,10 @@ const HOST_CONFIG = resolve(process.env["EXOSUIT_FIELD_HOST_CONFIG"] ?? join(ROO
 /**
  * Host RAM is 15.44 GB with roughly 3.7 GB genuinely free, and the plan
  * builder's defaults (8 GiB startup, 12 GiB max) will not start a Field here.
- * Dynamic memory with a small floor is what actually boots on this machine.
+ * Use the smallest dynamic-memory profile the authoritative provisioning
+ * contract permits. A smaller local override would fail before a plan exists.
  */
-const MEMORY = { minimumMemoryMiB: 1_024, startupMemoryMiB: 2_048, maximumMemoryMiB: 4_096 } as const;
+const MEMORY = HYP001_MEMORY;
 
 const CONFIRMATION = "RUN HYP-001 LIVE CYCLES";
 
@@ -107,6 +109,41 @@ function powershellScript(file: string, args: readonly string[]): string {
   return execFileSync(
     "powershell",
     ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", join(SCRIPTS, file), ...args],
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  ).trim();
+}
+
+/**
+ * Runs one of the two exact lifecycle scripts with ShouldProcess prompting
+ * suppressed after the harness has supplied its exact typed confirmation.
+ * Windows PowerShell 5.1 cannot receive `-Confirm:$false` through native
+ * `-File` argv (it becomes a string), so this bounded invocation is encoded as
+ * PowerShell source where `$false` retains its boolean type.
+ */
+function powershellConfirmedScript(file: string, args: readonly string[]): string {
+  const allowedFiles = new Set([
+    "Invoke-ExosuitFieldProvisioning.ps1",
+    "Remove-ExosuitFieldGeneration.ps1",
+  ]);
+  const allowedParameters = new Set([
+    "-PlanPath", "-HostConfigPath", "-Apply", "-TypedConfirmation",
+    "-FieldId", "-FieldGeneration",
+  ]);
+  if (!allowedFiles.has(file)) throw new Error(`Confirmed script is not allowlisted: ${file}`);
+
+  const words = args.map((value) => {
+    if (value.startsWith("-")) {
+      if (!allowedParameters.has(value)) throw new Error(`Confirmed script parameter is not allowlisted: ${value}`);
+      return value;
+    }
+    return `'${value.replace(/'/g, "''")}'`;
+  });
+  const scriptPath = join(SCRIPTS, file).replace(/'/g, "''");
+  const source = `$ErrorActionPreference = 'Stop'; & '${scriptPath}' ${words.join(" ")} -Confirm:$false`;
+  const encoded = Buffer.from(source, "utf16le").toString("base64");
+  return execFileSync(
+    "powershell",
+    ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
     { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   ).trim();
 }
@@ -437,7 +474,7 @@ function runOneCycle(input: {
 
   // HYP-001.7 clean provision, from the immutable base onto a disposable overlay.
   const planPath = buildPlan(fieldId, generation, baseImageId, baseDigest);
-  powershellScript("Invoke-ExosuitFieldProvisioning.ps1", [
+  powershellConfirmedScript("Invoke-ExosuitFieldProvisioning.ps1", [
     "-PlanPath", planPath,
     "-HostConfigPath", HOST_CONFIG,
     "-Apply",
@@ -490,7 +527,7 @@ function runOneCycle(input: {
   // generation. The rollback contract is "do not provision or destroy outside
   // the exact generation", so the confirmation is built from the identity this
   // harness itself created and from nothing the operator typed.
-  powershellScript("Remove-ExosuitFieldGeneration.ps1", [
+  powershellConfirmedScript("Remove-ExosuitFieldGeneration.ps1", [
     "-FieldId", fieldId,
     "-FieldGeneration", String(generation),
     "-HostConfigPath", HOST_CONFIG,

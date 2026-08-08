@@ -1,7 +1,6 @@
 # Developer handoff
 
-**Written:** 2026-08-07, immediately after Secure Boot was enabled and HYP-001
-preflight passed.
+**Written:** 2026-08-07; updated 2026-08-08 after HYP-001 evidence collection.
 **Read this first.** It assumes no prior context and supersedes any earlier
 handoff you may have been pointed at.
 
@@ -44,8 +43,9 @@ incompleteness is expected and does not fail).
 
 ## 3. Do this next
 
-Secure Boot is enabled and preflight passes. The HYP-001 live session is the
-next action and **has not been run**.
+Secure Boot is enabled. HYP-001's three live cycles completed on 2026-08-08 and
+three signed evidence records validate. **Independent technical review is now
+the next action; HYP-001 is not passed until that reviewer signs promotion.**
 
 **Work from `C:\Users\Aidan\AppData\Local\Temp\exorev`**, not the Desktop repo
 — see §7 for why.
@@ -54,23 +54,20 @@ next action and **has not been run**.
 $env:EXOSUIT_COMPLETION_KEY_DIR = "C:\Users\Aidan\.exosuit-live-keys"
 $env:EXOSUIT_COMPLETION_KEY_PREFIX = "live-"
 
-npm run hyp001:preflight          # must exit 0; ~25s (hashes an 11 GiB image)
-npm run hyp001:cycles             # DRY RUN — provisions nothing, review the plan
-npm run hyp001:cycles -- --apply --confirm "RUN HYP-001 LIVE CYCLES"
-npm run hyp001:record             # only after reading the artifacts
 npm run validate:completion
 ```
 
 Full procedure, stop conditions and abort steps:
-`docs/project-driver/HYP001_SESSION_RUNBOOK.md` (currently on PR #33).
+`docs/project-driver/HYP001_SESSION_RUNBOOK.md`.
 
 **Preconditions already met** as of 2026-08-07: Secure Boot enabled, 8/8 keys
 TPM-sealed, base digest matches, Private switch present, dotnet 8.0.423,
 4.34 GiB free, legacy G4 VM `Off`.
 
-**The preflight artifact is the authorisation boundary**, not
-`Confirm-SecureBootUEFI` returning `True`. If the artifact does not record all
-of those facts, stop.
+**The preflight artifact is the attempt-authorisation boundary**, not
+`Confirm-SecureBootUEFI` returning `True`. It is machine-generated but unsigned;
+signed completion evidence begins only after the reviewed cycles are passed to
+`hyp001:record`. If preflight does not record all of those facts, stop.
 
 ---
 
@@ -165,7 +162,7 @@ Key commands:
 npm run validate:completion        # the three metrics
 npm test                           # 639 tests, 91 files
 npm run scan:evidence-artifacts    # secret scan over published evidence
-npm run hyp001:preflight           # host readiness, writes a signed artifact
+npm run hyp001:preflight           # host readiness, writes an unsigned check artifact
 ```
 
 ---
@@ -276,7 +273,7 @@ standalone script the operator runs alone.
 
 | Item | State |
 | --- | --- |
-| **HYP-001** | preflight passed; **three live cycles not yet run** |
+| **HYP-001** | 3/3 cycles recorded; **independent technical promotion pending** |
 | CHN-001 | blocked on HYP-001 |
 | PD-001 workflow freeze | **blocked on a product decision** — see below |
 | PD-NET-001 | conditional; activates only if the workflow needs internet |
@@ -321,8 +318,8 @@ Merged today: #28 (M1 prep), #29 (contract v2.3 + M0 re-attestation), #30
 1. `npm run validate:completion` — the only honest status.
 2. The gate cannot be promoted by editing files. Evidence is signed,
    content-addressed and single-use.
-3. Secure Boot is done. **HYP-001's three live cycles are the next action**, and
-   they will produce the project's first live-validated evidence.
-4. Read the runbook before starting them. Evidence is single-use; a wasted run
-   is a wasted artifact.
+3. Secure Boot and HYP-001 evidence collection are done. **Independent review
+   of `docs/qa/HYP001_LIVE_EVIDENCE_2026-08-08.md` is the next action.**
+4. The reviewer must decide whether the disclosed dirty harness checkout is
+   acceptable or requires a clean-head rerun.
 5. Promotion needs a reviewer who is not the issuer.

@@ -228,6 +228,42 @@
       "recordedAt": "2026-08-06T22:45:41.853Z",
       "signingKeyId": "live-ledger-1",
       "signature": "HQ7sSPbUtJQfPG0J8XMvbHx9004RuVGnUQU0v3iJbwwIIjANAA334u1q2IMJc2qwJuROThvjNp0OiOYXLXEWBg"
+    },
+    {
+      "eventId": "custody-live-host-1-1786225464333",
+      "sequence": 19,
+      "previousEventHash": "32e56bcdc86df3ab552db9d9d57009c8577689fe01f058d0e0dfde910837bd53",
+      "keyId": "live-host-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-08T21:44:24.332Z",
+      "signingKeyId": "live-host-1",
+      "signature": "O77M4tPs4hzJ2L5ep9aN5WIK-2wFy_9bu8BNuYklKWJCicZJuTFl8OK_d50d0m5yes8ChH4nJtSzl1BELkx1Dw"
+    },
+    {
+      "eventId": "custody-live-host-1-1786225468513",
+      "sequence": 20,
+      "previousEventHash": "f9b51517bf24acfb3764ee28a80a9b8fedbe76dadcba9d00b2dc9f5a7bd009da",
+      "keyId": "live-host-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-08T21:44:28.513Z",
+      "signingKeyId": "live-host-1",
+      "signature": "gT_mX13BvQszOnW0idpOKcptwbhjSS1_ZeoWV98U194btTAWqtpGTGANp9h3mZFCKWD0nOEDGZM43QhwVgRfBw"
+    },
+    {
+      "eventId": "custody-live-host-1-1786225472626",
+      "sequence": 21,
+      "previousEventHash": "e6082a3c2eafcb7572a75b2be98912601b3c33e2c91ebe35813c9bbcdb59e099",
+      "keyId": "live-host-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-08T21:44:32.625Z",
+      "signingKeyId": "live-host-1",
+      "signature": "lJL7Wbt_iKfMzqLqTpj-457V-HnINZPG_uH8nrI06qAPYBD8xclTGl2GlZToXCZx9ejkKDsrMjaQ4EjxiakdDA"
     }
   ]
 }

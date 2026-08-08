@@ -1,0 +1,19 @@
+{
+  "contractVersion": 1,
+  "testId": "HYP-001",
+  "stage": "cycle",
+  "cycle": 3,
+  "fieldId": "75e54955-9e75-4d3e-aa03-3054139a6e36",
+  "generation": 3,
+  "vmName": "Exosuit-Field-75e54955-9e75-4d3e-aa03-3054139a6e36-G3",
+  "vmGuid": "ee647add-cf3f-46a8-b51b-a0a3b4a3272f",
+  "bootId": "9c6794c66a2ec59bbfce78ed01e4b25af5893620db8cfae54f4c89d4098dfd4a",
+  "createdAt": "2026-08-08T21:42:58.639Z",
+  "bootedAt": "2026-08-08T21:43:04.980Z",
+  "readyAt": "2026-08-08T21:43:18.172Z",
+  "stoppedAt": "2026-08-08T21:43:30.740Z",
+  "destroyedAt": "2026-08-08T21:43:35.342Z",
+  "readinessSeconds": 12,
+  "baseDigestBefore": "5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744",
+  "baseDigestAfter": "5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744"
+}

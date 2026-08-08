@@ -1,0 +1,65 @@
+{
+  "contractVersion": 2,
+  "proofs": [
+    {
+      "proofId": "proof-1786225464823-d5bb41",
+      "challenge": {
+        "recordDigest": "d8ef3d3a20c5b38544d97e0565a92356399e5cc15fb2fed81638b285548641ce",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786225464333",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "317cb19f7f6c63e180f323fe98b3ffb3",
+        "timestamp": "2026-08-08T21:44:24.823Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "nT7DJ3Uxd83UqsvIvR0Cli0q+M7Qg+QCq36lAlePC8Dt1SfMy3M9MfYFyz0b9c6Bxz+0YB8naEU+a2NRt/omPMIav12qznYBbOr7PixRYpGhhzFRo9WPo7UNaDZM0/W6gzptDZT+kiN4tZsSgkWCJphb1XzgaxPIbvGbSZKSV6hJEIu9048F8HuMe+P44forrbE/DVghx37QxVFc7SBv3+hzKOAegCL/uKaiHFMlBE+fFOemApP7mLqd+iGP+djp4ARifX96F+Lbu8+nbQE+AChLV7fhuBhXsvnyrkG41a0UL07NipEqvlmcPtBTNXOWSmTERcud341chKiO9I+eHg=="
+    },
+    {
+      "proofId": "proof-1786225468938-a97ea6",
+      "challenge": {
+        "recordDigest": "a5569059c3a71f9ec0e2fccbea300a494f7c4ef5c73e8d644bb445f00a2afbe7",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786225468513",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "67d6539eda3b9935e679681d313d8ac9",
+        "timestamp": "2026-08-08T21:44:28.938Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "e6l1Wxkt3cabYr5xh39Gyvbu9Hj7cQKOxDif95N7FzgYiI9/zWktRx0zGWNsmVIt4SDaru75O5zRXW0Vf3PUa52BinwGNzfgOPl/esEfbl1JB83GnNRMAi4YAj6uK2Nb/hKbTjsMm4E0RdfO/rBLphtJx7A4Kvn6ZvCjvaF+eIKVB242fBvccafGafEis5O8ZqFXLuaNQyk6dwJbNU80RKr5vZzq59g5CnOahIBMwysoAOtGfSExMYXI6k1TCHbnnak/kLYRw+Cmalx18acviEJP7QNYR9XoVQkqgg9gdS0SnF5jimdxKZFZWONfieXHT0vhrYxUwgrD8ozBqD75og=="
+    },
+    {
+      "proofId": "proof-1786225473147-ede5bd",
+      "challenge": {
+        "recordDigest": "855e995bee42738a377025c58cbfe846c5e47b0c923c38c203688e23651ef534",
+        "completionKeyId": "live-host-1",
+        "registryHash": "48067c72b6e340e11f79d3f1e82a84d31f22d111c144083d235da832edf0fcc6",
+        "machineId": "machine-9c62d678dd970f15",
+        "custodyEventId": "custody-live-host-1-1786225472626",
+        "recoveryStateDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "nonce": "01c9c825db1c66bca6139cf56d847fe6",
+        "timestamp": "2026-08-08T21:44:33.147Z"
+      },
+      "attestationKeyName": "exosuit-completion-attestation-v1",
+      "attestationKeyFingerprint": "59cc74a972fafb6e0034cce6e04cb54e8fe29591768663cb5b7ec360d7e732d8",
+      "attestationPublicKey": {
+        "modulus": "1iyKXsTCndHoYkuVkbVCENpXJvrO3qNCjFUDEVkcxjqVgi5FTjleq68P6+PDeddObyy43Y8axRccog0Sn4pfMwOWRkfs/Y5JT8FdOSlBtRZccrvV1UEiIbH38BpO5f4kvAmfwJtHKqca60prJwKSYmVoptREL1YaLII8hQM+ZsKuz4PLL4llYCfg3LJA/OmjdfEhKJM+vUm+vqeJb+bFpyEE8irGR6YBgIFqPajdFYDI/J12YwSH5taVsPcOjLrlbx2ttrVxtL1uYfO66Dc7bL9v9CGr2ASUilyanakQ48VquCmQaHIufhgwN/B6lA6erZ7pgSTIL+K2W4r1o66aOQ==",
+        "exponent": "AQAB"
+      },
+      "signature": "xrDyMqbvwdkvesYE83z+0oivVp3eNELJcKpge9atRSLtcn2Qgl3C/DcIrONClgwG4txWa4haC+X7NV05GlDySKmvb3PqyJnR7MwCd3ldWE4jRSb0ZLXIFWZw+n6phImrUq8n9hPtZ0VII/DfOduMdyUtvC0TwXv3W1ze8J2rz2GsIvDeSG4yhVQSFlKPjpvZE88NQnO+M6YZ/enmhoVtMRIwDU9H5nL+XkRkTRYic5HjiTd0NykZZgJ2pD/xSOHYoO6taTIPW8KqIXrZ3M0kpCFVXTGfiExIq2L/SIAzsG+7Bv6bJ9yzC6evvVyRjC8DlOsvWKNV3rM61KA/m3aQHg=="
+    }
+  ]
+}
