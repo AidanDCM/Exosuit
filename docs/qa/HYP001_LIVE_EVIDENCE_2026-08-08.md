@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08
 **Gate:** HYP-001, M1
-**Status:** three evidence records valid; independent technical promotion pending
+**Status:** passed after independent technical review
 **Field ID:** `59e1bf4e-7ea5-4132-8178-756465b1c86f`
 **Machine ID:** `machine-9c62d678dd970f15`
 **Evidence baseline:** `8efb63aa1452ebdb84f910309bbb284b2d25a980`
@@ -15,8 +15,11 @@ immutable base. All three source artifacts were recorded as signed
 `hyperv_host_guest` evidence. Completion evaluation, artifact reconciliation,
 and the evidence secret scan pass with zero integrity findings.
 
-This packet does not promote HYP-001. Promotion requires an independent
-`technical_review` signature from a reviewer distinct from `hyp001-harness`.
+HYP-001 was promoted only after an independent `technical_review` approval by
+`codex-independent-hyp001-reviewer-20260808`, distinct from the harness issuer.
+Ledger event `hyp-001-passed-1786227747152` cites only the three clean-run
+evidence IDs in this packet and is co-signed by `live-technical-review-1` before
+being sealed by the TPM-backed live ledger key.
 
 ## Entry conditions
 
@@ -93,7 +96,11 @@ cite its evidence IDs for the HYP-001 transition.
 
 ## Reviewer decision
 
-The independent reviewer should inspect this packet, the three content-addressed
-artifacts, the lifecycle ledger, and commit `a05bfd3`. If accepted, promote with
-only the three clean-head evidence IDs above, reviewer role `technical_review`,
-and a reviewer principal other than `hyp001-harness`.
+**APPROVE — HYP-001 technical promotion.** The independent reviewer inspected
+this packet, all three content-addressed artifacts, the signed evidence,
+custody and TPM-proof chains, the lifecycle ledger, commit `a05bfd3`, and the
+promotion policy. The reviewer independently reran the focused HYP suite
+(39/39), artifact reconciliation (6/6), evidence scan (12 artifacts, zero
+findings), and focused completion/live-attestation adversarial suite (86/86).
+The approval is restricted to HYP-001 lifecycle evidence and does not approve
+CHN, Teach, Shadow, Pilot, or production behavior.

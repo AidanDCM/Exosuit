@@ -702,6 +702,35 @@
       "registryPurpose": "live",
       "recoveryGrantId": null,
       "tpmProofId": null
+    },
+    {
+      "eventId": "hyp-001-passed-1786227747152",
+      "sequence": 39,
+      "testId": "HYP-001",
+      "previousStatus": "ready_for_live",
+      "newStatus": "passed",
+      "previousEventHash": "6af2e7f219269b23be643a6ceec571fd96c1f5666dcc8ed2b53f1be832cf62cf",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "evidenceIds": [
+        "hyp001-cycle-1-74721d7d8f7f",
+        "hyp001-cycle-2-db07e411894b",
+        "hyp001-cycle-3-ba133795922d"
+      ],
+      "issuer": "completion-operator-20260808",
+      "reviewer": "codex-independent-hyp001-reviewer-20260808",
+      "reviewerRole": "technical_review",
+      "reviewerKeyId": "live-technical-review-1",
+      "reviewerSignature": "OCZO_djdwt-HPnGttRvH26X2nSr1U8Pnff70m2qEfDqkQS-NTM_QkgO2SrqTMtoubE5jC6svU2pXvkUqDmWdBQ",
+      "reason": "Independent technical review approved the clean-head three-cycle Hyper-V lifecycle evidence on 2026-08-08",
+      "recordedAt": "2026-08-08T22:22:27.151Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "XIc0UeTe_DnxXlOvDp6W2qHiWSfGt-AJQ61n1629-6tcEMzRDa5-IaoqpdZSLy94_maq58cmSd7l2sdKfDc5Cg",
+      "recordVersion": "2.3",
+      "keyProtectionBackend": "tpm",
+      "keyCustodyEventId": "custody-live-ledger-1-1786227748195",
+      "registryPurpose": "live",
+      "recoveryGrantId": null,
+      "tpmProofId": null
     }
   ]
 }

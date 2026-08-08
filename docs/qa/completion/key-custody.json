@@ -300,6 +300,18 @@
       "recordedAt": "2026-08-08T22:06:33.239Z",
       "signingKeyId": "live-host-1",
       "signature": "lw9E4G-cp1wenSiaujhy8T3RW_IMunCNTVZPqWIVVMEVMBeUHIQHXX3rYUQN5cXeNiyPIbJSz0PRb1Oci6KDAQ"
+    },
+    {
+      "eventId": "custody-live-ledger-1-1786227748195",
+      "sequence": 25,
+      "previousEventHash": "0685ce35e0c7b27f83d5730d99fc49901c322b8d199e48f816d5081a499f1b78",
+      "keyId": "live-ledger-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-08T22:22:28.195Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "YrojnPyCFYfFg53mAzguFJnyIsl_4lSUJB-hBPGMCuYll1b1arHJ3zhNKbrOuafypV9D8khn8cQal4JacPXoDQ"
     }
   ]
 }

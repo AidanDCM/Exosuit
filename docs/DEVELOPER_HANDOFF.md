@@ -10,17 +10,17 @@ handoff you may have been pointed at.
 
 The Exosuit has a working, adversarially-hardened **completion gate** — a signed,
 append-only system that decides what may be called "done". That machinery is
-finished and proven. What it is measuring is barely started: **18.31% proven,
-0% live-validated**, and every remaining gate needs evidence from a real
-running system. As of today the last blocker to producing that evidence has
-cleared. **The next action is a live Hyper-V session that has never been run.**
+finished and proven. HYP-001 is now independently reviewed and passed:
+**25.35% personal-MVP proven completion and 8.62% live validation**. The next
+M1 gate is CHN-001; this promotion does not establish channel readiness or any
+Teach, Shadow, Pilot, or production behavior.
 
 ---
 
 ## 2. The single most important number
 
 ```
-Exosuit personal MVP: 18.31% proven complete, 59.30% implementation-ready, 0% live-validated
+Exosuit personal MVP: 25.35% proven complete, 62.11% implementation-ready, 8.62% live-validated
 ```
 
 **Never quote the middle number alone.** Three metrics exist because an earlier
@@ -30,11 +30,10 @@ version reported one number that conflated work built with work proven.
 | --- | --- | --- |
 | **Proven completion** | Gates `passed` with valid evidence and proven prerequisites | The only number that may be called completion |
 | Implementation readiness | Adds partial credit for prepared-but-unproven work | How much engineering exists |
-| **Live completion** | Only gates needing real-system evidence | **0%** — nothing live is proven |
+| **Live completion** | Only gates needing real-system evidence | **8.62%** — HYP-001 is proven |
 
-All 18.31% is M0: three source gates (`SRC-001/2/3`) that need no hardware.
-**17 of 20 gates need live evidence.** The first one to move the number is
-HYP-001, which takes the MVP profile to **25.35%**.
+The three M0 source gates and HYP-001 are proven. **16 of 20 production gates
+remain unproven.**
 
 Reproduce: `npm run validate:completion` (exit 0 = no integrity failures;
 incompleteness is expected and does not fail).
@@ -43,9 +42,9 @@ incompleteness is expected and does not fail).
 
 ## 3. Do this next
 
-Secure Boot is enabled. HYP-001's three live cycles completed on 2026-08-08 and
-three signed evidence records validate. **Independent technical review is now
-the next action; HYP-001 is not passed until that reviewer signs promotion.**
+Secure Boot is enabled. HYP-001's three clean-head live cycles completed on
+2026-08-08, independently passed technical review, and were promoted through
+the signed ledger. **CHN-001 is the next master-plan gate.**
 
 **Work from `C:\Users\Aidan\AppData\Local\Temp\exorev`**, not the Desktop repo
 — see §7 for why.
@@ -273,8 +272,8 @@ standalone script the operator runs alone.
 
 | Item | State |
 | --- | --- |
-| **HYP-001** | 3/3 cycles recorded; **independent technical promotion pending** |
-| CHN-001 | blocked on HYP-001 |
+| **HYP-001** | **passed**; 3/3 clean-head cycles independently reviewed |
+| CHN-001 | next M1 gate; HYP prerequisite cleared |
 | PD-001 workflow freeze | **blocked on a product decision** — see below |
 | PD-NET-001 | conditional; activates only if the workflow needs internet |
 | Desktop repo 36 commits | unpushed, unbacked-up |
@@ -318,8 +317,8 @@ Merged today: #28 (M1 prep), #29 (contract v2.3 + M0 re-attestation), #30
 1. `npm run validate:completion` — the only honest status.
 2. The gate cannot be promoted by editing files. Evidence is signed,
    content-addressed and single-use.
-3. Secure Boot and HYP-001 evidence collection are done. **Independent review
-   of `docs/qa/HYP001_LIVE_EVIDENCE_2026-08-08.md` is the next action.**
+3. Secure Boot and HYP-001 are proven. **CHN-001 is the next M1 gate.**
 4. Cite only the clean-head evidence IDs in the review packet; the earlier
    dirty-checkout run remains historical and was rejected for promotion.
-5. Promotion needs a reviewer who is not the issuer.
+5. Every future promotion still needs the role-specific reviewer distinct from
+   its issuer.
