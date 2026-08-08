@@ -21,3 +21,8 @@ The same exact run detected `GHSA-2v37-7h3g-55p8` in transitive development-only
 `nanoid` 3.3.16. The lockfile is pinned to fixed 3.3.18 without changing direct
 dependencies. A post-fix audit reports zero vulnerabilities; exact validation must be
 rerun on the resulting commit before it is treated as the final source evidence.
+
+Five encrypted-store tamper tests also used a probabilistic fixed-suffix replacement
+that could leave random ciphertext unchanged. They now deterministically change one
+valid Base64 character. Authentication behavior is unchanged; only the adversarial
+fixture is made certain to differ from its source.

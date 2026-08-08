@@ -83,7 +83,7 @@ describe("EncryptedPersonaModelStore", () => {
     const [name] = await readdir(saved.directory);
     const path = join(saved.directory, name!);
     const envelope = JSON.parse(await readFile(path, "utf8")) as { ciphertext: string };
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -2)}aa`;
+    envelope.ciphertext = `${envelope.ciphertext.startsWith("A") ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
     await writeFile(path, JSON.stringify(envelope));
     await expect(saved.store.loadTyping(model.modelHash)).rejects.toThrow(/authentication failed/i);
     await expect(saved.store.saveTyping({ ...model, charactersPerSecond: model.charactersPerSecond + 1 })).rejects.toThrow(/integrity/i);

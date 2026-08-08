@@ -117,7 +117,7 @@ describe("EncryptedPersonaProfileStore", () => {
     const [name] = await readdir(fixture.directory);
     const path = join(fixture.directory, name!);
     const envelope = JSON.parse(await readFile(path, "utf8")) as { ciphertext: string };
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -2)}aa`;
+    envelope.ciphertext = `${envelope.ciphertext.startsWith("A") ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
     await writeFile(path, JSON.stringify(envelope));
     await expect(fixture.store.load(value.ownerId, value.profileId, value.version)).rejects.toThrow(/authentication failed/i);
   });

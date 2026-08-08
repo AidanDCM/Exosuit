@@ -44,6 +44,12 @@ development dependency `nanoid` 3.3.16 (`vitest` → `vite` → `postcss` → `n
 --audit-level=high` then reported zero vulnerabilities. Because the lockfile changed,
 the final exact-head run must be repeated after this dependency-only commit.
 
+A later exact run passed all 259 Field tests and then exposed the same randomness
+mistake in five encrypted-store tamper tests: replacing the final Base64 characters
+with a fixed suffix can be a no-op when random ciphertext already has that suffix.
+Each test now conditionally flips the first Base64 character to a different valid
+character, guaranteeing changed ciphertext without making the envelope malformed.
+
 ## Security and privacy
 
 The revised assertion remains fail-closed: success requires a nonzero launcher exit,
