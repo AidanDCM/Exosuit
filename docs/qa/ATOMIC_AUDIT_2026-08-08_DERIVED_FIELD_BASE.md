@@ -19,3 +19,12 @@ untrusted principal retained write rights. Rollback removed the temporary copy a
 no v26 target. Derived components now receive an exact SID-based ACL: LocalSystem and
 Administrators Full Control; Users Read & Execute. Any remaining untrusted write/create
 right still fails closed before dismount/publication.
+
+The remediated transaction completed on 2026-08-09 against exact source commit
+`99217dac4b7eee51458a61843a6c372336ce13ec`. Its receipt records v26 digest
+`19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf`, read-only
+publication, no network attachment, no writable source mount, no per-generation
+configuration, and hardened component ACLs. Independent post-run hashing reproduced
+both the v25 and v26 receipt digests and found no temporary building image. These facts
+authorize disposable v26 acceptance testing; they do not themselves prove a guest boot,
+channel readiness, lifecycle cleanup, or CHN-001.

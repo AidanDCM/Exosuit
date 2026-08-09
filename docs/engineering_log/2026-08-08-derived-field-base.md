@@ -47,6 +47,16 @@ v25 remained read-only. The script now replaces ACLs on the derived agent direct
 every fixed component, and SetupComplete with exact SYSTEM/Administrators Full Control
 and Users Read & Execute rules, then rechecks SIDs for any untrusted write right.
 
+After the ACL remediation passed the exact-head validation lane at commit
+`99217dac4b7eee51458a61843a6c372336ce13ec`, the elevated offline derivation completed
+successfully. The content-addressed receipt is
+`artifacts/base-v26-build/evidence/derived-base-receipt.json`. Independent post-run
+hashing confirmed v25 remained read-only at
+`5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744`; v26 is read-only
+at `19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf`; and no
+temporary `.building.vhdx` remained. This proves offline derivation only. v26 still
+requires disposable-Field boot, guest-readiness, lifecycle, and destruction acceptance.
+
 ## Rollback
 
 Before host-registry acceptance, remove only the failed/new v26 candidate after proving
