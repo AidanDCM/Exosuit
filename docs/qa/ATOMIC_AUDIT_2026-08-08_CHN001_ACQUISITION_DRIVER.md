@@ -40,3 +40,9 @@ valid ISO 8601 `DateTimeOffset` values with `+00:00`, while the initial acquisit
 accepted only `Z`. The capture, injection, and stop artifact schemas now explicitly accept
 ISO offsets, retain strict datetime validation, and canonicalize imported ceremony times
 before candidate construction. Regression coverage uses the observed live timestamp shape.
+
+The next live snapshot showed that the compiled observer assigns a fresh local `verifiedAt`
+whenever it re-verifies an unchanged handshake or bootstrap envelope. Acquisition identity
+therefore compares every retained envelope/security field except that observer-local time,
+keeps the first valid verification time, and continues to reject any changed message ID
+binding, nonce, sequence, boot ID, key ID, payload hash, status, or transport.

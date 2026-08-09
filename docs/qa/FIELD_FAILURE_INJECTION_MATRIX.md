@@ -183,6 +183,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Inherit an agent directory/file ACL granting untrusted write | replace derived-copy component ACLs with exact SYSTEM/Administrators Full Control and Users Read & Execute; reject any residual write/create right | first v26 attempt rejected before publication; static SID-bound ACL tests | successful v26 derivation and offline ACL receipt W/H |
 | Omit boot ID or acquisition metadata from any accepted KVP result | compiled serialization fails; candidate cannot be finalized | .NET boot-binding/metadata tests and CHN harness schema tests | production-repeatable W/H |
 | Return a valid PowerShell `DateTimeOffset` using `+00:00` instead of `Z` | accept the ISO offset without weakening field validation; canonicalize imported ceremony time | CHN live-shape capture regression test | authenticated v26 capture W/H |
+| Re-verify an unchanged KVP envelope at a later host time | retain the first valid verification time; compare all immutable identity, replay, boot, key, hash, status, and transport fields | CHN merge regression test | repeated authenticated v26 capture W/H |
 | Reuse a CHN capture message ID/nonce or change a retained message | acquisition session rejects before write | CHN harness unit tests | production-repeatable H |
 | Claim cleanup while VM or exact generation root remains | finalize performs read-only host checks and denies | CHN harness source tests/inspection | production-repeatable H |
 

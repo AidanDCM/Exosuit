@@ -420,14 +420,18 @@ export function mergeVerifiedMessages(existing: readonly VerifiedMessage[], inco
   const nonces = new Map(existing.map((message) => [message.nonce, message.messageId]));
   for (const message of incoming) {
     const prior = byId.get(message.messageId);
-    if (prior !== undefined && JSON.stringify(prior) !== JSON.stringify(message)) {
-      throw new Error(`Captured message ID ${message.messageId} changed between observations.`);
+    if (prior !== undefined) {
+      const { verifiedAt: _priorVerifiedAt, ...priorEnvelope } = prior;
+      const { verifiedAt: _incomingVerifiedAt, ...incomingEnvelope } = message;
+      if (JSON.stringify(priorEnvelope) !== JSON.stringify(incomingEnvelope)) {
+        throw new Error(`Captured message ID ${message.messageId} changed between observations.`);
+      }
     }
     const nonceOwner = nonces.get(message.nonce);
     if (nonceOwner !== undefined && nonceOwner !== message.messageId) {
       throw new Error(`Captured nonce ${message.nonce} was reused by another message.`);
     }
-    byId.set(message.messageId, message);
+    if (prior === undefined) byId.set(message.messageId, message);
     nonces.set(message.nonce, message.messageId);
   }
   return [...byId.values()].sort((left, right) => left.sequence - right.sequence);

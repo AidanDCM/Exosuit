@@ -128,6 +128,12 @@ describe("CHN-001 acquisition harness", () => {
     expect(mergeVerifiedMessages([heartbeat], [handshake, heartbeat])).toEqual([handshake, heartbeat]);
   });
 
+  it("retains the first verification time when the host re-verifies an unchanged envelope", () => {
+    const handshake = message(0, "handshake");
+    const reverified = { ...handshake, verifiedAt: "2026-08-08T20:00:59.000Z" };
+    expect(mergeVerifiedMessages([handshake], [reverified])).toEqual([handshake]);
+  });
+
   it("accepts live PowerShell DateTimeOffset timestamps in verified captures", () => {
     const liveMessage = {
       status: "verified" as const,
