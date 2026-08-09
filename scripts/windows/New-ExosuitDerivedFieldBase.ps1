@@ -28,6 +28,38 @@ function Assert-UnderRoot([string]$Path, [string]$Root) {
     $resolved
 }
 
+function Set-ExactComponentAcl([string]$Path, [bool]$Container) {
+    $acl = Get-Acl -LiteralPath $Path
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($rule) }
+    $inheritance = if ($Container) {
+        [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
+    } else { [Security.AccessControl.InheritanceFlags]::None }
+    $propagation = [Security.AccessControl.PropagationFlags]::None
+    foreach ($entry in @(
+        @{ Sid = 'S-1-5-18'; Rights = [Security.AccessControl.FileSystemRights]::FullControl },
+        @{ Sid = 'S-1-5-32-544'; Rights = [Security.AccessControl.FileSystemRights]::FullControl },
+        @{ Sid = 'S-1-5-32-545'; Rights = [Security.AccessControl.FileSystemRights]::ReadAndExecute }
+    )) {
+        $sid = [Security.Principal.SecurityIdentifier]::new($entry.Sid)
+        $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+            $sid, $entry.Rights, $inheritance, $propagation, [Security.AccessControl.AccessControlType]::Allow)
+        [void]$acl.AddAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $Path -AclObject $acl
+}
+
+function Assert-NoUntrustedWrite([string]$Path) {
+    $acl = Get-Acl -LiteralPath $Path
+    $trusted = @('S-1-5-18', 'S-1-5-32-544')
+    $writeForUntrusted = @($acl.Access | Where-Object {
+        $sid = $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+        $_.AccessControlType -eq 'Allow' -and $trusted -notcontains $sid -and
+        ($_.FileSystemRights.ToString() -match 'Write|Modify|FullControl|CreateFiles|CreateDirectories')
+    })
+    if ($writeForUntrusted.Count -ne 0) { throw "Derived base component ACL permits untrusted write: $Path" }
+}
+
 $source = [IO.Path]::GetFullPath($SourceImagePath)
 $target = [IO.Path]::GetFullPath($TargetImagePath)
 $imageRoot = [IO.Path]::GetFullPath('C:\ProgramData\Exosuit\Images')
@@ -131,14 +163,11 @@ try {
     if (-not (Test-Path -LiteralPath $setupDestination -PathType Leaf)) { throw 'Expected SetupComplete hook is absent.' }
     Copy-Item -LiteralPath $setupCompleteSource -Destination $setupDestination -Force
     if ((Get-Digest $setupDestination) -cne $setupCompleteDigest) { throw 'Derived base SetupComplete verification failed.' }
-    foreach ($path in @((Join-Path $guestAgentRoot 'Exosuit.Agent.exe'), (Join-Path $guestAgentRoot 'Start-ExosuitFieldGuest.ps1'))) {
-        $acl = Get-Acl -LiteralPath $path
-        $writeForUntrusted = @($acl.Access | Where-Object {
-            $_.AccessControlType -eq 'Allow' -and
-            $_.IdentityReference.Value -notin @('NT AUTHORITY\SYSTEM', 'BUILTIN\Administrators') -and
-            ($_.FileSystemRights.ToString() -match 'Write|Modify|FullControl')
-        })
-        if ($writeForUntrusted.Count -ne 0) { throw "Derived base component ACL permits untrusted write: $path" }
+    Set-ExactComponentAcl -Path $guestAgentRoot -Container $true
+    foreach ($entry in $components.GetEnumerator()) { Set-ExactComponentAcl -Path (Join-Path $guestAgentRoot $entry.Key) -Container $false }
+    Set-ExactComponentAcl -Path $setupDestination -Container $false
+    foreach ($path in @($guestAgentRoot, $setupDestination) + @($components.Keys | ForEach-Object { Join-Path $guestAgentRoot $_ })) {
+        Assert-NoUntrustedWrite -Path $path
     }
     Dismount-VHD -Path $temporary -ErrorAction Stop
     $mounted = $false
@@ -160,6 +189,7 @@ try {
         networkAttached = $false
         sourceMountedWritable = $false
         perGenerationConfigurationAbsent = $true
+        componentAclHardened = $true
         componentDigests = $componentDigests
         setupCompleteSha256 = $setupCompleteDigest
     }

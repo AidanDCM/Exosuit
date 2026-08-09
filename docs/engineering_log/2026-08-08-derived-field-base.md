@@ -40,7 +40,12 @@ path. No secret, UI text, screenshot, demonstration, or token is processed.
 The exact single-file win-x64 agent was published from the reviewed source; candidate
 SHA-256 is `037eb7153d14e88e23187789ca44d55146205885d2599c3d58c353a137052dd4`.
 PowerShell parser, Windows static tests, repository/plan/Field validators, and complete
-exact-head validation are required after commit. No elevated derivation has yet run.
+exact-head validation passed on the first script commit. The first elevated derivation
+failed closed before publication because inherited v25 agent-file ACLs permitted an
+untrusted write principal. The temporary copy was removed, no v26 target remained, and
+v25 remained read-only. The script now replaces ACLs on the derived agent directory,
+every fixed component, and SetupComplete with exact SYSTEM/Administrators Full Control
+and Users Read & Execute rules, then rechecks SIDs for any untrusted write right.
 
 ## Rollback
 

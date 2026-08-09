@@ -153,6 +153,9 @@ describe("Windows Field administration scripts", () => {
     expect(derive).toContain("Mount-VHD -Path $temporary");
     expect(derive).not.toContain("Mount-VHD -Path $source");
     expect(derive).toContain("per-generation configuration or secrets");
+    expect(derive).toContain("Set-ExactComponentAcl -Path $guestAgentRoot -Container $true");
+    expect(derive).toContain("SecurityIdentifier]::new($entry.Sid)");
+    expect(derive).toContain("Assert-NoUntrustedWrite");
     expect(derive).toContain("Dismount-VHD -Path $temporary");
     expect(derive).toContain("$temporaryItem.IsReadOnly = $true");
     expect(derive).toContain("Move-Item -LiteralPath $temporary -Destination $target");
