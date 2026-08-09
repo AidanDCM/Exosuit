@@ -3,6 +3,7 @@ import { chn001InjectionIds, chn001RunSchema, type Chn001Run } from "../src/comp
 import {
   buildChn001Run,
   buildChn001Preparation,
+  chn001CaptureFileSchema,
   chn001HarnessConfigSchema,
   chn001InjectionArtifactSchema,
   chn001StopArtifactSchema,
@@ -125,6 +126,35 @@ describe("CHN-001 acquisition harness", () => {
     const handshake = message(0, "handshake");
     const heartbeat = message(2, "heartbeat");
     expect(mergeVerifiedMessages([heartbeat], [handshake, heartbeat])).toEqual([handshake, heartbeat]);
+  });
+
+  it("accepts live PowerShell DateTimeOffset timestamps in verified captures", () => {
+    const liveMessage = {
+      status: "verified" as const,
+      field,
+      messageId: "00000000-0000-4000-8000-000000000001",
+      nonce: "abcdefghijklmnopqrstu0",
+      sequence: 1,
+      messageType: "handshake" as const,
+      sentAt: "2026-08-09T16:45:35.3413548+00:00",
+      expiresAt: "2026-08-09T16:50:35.3413548+00:00",
+      keyId: "field-key-1",
+      payloadHash: "a".repeat(64),
+      payloadHashValid: true as const,
+      verifiedAt: "2026-08-09T16:46:12.2545432+00:00",
+      transport: "hyperv_kvp" as const,
+      bootId,
+      payload: {},
+    };
+    expect(chn001CaptureFileSchema.parse({
+      contractVersion: 1,
+      capturedAtUtc: "2026-08-09T16:46:12.3133640+00:00",
+      vmName: "Exosuit-Field-test-G2",
+      transport: "hyperv_kvp",
+      handshake: liveMessage,
+      bootstrap: { ...liveMessage, messageId: "00000000-0000-4000-8000-000000000002", messageType: "bootstrapStatus", sequence: 2 },
+      heartbeat: { ...liveMessage, messageId: "00000000-0000-4000-8000-000000000003", messageType: "heartbeat", sequence: 3 },
+    }).capturedAtUtc).toContain("+00:00");
   });
 
   it("rejects a reused nonce and a changed message under the same ID", () => {

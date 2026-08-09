@@ -57,20 +57,20 @@ const verifiedCaptureSchema = z.object({
   nonce: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   sequence: z.number().int().nonnegative(),
   messageType: z.enum(["handshake", "bootstrapStatus", "heartbeat", "bootstrap_status"]),
-  sentAt: z.string().datetime(),
-  expiresAt: z.string().datetime(),
+  sentAt: z.string().datetime({ offset: true }),
+  expiresAt: z.string().datetime({ offset: true }),
   keyId: z.string().min(1),
   payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
   payloadHashValid: z.literal(true),
-  verifiedAt: z.string().datetime(),
+  verifiedAt: z.string().datetime({ offset: true }),
   transport: z.literal("hyperv_kvp"),
   bootId: z.string().uuid(),
   payload: z.record(z.string(), z.unknown()),
 }).strict();
 
-const captureFileSchema = z.object({
+export const chn001CaptureFileSchema = z.object({
   contractVersion: z.literal(1),
-  capturedAtUtc: z.string().datetime(),
+  capturedAtUtc: z.string().datetime({ offset: true }),
   vmName: z.string().min(1),
   transport: z.literal("hyperv_kvp"),
   handshake: verifiedCaptureSchema,
@@ -87,7 +87,7 @@ export const chn001InjectionArtifactSchema = z.object({
   field: configSchema.shape.field,
   vmGuid: z.string().uuid(),
   evidenceMode: z.enum(["mutated_live_capture", "live_reboot", "live_heartbeat_loss", "live_windows_guest", "live_host_stop", "live_teach_stop"]),
-  observedAt: z.string().datetime(),
+  observedAt: z.string().datetime({ offset: true }),
   expectedCode: z.string().min(1).max(120),
   actualCode: z.string().min(1).max(120),
   passed: z.literal(true),
@@ -102,8 +102,8 @@ export const chn001StopArtifactSchema = z.object({
   machineId: z.string().min(1),
   field: configSchema.shape.field,
   vmGuid: z.string().uuid(),
-  triggeredAt: z.string().datetime(),
-  stoppedAt: z.string().datetime(),
+  triggeredAt: z.string().datetime({ offset: true }),
+  stoppedAt: z.string().datetime({ offset: true }),
   latencyMs: z.number().int().nonnegative().max(5_000),
   channelIndependent: z.literal(true),
   modelIndependent: z.literal(true),
@@ -538,7 +538,7 @@ function capture(): void {
     "-EvidenceDirectory", captureDirectory,
     "-ObservationStatePath", observationState,
   ], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  const captured = captureFileSchema.parse(JSON.parse(output.replace(/^\uFEFF/, "")));
+  const captured = chn001CaptureFileSchema.parse(JSON.parse(output.replace(/^\uFEFF/, "")));
   if (captured.vmName !== session.config.vmName) throw new Error("Captured KVP snapshot names another VM.");
   const incoming = [captured.handshake, captured.bootstrap, captured.heartbeat].map(normalizeMessage);
   const messages = mergeVerifiedMessages(session.verifiedMessages as VerifiedMessage[], incoming);

@@ -34,3 +34,9 @@ directory. Secret bytes are generated locally, duplicated only for the guest/hos
 of the same generation, never printed, and never included in evidence. `bind` accepts
 only the exact still-clean commit and the GUID of the one running planned VM. These are
 preparation controls, not proof that provisioning, DPAPI conversion, boot, or CHN passed.
+
+The first authenticated v26 capture exposed a serialization boundary: PowerShell emits
+valid ISO 8601 `DateTimeOffset` values with `+00:00`, while the initial acquisition schema
+accepted only `Z`. The capture, injection, and stop artifact schemas now explicitly accept
+ISO offsets, retain strict datetime validation, and canonicalize imported ceremony times
+before candidate construction. Regression coverage uses the observed live timestamp shape.
