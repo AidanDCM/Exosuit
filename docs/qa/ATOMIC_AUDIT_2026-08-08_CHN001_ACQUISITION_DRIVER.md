@@ -26,3 +26,11 @@ Source contract passes focused validation. Live execution and promotion remain d
 The driver has no VM lifecycle, desktop, input, recording, stop, policy, key-rotation,
 export, or MCP authority. Emergency-stop failure remains release-blocking and has no
 automated recovery path.
+
+The `prepare` addition closes the pre-provisioning gap without expanding those
+authorities. It emits an isolated no-development plan, exactly four guest seed files,
+and one matching host observation configuration beneath a SID-restricted ignored
+directory. Secret bytes are generated locally, duplicated only for the guest/host sides
+of the same generation, never printed, and never included in evidence. `bind` accepts
+only the exact still-clean commit and the GUID of the one running planned VM. These are
+preparation controls, not proof that provisioning, DPAPI conversion, boot, or CHN passed.

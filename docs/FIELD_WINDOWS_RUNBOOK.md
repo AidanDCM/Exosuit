@@ -137,6 +137,24 @@ Review the JSON output. It must show:
 
 ## Dry-run apply
 
+For CHN-001, create the private production-isolated plan and exact guest seed first:
+
+```powershell
+npm run chn001:harness -- prepare `
+  --base-image-id exosuit-field-base-v26 `
+  --base-image C:\ProgramData\Exosuit\Images\exosuit-field-base-v26.vhdx `
+  --base-digest 19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf `
+  --guest-agent .\artifacts\base-v26-build\publish\Exosuit.Agent.exe `
+  --host-config .\vm\field-host-config.local.json `
+  --policy C:\ProgramData\Exosuit\FieldOwner\policy.json
+```
+
+The command prints metadata paths but never secret bytes. Its ignored preparation
+directory is restricted to the current owner, SYSTEM, and Administrators. After the
+owner service provisions the exact plan and the VM is running, bind the observed VM GUID
+with `chn001:harness -- bind --preparation <preparation.json> --observer-agent
+<installed-or-published-observer.exe>`. Neither command is evidence or promotion.
+
 The apply script performs no mutation without `-Apply`:
 
 ```powershell

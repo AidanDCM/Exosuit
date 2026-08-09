@@ -10,12 +10,13 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { fieldProvisioningPlanSchema } from "../fieldProvisioningPlan.js";
+import { fieldBootstrapManifestSchema, REQUIRED_FIELD_DIRECTORIES } from "../fieldBootstrap.js";
+import { createFieldProvisioningPlan, fieldProvisioningPlanSchema } from "../fieldProvisioningPlan.js";
 import { chn001InjectionIds, chn001RunSchema, validateChn001Run, type Chn001Run } from "./chn001.js";
 
 const ROOT = resolve(process.cwd());
@@ -126,11 +127,31 @@ const sessionSchema = z.object({
   emergencyStops: z.array(z.unknown()),
 }).strict();
 
+const preparationSchema = z.object({
+  contractVersion: z.literal(1),
+  exactCommit: z.string().regex(/^[a-f0-9]{40}$/),
+  field: configSchema.shape.field,
+  vmName: z.string().min(1),
+  baseImageId: z.string().min(1),
+  baseImagePath: z.string().min(1),
+  baseDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  channelKeyId: z.string().min(1),
+  planPath: z.string().min(1),
+  guestSeedDirectory: z.string().min(1),
+  hostRuntimeConfigPath: z.string().min(1),
+  hostSecretPath: z.string().min(1),
+  hostConfigPath: z.string().min(1),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  developmentAccessEnabled: z.literal(false),
+}).strict();
+
 type Session = z.infer<typeof sessionSchema>;
 
 export const chn001HarnessConfigSchema = configSchema;
 export const chn001SessionSchema = sessionSchema;
 export type Chn001Session = Session;
+export const chn001PreparationSchema = preparationSchema;
 
 const injectionModes: Readonly<Record<(typeof chn001InjectionIds)[number], Injection["evidenceMode"]>> = {
   "CHN-001.1": "mutated_live_capture", "CHN-001.2": "mutated_live_capture",
@@ -204,6 +225,158 @@ function assertCleanExactCommit(expected?: string): string {
 
 function machineId(): string {
   return `machine-${createHash("sha256").update(hostname()).digest("hex").slice(0, 16)}`;
+}
+
+function protectPreparationDirectory(path: string): void {
+  const ownerSid = powershell("[Security.Principal.WindowsIdentity]::GetCurrent().User.Value");
+  execFileSync("icacls.exe", [
+    path, "/inheritance:r", "/grant:r",
+    `*${ownerSid}:(OI)(CI)F`, "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F",
+  ], { stdio: "ignore" });
+}
+
+export function buildChn001Preparation(input: {
+  readonly exactCommit: string;
+  readonly fieldId: string;
+  readonly fieldGeneration: number;
+  readonly baseImageId: string;
+  readonly baseDigest: string;
+  readonly guestAgentDigest: string;
+  readonly policyHash: string;
+  readonly hostSecretPath: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+}) {
+  const field = { fieldId: input.fieldId, fieldGeneration: input.fieldGeneration };
+  const agentId = "chn001-field-agent";
+  const channelKeyId = `chn001-${input.fieldId}-g${input.fieldGeneration}`;
+  const display = {
+    monitorCount: 1 as const, width: 1920, height: 1080, scalePercent: 100,
+    browserZoomPercent: 100, keyboardLayout: "en-US", dynamicResolutionAllowed: false as const,
+  };
+  const identity = {
+    subsystem: "field" as const,
+    fieldId: input.fieldId,
+    fieldGeneration: input.fieldGeneration,
+    agentId,
+    machineId: machineId(),
+    windowsSessionId: "0",
+    baseImageDigest: input.baseDigest,
+    taskDiskId: `${input.fieldId}-g${input.fieldGeneration}-task`,
+    createdAt: input.createdAt,
+  };
+  const plan = createFieldProvisioningPlan({
+    identity, display, baseImageId: input.baseImageId, networkMode: "isolated",
+    virtualProcessors: 4, startupMemoryMiB: 4096, minimumMemoryMiB: 4096,
+    maximumMemoryMiB: 8192, dynamicMemory: true, viewerEnabled: true,
+    createdAt: input.createdAt,
+  });
+  const manifest = fieldBootstrapManifestSchema.parse({
+    contractVersion: 1, identity, display, policyHash: input.policyHash,
+    agentBinaryDigest: input.guestAgentDigest, channelKeyId,
+    requiredDirectories: [...REQUIRED_FIELD_DIRECTORIES],
+    createdAt: input.createdAt, expiresAt: input.expiresAt,
+  });
+  const guestRuntime = {
+    contractVersion: 1, field, agentId, keyId: channelKeyId,
+    secretPath: "C:\\Exosuit\\Config\\channel-secret.txt",
+    bootstrapReportPath: "C:\\Exosuit\\Diagnostics\\bootstrap-report.json",
+    heartbeatIntervalMilliseconds: 1000,
+  };
+  const guestLaunch = {
+    contractVersion: 1,
+    manifestPath: "C:\\Exosuit\\Config\\bootstrap-manifest.json",
+    runtimeConfigPath: "C:\\Exosuit\\Config\\guest-runtime.json",
+  };
+  const hostRuntime = { ...guestRuntime, secretPath: input.hostSecretPath };
+  return { field, agentId, channelKeyId, plan, manifest, guestRuntime, guestLaunch, hostRuntime };
+}
+
+function prepare(): void {
+  const exactCommit = assertCleanExactCommit();
+  const fieldId = arg("--field-id") ?? randomUUID();
+  const fieldGeneration = Number.parseInt(arg("--generation") ?? "1", 10);
+  const baseImageId = requiredArg("--base-image-id");
+  const baseImagePath = resolve(requiredArg("--base-image"));
+  const expectedBaseDigest = requiredArg("--base-digest");
+  const guestAgentPath = resolve(requiredArg("--guest-agent"));
+  const hostConfigPath = resolve(requiredArg("--host-config"));
+  const policyPath = resolve(requiredArg("--policy"));
+  for (const path of [baseImagePath, guestAgentPath, hostConfigPath, policyPath]) {
+    if (!existsSync(path)) throw new Error(`CHN-001 preparation input is absent: ${path}`);
+  }
+  const baseDigest = sha256File(baseImagePath);
+  if (baseDigest !== expectedBaseDigest) throw new Error("CHN-001 base digest does not match the preparation authorization.");
+  const hostConfig = z.object({ baseImages: z.array(z.object({ imageId: z.string(), path: z.string(), digest: z.string() })) }).passthrough().parse(readJson(hostConfigPath));
+  const registered = hostConfig.baseImages.filter((item) => item.imageId === baseImageId);
+  if (registered.length !== 1 || resolve(registered[0]!.path) !== baseImagePath || registered[0]!.digest !== baseDigest) {
+    throw new Error("CHN-001 base is not uniquely registered in the host configuration.");
+  }
+  const preparationRoot = resolve(arg("--out") ?? join(OUT, "preparation", fieldId, `generation-${fieldGeneration}`));
+  if (existsSync(preparationRoot)) throw new Error(`CHN-001 preparation already exists: ${preparationRoot}`);
+  const guestSeedDirectory = join(preparationRoot, "guest-seed");
+  const privateDirectory = join(preparationRoot, "private");
+  mkdirSync(guestSeedDirectory, { recursive: true });
+  mkdirSync(privateDirectory, { recursive: true });
+  protectPreparationDirectory(preparationRoot);
+  const hostSecretPath = join(privateDirectory, "field-channel-secret.protected.json");
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.parse(createdAt) + 24 * 60 * 60 * 1000).toISOString();
+  const bundle = buildChn001Preparation({
+    exactCommit, fieldId, fieldGeneration, baseImageId, baseDigest,
+    guestAgentDigest: sha256File(guestAgentPath), policyHash: sha256File(policyPath),
+    hostSecretPath, createdAt, expiresAt,
+  });
+  const secret = randomBytes(48).toString("base64url");
+  writeAtomic(join(preparationRoot, "plan.json"), bundle.plan);
+  writeAtomic(join(guestSeedDirectory, "bootstrap-manifest.json"), bundle.manifest);
+  writeAtomic(join(guestSeedDirectory, "guest-runtime.json"), bundle.guestRuntime);
+  writeAtomic(join(guestSeedDirectory, "guest-launch.json"), bundle.guestLaunch);
+  writeFileSync(join(guestSeedDirectory, "channel-secret.txt"), `${secret}\n`, { encoding: "ascii", flag: "wx" });
+  writeAtomic(join(privateDirectory, "host-runtime.json"), bundle.hostRuntime);
+  writeFileSync(hostSecretPath, `${secret}\n`, { encoding: "ascii", flag: "wx" });
+  const metadata = preparationSchema.parse({
+    contractVersion: 1, exactCommit, field: bundle.field,
+    vmName: `Exosuit-Field-${fieldId}-G${fieldGeneration}`,
+    baseImageId, baseImagePath, baseDigest, channelKeyId: bundle.channelKeyId,
+    planPath: join(preparationRoot, "plan.json"), guestSeedDirectory,
+    hostRuntimeConfigPath: join(privateDirectory, "host-runtime.json"), hostSecretPath,
+    hostConfigPath, createdAt, expiresAt, developmentAccessEnabled: false,
+  });
+  writeAtomic(join(preparationRoot, "preparation.json"), metadata);
+  console.log(JSON.stringify({
+    ok: true, preparationPath: join(preparationRoot, "preparation.json"),
+    field: metadata.field, vmName: metadata.vmName,
+    claimBoundary: "Prepared local private inputs only; no Field was provisioned or promoted.",
+  }, null, 2));
+}
+
+function bind(): void {
+  const preparationPath = resolve(requiredArg("--preparation"));
+  const observerAgent = resolve(requiredArg("--observer-agent"));
+  const preparation = preparationSchema.parse(readJson(preparationPath));
+  assertCleanExactCommit(preparation.exactCommit);
+  if (!existsSync(observerAgent)) throw new Error("CHN-001 compiled observer is absent.");
+  const vm = JSON.parse(powershell(
+    `$vm=Get-VM -Name ${psLiteral(preparation.vmName)} -ErrorAction Stop; [ordered]@{id=$vm.Id.Guid;state=$vm.State.ToString()} | ConvertTo-Json -Compress`,
+  )) as { id: string; state: string };
+  if (vm.state !== "Running") throw new Error("Prepared CHN-001 Field is not running.");
+  const config = configSchema.parse({
+    contractVersion: 1, vmName: preparation.vmName, vmGuid: vm.id,
+    field: preparation.field, baseImageId: preparation.baseImageId,
+    baseImagePath: preparation.baseImagePath, baseDigest: preparation.baseDigest,
+    channelKeyId: preparation.channelKeyId, planPath: preparation.planPath,
+    hostConfigPath: preparation.hostConfigPath,
+    runtimeConfigPath: preparation.hostRuntimeConfigPath, agentPath: observerAgent,
+    productionConfiguration: {
+      developmentAccessEnabled: false, developmentUnattendedSetupEnabled: false,
+      networkMode: "isolated", hostLanAccess: false, inboundConnections: false,
+      hostInputInjection: false,
+    },
+  });
+  const outputPath = join(dirname(preparationPath), "harness-config.json");
+  writeAtomic(outputPath, config);
+  console.log(JSON.stringify({ ok: true, configPath: outputPath, vmGuid: vm.id }, null, 2));
 }
 
 function sessionPath(runId: string): string {
@@ -461,13 +634,15 @@ function finalize(): void {
 
 function main(): void {
   const command = process.argv[2];
+  if (command === "prepare") return prepare();
+  if (command === "bind") return bind();
   if (command === "plan") return plan();
   if (command === "start") return start();
   if (command === "capture") return capture();
   if (command === "add-injection") return addInjection();
   if (command === "add-stop") return addStop();
   if (command === "finalize") return finalize();
-  throw new Error("Usage: chn001Harness.ts <plan|start|capture|add-injection|add-stop|finalize> [arguments]");
+  throw new Error("Usage: chn001Harness.ts <prepare|bind|plan|start|capture|add-injection|add-stop|finalize> [arguments]");
 }
 
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("/chn001Harness.ts")) main();

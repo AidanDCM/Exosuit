@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { chn001InjectionIds, chn001RunSchema, type Chn001Run } from "../src/completion/chn001.js";
 import {
   buildChn001Run,
+  buildChn001Preparation,
   chn001HarnessConfigSchema,
   chn001InjectionArtifactSchema,
   chn001StopArtifactSchema,
@@ -93,6 +94,33 @@ function completeSession(): Chn001Session {
 }
 
 describe("CHN-001 acquisition harness", () => {
+  it("builds an isolated production plan and exact four-file guest contract", () => {
+    const prepared = buildChn001Preparation({
+      exactCommit: commit,
+      fieldId: field.fieldId,
+      fieldGeneration: field.fieldGeneration,
+      baseImageId: "exosuit-field-base-v26",
+      baseDigest: digest,
+      guestAgentDigest: "c".repeat(64),
+      policyHash: "d".repeat(64),
+      hostSecretPath: "C:\\private\\field-channel-secret.protected.json",
+      createdAt: "2026-08-09T06:00:00.000Z",
+      expiresAt: "2026-08-10T06:00:00.000Z",
+    });
+    expect(prepared.plan.network).toMatchObject({ mode: "isolated", hostLanAccess: false, inboundConnections: false });
+    expect(prepared.plan.hostIntegrations.hostInputInjection).toBe(false);
+    expect(prepared.plan).not.toHaveProperty("developmentAccess");
+    expect(prepared.manifest.identity.windowsSessionId).toBe("0");
+    expect(prepared.guestRuntime.secretPath).toBe("C:\\Exosuit\\Config\\channel-secret.txt");
+    expect(prepared.hostRuntime.secretPath).toMatch(/field-channel-secret\.protected\.json$/);
+    expect(Object.keys({
+      "bootstrap-manifest.json": prepared.manifest,
+      "guest-runtime.json": prepared.guestRuntime,
+      "guest-launch.json": prepared.guestLaunch,
+      "channel-secret.txt": "private",
+    })).toHaveLength(4);
+  });
+
   it("deduplicates unchanged snapshots and orders new messages by channel sequence", () => {
     const handshake = message(0, "handshake");
     const heartbeat = message(2, "heartbeat");
