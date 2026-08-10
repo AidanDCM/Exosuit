@@ -197,3 +197,45 @@ but live promotion additionally requires secured one-way IPC, exact-binary race 
 a session-local launcher, and KVP scene acquisition. A
 future contract revision should replace the overloaded v1 name with explicit
 `fieldServiceSessionId`, `activeInteractiveSessionId`, and `interactiveUserSid` fields.
+
+## 2026-08-10 — Cryptographic role separation is not operator separation
+
+**Decision:** Classify the CHN-001 promotion as approval-independence **class B**:
+cryptographically separate approval key, same-machine and same-operator custody. Accept
+class B as a personal-MVP weakness. CHN-001 is **not** reopened, revoked, or re-run, and
+the two hardening items below are not retroactive.
+
+**Reason:** The frozen v2.3 contract genuinely enforces role separation. A promotion into
+`passed` requires a reviewer principal distinct from the issuer, a `reviewerKeyId` distinct
+from the sealing `signingKeyId`, the exact `reviewerRole` the gate demands, and a valid
+Ed25519 reviewer signature resolved through the key registry with role, revocation,
+validity-window, and machine-binding checks. The registry is single-role per key, so the
+ledger key cannot mint a review. CHN-001 satisfied all of it: reviewer
+`root:chn001_independent_review`, role `technical_review`, key `live-technical-review-1`,
+sealed by `live-ledger-1`. That is the frozen contract that existed at promotion time, and
+it was met.
+
+What the contract does **not** establish is custody or human independence. All eight live
+keys sit in one directory under one Windows account, and the promotion CLI selects the
+approval private key by role when `--reviewer-key` is omitted, so one unattended
+invocation on one host can produce both signatures. Software on a single account cannot
+manufacture genuine human separation, and the record should not imply that it did.
+
+**Consequences:** M2 proceeds. Two narrowly scoped hardening items are tracked separately
+and neither invalidates existing evidence:
+
+- *Evidence-issuer separation.* Nothing currently compares a cited evidence record's
+  authorship to the approving principal. The rule must bind **keys**, not display strings:
+  the `reviewerKeyId` may not equal the `signingKeyId` of any cited evidence record. Issuer
+  names are operator-chosen free text, so a name comparison would be cosmetic. This is
+  verifier logic only and does not move the frozen fingerprint; it also already holds for
+  every event in the current ledger, so adding it revokes nothing.
+- *Reviewer-key custody.* Custody binding, protection backend, and TPM participation are
+  recorded for the sealing key alone; `reviewerKeyId` flows into no custody check and
+  `live-technical-review-1` has no custody events. Closing this adds fields to the ledger
+  event schema, which **does** move the frozen fingerprint and is therefore a deliberate
+  contract revision requiring a label bump and re-attestation — not a casual edit.
+
+For production and owner-acceptance gates, class B is not sufficient: the approval key
+must move to a separate trust boundary — another device, account, or token, or an
+interactive approval the automation cannot invoke itself.
