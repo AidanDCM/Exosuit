@@ -391,6 +391,16 @@ values, provider warning text, and sensitive automation authority before a
 payload can reach the relay. The session launcher and relay are not implemented
 yet.
 
+The compiled relay signing boundary now distinguishes the two session domains.
+Only LocalSystem may sign a structural payload, but the payload client must bind
+an independently supplied active interactive session, local-user SID, positive
+PID, fixed `C:\Exosuit\Agent\Exosuit.Agent.exe` path, and exact lowercase SHA-256
+digest. The relay reparses with duplicate/unknown-property denial, reruns the
+producer boundary against the approved display, requires exact canonical
+structural representation, and gives scene envelopes a ten-second TTL. This is
+still a boundary component: no pipe, OS fact resolver, launcher, or KVP scene
+writer is connected.
+
 ## Local reflex engine
 
 The LLM should not generate each cursor sample. It supplies bounded intention and target semantics. The guest-side controller handles:

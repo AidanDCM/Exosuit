@@ -119,7 +119,7 @@ The Glove owns:
 The Field owns:
 
 - one exact `fieldId` and monotonically increasing `fieldGeneration`;
-- one Windows guest identity and interactive session;
+- one Windows guest identity and one controlled interactive session, kept distinct from the LocalSystem service session;
 - immutable base-image identity;
 - disposable OS overlay identity;
 - optional persistent personal-state identity;
@@ -569,6 +569,9 @@ fieldGeneration
 agentId
 machineId
 windowsSessionId
+fieldServiceSessionId
+activeInteractiveSessionId
+interactiveUserSid
 guestBootId
 baseImageDigest
 runtimeOverlayId
@@ -579,6 +582,15 @@ displayContractHash
 createdAt
 contractVersion
 ```
+
+Session identity is phase-specific and must not be collapsed. Historical v1 M1
+bootstrap manifests used `windowsSessionId=0` to bind the LocalSystem guest
+service/bootstrap process. That proves the service session only and cannot be
+cited as M2 interactive-desktop evidence. Before SCN-001 live wiring, the relay
+must derive the active interactive session ID, user SID, client PID, executable
+path, and executable digest from Windows for the current guest boot. Future
+identity contracts should name service and interactive session fields
+separately; prior signed evidence remains valid only for its original M1 scope.
 
 Lifecycle:
 

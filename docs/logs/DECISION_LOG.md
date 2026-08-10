@@ -176,3 +176,23 @@ evidence commit is an ancestor and every intervening changed file is on the revi
 contract/docs/tests allowlist. Runtime, provider, policy, key, transport, and Field script
 changes force a new live run. Rollback is to restore the v1 contract and abandon migrated
 candidates; it is not permission to invent CHN-001.12 evidence.
+
+## 2026-08-10 — Service-session evidence is not interactive-session evidence
+
+**Decision:** Keep the LocalSystem guest service/session identity and the controlled
+interactive Glove session identity separate. Historical v1 M1 manifests with
+`windowsSessionId=0` remain valid for service/bootstrap evidence only. M2 scene evidence
+must bind a per-boot active interactive session, interactive user SID, client PID, fixed
+agent path, and executable digest derived from Windows by the future relay adapter.
+
+**Reason:** The existing bootstrap script runs under LocalSystem and compares its own
+session ID to the manifest, so the value `0` cannot prove which desktop UI Automation
+observed. Treating it as interactive identity would violate the one-agent-per-controlled-
+session law and could authorize a scene produced from the service desktop.
+
+**Consequences:** Prior HYP/CHN evidence is not invalidated or expanded. It cannot promote
+SCN-001. The relay signing boundary accepts separate interactive client facts and refuses
+session zero; live promotion additionally requires an OS fact resolver, secured one-way
+IPC, exact-binary race testing, a session-local launcher, and KVP scene acquisition. A
+future contract revision should replace the overloaded v1 name with explicit
+`fieldServiceSessionId`, `activeInteractiveSessionId`, and `interactiveUserSid` fields.

@@ -125,6 +125,9 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | LocalSystem/session-0 process presented as interactive producer | no producer wiring exists; reject architecture promotion | S/U contract boundary | W/H session-local identity proof |
 | Provider warning contains private UI content | discard warning text before serialization; receiver permits only fixed sanitization notice | .NET/TS U | W/O leakage inspection |
 | Structural payload exceeds safe KVP budget | reject above 12 KiB without truncating the scene | .NET/TS U | W/H backpressure |
+| Reuse v1 `windowsSessionId=0` as UIA client proof | reject; service-session evidence is not interactive evidence | S/U relay policy | W/H OS-derived session receipt |
+| Wrong relay caller, client PID/session/user SID/path/digest | reject before SYSTEM signature | .NET U | W/H secured-pipe process race |
+| Duplicate/unknown JSON or post-producer payload modification | reject before signature; require exact normalized representation | .NET U | W/H relay fuzzing |
 
 ## Shadow
 

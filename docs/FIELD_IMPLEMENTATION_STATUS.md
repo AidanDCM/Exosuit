@@ -63,7 +63,7 @@ path live, so v19 remains unpromoted.
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
 | demonstration processing and retrieval | `demonstrationProcessing.ts`, `encryptedProcessedDemonstrationStore.ts` | terminal/ambiguity/privacy/relevance/encryption/restart/deletion/held-out tests | deterministic pipeline and encrypted file store; no live adapter |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
-| scene graph, structural producer boundary, observation adapter, and authenticated receiver | `.NET FieldSceneProducerBoundary.cs`, `fieldScene.ts`, `fieldSceneObservation.ts`, `fieldSceneChannel.ts`, existing Windows UIA observer | interactive-session/SYSTEM/provider/mode/freshness/privacy/12-KiB bounds plus exact Field/boot/agent/session/replay tests | session-local launcher and runtime relay not live |
+| scene graph, structural producer/relay boundaries, observation adapter, and authenticated receiver | `.NET FieldSceneProducerBoundary.cs`, `.NET FieldSceneRelayBoundary.cs`, `fieldScene.ts`, `fieldSceneObservation.ts`, `fieldSceneChannel.ts`, existing Windows UIA observer | separate SYSTEM signer and interactive client identity, strict/canonical payload, 10-second TTL, privacy/12-KiB bounds, exact Field/boot/agent/session/replay tests | pipe, OS fact resolver, session-local launcher, and KVP scene writer not live |
 | Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
 | Correction dataset foundation | `correctionMode.ts` | replacement/cancellation/effect-uncertainty/label-conflict/lineage tests | in-memory source component; no live takeover control or encrypted persistence |
 | Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
@@ -378,7 +378,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - owner-authorized protected channel-key rotation and actual stale-generation
   replacement evidence (copy-based v22 corruption/cross-binding evidence passes);
 - production-authenticated guest bootstrap/heartbeat evidence without development access;
-- session-local Glove UIA launcher and authenticated bounded relay from the source-tested producer boundary into the structural scene receiver;
+- OS-derived relay client-fact resolver, authenticated one-way pipe, session-local Glove UIA launcher, and KVP scene writer connecting the source-tested boundaries;
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;

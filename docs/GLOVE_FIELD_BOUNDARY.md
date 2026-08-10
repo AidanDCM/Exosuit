@@ -63,12 +63,21 @@ fieldGeneration
 agentId
 machineId
 windowsSessionId
+fieldServiceSessionId
+activeInteractiveSessionId
+interactiveUserSid
 baseImageDigest
 personalStateDiskId (optional; paired with generation)
 personalStateGeneration (optional; paired with disk ID)
 taskDiskId
 createdAt
 ```
+
+The LocalSystem service session and controlled interactive session are separate
+identities. A v1 bootstrap `windowsSessionId` of `0` proves only the service
+process context. UIA scenes and actions require a per-boot OS-derived active
+interactive session ID plus exact interactive user SID; neither may be copied
+from or inferred from the service-session field.
 
 `fieldGeneration` changes when a field session is rebuilt, rolled back, or replaced in a way that invalidates prior runtime identity. A stale Glove action, observation, policy, or demonstration may not cross generations.
 

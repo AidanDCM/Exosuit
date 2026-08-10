@@ -95,6 +95,13 @@ contractVersion
 
 Generation is not optional. A closed/rebuilt/rolled-back environment may reuse a human-readable name but must not silently reuse runtime authority.
 
+Do not treat the v1 bootstrap `windowsSessionId` as interactive-desktop proof.
+Current M1 manifests bind the LocalSystem service process in session 0. M2 scene
+code must carry a separately OS-derived per-boot active session, interactive
+user SID, client PID, and exact producer image identity. Tests or adapters that
+copy session 0 into a scene contract are invalid even if channel authentication
+passes.
+
 Tests must cover:
 
 - stale generation,

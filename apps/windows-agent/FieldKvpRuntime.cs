@@ -183,7 +183,9 @@ public static class FieldKvpRuntime
             configuration.KeyId,
             secret,
             sentAt ?? DateTimeOffset.UtcNow,
-            messageType == FieldChannelMessageType.Heartbeat ? TimeSpan.FromSeconds(10) : TimeSpan.FromMinutes(5));
+            messageType is FieldChannelMessageType.Heartbeat or FieldChannelMessageType.SceneObservation
+                ? TimeSpan.FromSeconds(10)
+                : TimeSpan.FromMinutes(5));
     }
 
     internal static long ReserveNextGuestSequence(
