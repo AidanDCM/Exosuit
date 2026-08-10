@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Exosuit.Agent;
 
 public enum FieldChannelDirection { HostToGuest, GuestToHost }
-public enum FieldChannelMessageType { Handshake, BootstrapStatus, Heartbeat, Command, CommandResult, Event, EmergencyStop, Shutdown }
+public enum FieldChannelMessageType { Handshake, BootstrapStatus, Heartbeat, SceneObservation, Command, CommandResult, Event, EmergencyStop, Shutdown }
 
 public sealed record FieldChannelEnvelope(
     int ContractVersion,
@@ -111,6 +111,7 @@ public static class FieldChannelAuthentication
         FieldChannelMessageType.Handshake => "handshake",
         FieldChannelMessageType.BootstrapStatus => "bootstrap_status",
         FieldChannelMessageType.Heartbeat => "heartbeat",
+        FieldChannelMessageType.SceneObservation => "scene_observation",
         FieldChannelMessageType.Command => "command",
         FieldChannelMessageType.CommandResult => "command_result",
         FieldChannelMessageType.Event => "event",

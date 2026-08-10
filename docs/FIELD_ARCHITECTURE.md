@@ -376,6 +376,15 @@ The guest maintains a versioned desktop scene graph containing:
 
 Events update the graph incrementally. Every mutating action still re-resolves its target from fresh state.
 
+The first transport contract is deliberately structural-only. An authenticated
+`scene_observation` binds the exact Field generation, boot, Glove agent, and
+interactive Windows session; its durable channel sequence is the scene version.
+Window titles, element names/values, screenshots, and sensitive automation
+authority are rejected before replay or scene state advances. The LocalSystem
+Field service is a transport/environment authority in session 0, not the UIA
+producer. Live wiring therefore requires a separate session-local Glove agent
+and an authenticated bounded relay; that relay is not implemented yet.
+
 ## Local reflex engine
 
 The LLM should not generate each cursor sample. It supplies bounded intention and target semantics. The guest-side controller handles:

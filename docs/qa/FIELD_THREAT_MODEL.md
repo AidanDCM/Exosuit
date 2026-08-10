@@ -72,6 +72,9 @@
 | Blind retry | recovery allows only bounded idempotent no-effect retry; uncertain effect requires reconciliation | recovery tests | live timeout and partial-effect fixtures |
 | Heartbeat spoof/staleness | signed channel, expected agent/boot, sequence, time thresholds | tests | guest crash, pause, sleep, and network interruption |
 | Secure Desktop/lock operation | scene and heartbeat reject ready input state | tests | actual lock/UAC acceptance |
+| Session-0 process claims interactive scene | authenticated structural scene payload must bind exact boot, Glove agent, and configured Windows session; LocalSystem runtime is not treated as the UIA producer | receiver unit tests | session-local producer/relay W/H |
+| Scene payload leaks UI text or screenshots | transport schema permits structural-only UIA metadata, forbids title/name/value and screenshot fields, and redacts sensitive automation identity/actions | receiver unit tests | guest producer leakage inspection W/O |
+| Oversized/replayed/regressing scene | byte/count bounds and durable channel sequence reject before scene state advances | receiver unit tests | long-running backpressure/restart W/H |
 | Guest runtime starts during Windows specialize | sealed base stages service Manual; SetupComplete alone changes it to Automatic and starts it | source/static contract plus v20/v21 SYSTEM/Audit receipts and authenticated development canaries | production-authenticated repeated lifecycle matrix |
 | Protection command and launcher receipt schemas drift | exact six-property serialized schema plus cross-layer compiled/launcher contract; mismatch denies before emitter | v23/v24 negative live diagnosis and source tests | rebuilt-image authenticated KVP and restart matrix |
 | Diagnostic privacy leak | Field support bundle accepts only hashes and aggregate counts; forbidden fields/values | tests | support bundle manual inspection |
@@ -92,6 +95,7 @@
   or early exit stops the exact child. Source harness evidence passes; rebuilt-
   base lock/Secure Desktop evidence remains pending.
 - Signed channel timestamps use one canonical UTC representation with exactly millisecond precision.
+- Structural scene messages use the authenticated channel sequence as their scene version and bind exact boot, agent, and interactive Windows session identity. The contract is not a live producer and grants no execution authority.
 - Field policies authorize canonical origins and reviewed executable name/hash identities, not arbitrary URLs or process-name strings.
 - No Field command accepts arbitrary shell or PowerShell strings.
 - The guest does not control the host cursor as its primary architecture.

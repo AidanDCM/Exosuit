@@ -63,7 +63,7 @@ path live, so v19 remains unpromoted.
 | encrypted demonstrations | `encryptedDemonstrationStore.ts` | encryption/tamper/deletion tests | pure file component |
 | demonstration processing and retrieval | `demonstrationProcessing.ts`, `encryptedProcessedDemonstrationStore.ts` | terminal/ambiguity/privacy/relevance/encryption/restart/deletion/held-out tests | deterministic pipeline and encrypted file store; no live adapter |
 | visual capture policy | `visualRetention.ts` | consent/region/budget/TTL tests | no capture/blob store |
-| scene graph and observation adapter | `fieldScene.ts`, `fieldSceneObservation.ts`, existing Windows UIA observer | version/focus/modal/readiness/freshness/text-redaction tests | transport/runtime wiring not live |
+| scene graph, observation adapter, and authenticated structural receiver | `fieldScene.ts`, `fieldSceneObservation.ts`, `fieldSceneChannel.ts`, existing Windows UIA observer | version/focus/modal/readiness/freshness/text-redaction plus exact Field/boot/agent/session/replay/overflow tests | session-local producer and runtime relay not live |
 | Shadow baseline and metrics | `retrievalShadowPredictor.ts`, `shadowLearning.ts` | retrieval/abstention/no-execution/comparison tests | source-only heuristic; no live observation feed |
 | Correction dataset foundation | `correctionMode.ts` | replacement/cancellation/effect-uncertainty/label-conflict/lineage tests | in-memory source component; no live takeover control or encrypted persistence |
 | Windows path scope | `fieldPathScope.ts` | traversal/ADS/device/reparse tests | no live broker traversal |
@@ -378,7 +378,7 @@ GitHub-hosted CI and Security Audit jobs report no allocated steps because of th
 - owner-authorized protected channel-key rotation and actual stale-generation
   replacement evidence (copy-based v22 corruption/cross-binding evidence passes);
 - production-authenticated guest bootstrap/heartbeat evidence without development access;
-- live authenticated transport from the existing Windows UIA observer into the Field scene adapter;
+- session-local Glove UIA producer and authenticated bounded relay into the structural scene receiver;
 - live Teach input and UI Automation hooks;
 - visible recorder UI and independent physical stop;
 - visual capture and encrypted blob store;

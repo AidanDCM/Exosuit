@@ -114,6 +114,16 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Credential-bearing control appears | redact/exclude; no raw bytes or value | source rules | W/O |
 | Host emergency stop during active consented recording | stop hooks and pending input within five seconds without model/channel dependency; Field Off | strict TCH-001.12 proof schema | W/H/O after live hooks exist |
 
+## Scene observation
+
+| Injection | Expected response | Existing evidence | Required live evidence |
+|---|---|---|---|
+| Wrong Field generation, key, direction, boot, Glove agent, or Windows session | reject before replay/scene state advances | U | W/H |
+| Raw window title, element name/value, screenshot field, or sensitive automation authority | schema rejection | U | W/O leakage inspection |
+| Zero scene sequence, replay, non-increasing sequence, or capture-time regression | reject; next valid durable sequence remains usable | U | W/H restart stream |
+| Payload, window, element, or warning bound exceeded | reject before state advances | U | W/H backpressure |
+| LocalSystem/session-0 process presented as interactive producer | no producer wiring exists; reject architecture promotion | S/U contract boundary | W/H session-local identity proof |
+
 ## Shadow
 
 | Injection | Expected response | Existing evidence | Required live evidence |

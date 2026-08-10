@@ -11,6 +11,7 @@ export const fieldChannelMessageTypeSchema = z.enum([
   "handshake",
   "bootstrap_status",
   "heartbeat",
+  "scene_observation",
   "command",
   "command_result",
   "event",
