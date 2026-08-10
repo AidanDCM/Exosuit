@@ -102,6 +102,11 @@ user SID, client PID, and exact producer image identity. Tests or adapters that
 copy session 0 into a scene contract are invalid even if channel authentication
 passes.
 
+`FieldSceneRelayWindowsClientResolver` derives facts only after a pipe client is
+connected; it does not make that pipe safe. Do not wire it until the fixed pipe
+name, ACL, direction, byte framing, connection budget, disconnect behavior, and
+per-generation interactive SID source are reviewed and tested.
+
 Tests must cover:
 
 - stale generation,

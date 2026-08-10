@@ -398,8 +398,11 @@ PID, fixed `C:\Exosuit\Agent\Exosuit.Agent.exe` path, and exact lowercase SHA-25
 digest. The relay reparses with duplicate/unknown-property denial, reruns the
 producer boundary against the approved display, requires exact canonical
 structural representation, and gives scene envelopes a ten-second TTL. This is
-still a boundary component: no pipe, OS fact resolver, launcher, or KVP scene
-writer is connected.
+still a boundary component: no production pipe, launcher, or KVP scene writer is
+connected. A compiled Windows resolver can derive the connected pipe client's
+PID, positive session, token user SID, full image path, and executable SHA-256.
+It does not create or secure the pipe; ACL, framing, disconnect, and process-race
+acceptance remain mandatory before wiring.
 
 ## Local reflex engine
 

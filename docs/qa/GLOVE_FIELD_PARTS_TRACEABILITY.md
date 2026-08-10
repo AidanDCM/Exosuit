@@ -194,7 +194,8 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - `src/fieldScene.ts` — versioned scene/readiness foundation.
 - `src/fieldSceneObservation.ts` and `src/fieldSceneChannel.ts` — structural-only scene adaptation plus authenticated exact-Field/boot/agent/session receipt; runtime emission remains disabled.
 - `apps/windows-agent/FieldSceneProducerBoundary.cs` — session-bound, non-SYSTEM, observe-only structural payload sanitizer and KVP-safe byte-budget guard; launcher/relay remains disabled.
-- `apps/windows-agent/FieldSceneRelayBoundary.cs` — SYSTEM-only signing boundary with separate interactive PID/session/SID/fixed-binary binding and strict canonical revalidation; IPC and OS resolver remain disabled.
+- `apps/windows-agent/FieldSceneRelayBoundary.cs` — SYSTEM-only signing boundary with separate interactive PID/session/SID/fixed-binary binding and strict canonical revalidation; publication remains disabled.
+- `apps/windows-agent/FieldSceneRelayWindowsClientResolver.cs` — connected-pipe Windows PID/session/token-SID/image-path/digest derivation; production pipe ACL/framing and race acceptance remain disabled.
 - `src/shadowLearning.ts` — non-executing prediction comparison and metrics.
 - `src/fieldPathScope.ts` — adapted Windows path-scope guard.
 - `src/fieldArtifactBroker.ts` — bounded in-memory transfer contract.

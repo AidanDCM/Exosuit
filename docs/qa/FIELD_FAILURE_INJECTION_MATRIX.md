@@ -128,6 +128,8 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Reuse v1 `windowsSessionId=0` as UIA client proof | reject; service-session evidence is not interactive evidence | S/U relay policy | W/H OS-derived session receipt |
 | Wrong relay caller, client PID/session/user SID/path/digest | reject before SYSTEM signature | .NET U | W/H secured-pipe process race |
 | Duplicate/unknown JSON or post-producer payload modification | reject before signature; require exact normalized representation | .NET U | W/H relay fuzzing |
+| Connected relay pipe absent or client exits during Windows fact resolution | reject without returning client facts or signing | .NET U/local Windows | W/H process race |
+| Pipe payload claims a different PID/session/SID/path | ignore claims; derive facts from connected pipe and Windows process/token | local Windows | W/H production IPC |
 
 ## Shadow
 
