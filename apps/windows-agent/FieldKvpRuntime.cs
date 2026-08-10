@@ -90,6 +90,15 @@ public static class FieldKvpRuntime
             var heartbeatStarted = false;
             var lastSecureDesktopActive = false;
 
+            // Scene production is opt-in and off unless a valid session file says otherwise.
+            // With no file this runtime behaves exactly as the one that produced the CHN-001
+            // live evidence; enabling scenes is a deliberate act, not a deployment side effect.
+            var sceneSession = FieldSceneSessionConfiguration.ReadOptional(
+                FieldSceneSessionConfiguration.ProductionPath);
+            using var sceneCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var sceneTask = StartSceneSessionIfEnabled(
+                sceneSession, configuration, secret, bootId, callerSid, sceneCancellation.Token);
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (DateTimeOffset.UtcNow >= nextControlRefresh)
@@ -157,11 +166,38 @@ public static class FieldKvpRuntime
                 }
                 await Task.Delay(configuration.HeartbeatIntervalMilliseconds, cancellationToken);
             }
+
+            // Stop scene production and let it tear its producer down before the loop unwinds,
+            // so a producer is never left running past the runtime that supervised it.
+            await sceneCancellation.CancelAsync();
+            await sceneTask;
         }
         finally
         {
+            // The scene session borrows the channel secret, so it must be finished before the
+            // secret is zeroed rather than racing the wipe.
             CryptographicOperations.ZeroMemory(secretBytes);
         }
+    }
+
+    /// <summary>
+    /// Builds and runs one scene session when configured. Returns a completed task when scene
+    /// production is off, so the caller needs no special case.
+    /// </summary>
+    private static Task StartSceneSessionIfEnabled(
+        FieldSceneSessionConfiguration? session,
+        FieldKvpRuntimeConfiguration configuration,
+        string secret,
+        Guid bootId,
+        string? callerSid,
+        CancellationToken cancellationToken)
+    {
+        if (session is null) return Task.CompletedTask;
+
+        var lifecycle = new FieldSceneLifecycle(configuration.Field, bootId, session.ToLaunchPolicy());
+        var supervisor = new FieldSceneSupervisor(lifecycle, new WindowsFieldSceneEnvironment(bootId));
+        var ports = new WindowsFieldSceneSessionPorts(configuration, session, secret, callerSid);
+        return new FieldSceneSessionRunner(session, supervisor, ports).RunAsync(cancellationToken);
     }
 
     public static FieldChannelEnvelope CreateEnvelope(

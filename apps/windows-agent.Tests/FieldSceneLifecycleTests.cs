@@ -237,6 +237,22 @@ public sealed class FieldSceneLifecycleTests
         var lifecycle = Ready();
         lifecycle.OnBootIdChanged(BootId);
         Assert.True(lifecycle.IsActionable);
+        Assert.False(lifecycle.IsBootStale);
+    }
+
+    [Fact]
+    public void ABootChangeIsTerminalAndTheLifecycleCannotBeRelaunchedInto()
+    {
+        var lifecycle = Ready();
+        lifecycle.OnBootIdChanged(Guid.NewGuid());
+
+        Assert.True(lifecycle.IsBootStale);
+
+        // Relaunching into this lifecycle would re-establish readiness against a boot that no
+        // longer exists. A new lifecycle must be constructed for the new boot.
+        Assert.Throws<InvalidOperationException>(() => lifecycle.OnProducerLaunched(Launch()));
+        Assert.Throws<InvalidOperationException>(() =>
+            lifecycle.OnScenePublished(Scene(), BootId, SessionId, desktopActionable: true));
     }
 
     // ---- lock / Secure Desktop ----

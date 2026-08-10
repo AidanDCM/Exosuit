@@ -64,6 +64,12 @@ public sealed class FieldSceneSupervisor
     /// <summary>The PID teardown would stop, whatever the lifecycle currently believes.</summary>
     public int? SupervisedProducerProcessId => lastKnownProducerPid;
 
+    /// <summary>
+    /// True once the guest has rebooted. Terminal: this supervisor and its lifecycle are bound
+    /// to a boot that has ended and must be replaced rather than reused.
+    /// </summary>
+    public bool IsBootStale => lifecycle.IsBootStale;
+
     /// <summary>Records a launch with both the lifecycle and the supervisor's own orphan tracking.</summary>
     public void RecordLaunch(FieldSceneProducerLaunchResult result)
     {
@@ -143,6 +149,49 @@ public sealed class FieldSceneSupervisor
     {
         RequireRunning();
         lifecycle.OnHostIntakeRestarted();
+    }
+
+    /// <summary>
+    /// Records that the producer could not be launched, reached, or published for. Any of these
+    /// means the current scene is no longer backed by a working producer, so readiness clears.
+    /// </summary>
+    public void NotifyProducerUnavailable(string reason)
+    {
+        RequireRunning();
+        lifecycle.OnSceneValueUnreadable(reason);
+    }
+
+    /// <summary>
+    /// Offers a published scene to the lifecycle, with the desktop state observed now rather
+    /// than taken from the previous tick — a lock between the tick and the scene must not be
+    /// missed. A scene the lifecycle refuses invalidates with the reason recorded instead of
+    /// propagating, so one bad scene cannot take down the supervisor loop.
+    /// </summary>
+    public void RecordScene(FieldChannelEnvelope envelope, Guid sceneBootId, int sceneSessionId)
+    {
+        ArgumentNullException.ThrowIfNull(envelope);
+        RequireRunning();
+
+        FieldDesktopState desktop;
+        try
+        {
+            desktop = environment.ObserveDesktop(lifecycle.State.SessionId);
+        }
+        catch (Exception exception)
+        {
+            lifecycle.OnSceneValueUnreadable($"desktop state could not be observed: {exception.Message}");
+            return;
+        }
+
+        var actionable = !desktop.SessionLocked && !desktop.SecureDesktopActive;
+        try
+        {
+            lifecycle.OnScenePublished(envelope, sceneBootId, sceneSessionId, actionable);
+        }
+        catch (InvalidOperationException exception)
+        {
+            lifecycle.OnSceneValueUnreadable($"scene rejected: {exception.Message}");
+        }
     }
 
     /// <summary>

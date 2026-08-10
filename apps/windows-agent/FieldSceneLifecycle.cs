@@ -55,6 +55,7 @@ public sealed class FieldSceneLifecycle
     private readonly FieldSceneProducerLaunchPolicy launchPolicy;
     private FieldSceneLifecycleState state;
     private bool tornDown;
+    private bool bootStale;
 
     public FieldSceneLifecycle(
         FieldReference field,
@@ -88,6 +89,7 @@ public sealed class FieldSceneLifecycle
     {
         ArgumentNullException.ThrowIfNull(result);
         RequireLive();
+        RequireCurrentBoot();
 
         if (result.SessionId <= 0 || result.SessionId != launchPolicy.ExpectedSessionId)
             throw new InvalidOperationException(
@@ -130,6 +132,7 @@ public sealed class FieldSceneLifecycle
     {
         ArgumentNullException.ThrowIfNull(envelope);
         RequireLive();
+        RequireCurrentBoot();
 
         if (!state.ProducerRunning)
             throw new InvalidOperationException("A scene cannot be accepted while no producer is running.");
@@ -190,6 +193,10 @@ public sealed class FieldSceneLifecycle
     {
         RequireLive();
         if (observedBootId == state.BootId) return;
+        // Terminal. This lifecycle is bound to a boot that has ended, so it can never become
+        // ready again: relaunching into it would re-establish readiness against a dead boot.
+        // The caller must construct a new lifecycle for the new boot.
+        bootStale = true;
         Invalidate("boot identity changed; the previous scene belongs to a boot that has ended");
         state = state with { ProducerRunning = false, ProducerProcessId = null };
     }
@@ -237,6 +244,19 @@ public sealed class FieldSceneLifecycle
     }
 
     public bool IsTornDown => tornDown;
+
+    /// <summary>
+    /// True once the guest has rebooted under this lifecycle. Terminal: a stale-boot lifecycle
+    /// can never become ready again and must be replaced, not reused.
+    /// </summary>
+    public bool IsBootStale => bootStale;
+
+    private void RequireCurrentBoot()
+    {
+        if (bootStale)
+            throw new InvalidOperationException(
+                "Scene lifecycle is bound to a boot that has ended; construct a new lifecycle for the current boot.");
+    }
 
     private void Invalidate(string reason)
     {
