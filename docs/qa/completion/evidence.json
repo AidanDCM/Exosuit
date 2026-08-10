@@ -336,6 +336,37 @@
       "registryPurpose": "live",
       "recoveryGrantId": null,
       "tpmProofId": "proof-1786226793673-edede9"
+    },
+    {
+      "evidenceId": "chn001-run-407a194c9685",
+      "boundTestId": "CHN-001",
+      "evidenceClass": "hyperv_host_guest",
+      "artifactSha256": "407a194c968525e33d465d6734dd28abde1975783d821d21167ee68314a9fd44",
+      "artifactBytes": 10142,
+      "mediaType": "application/json",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "runId": "chn001-v26-g3-48b5071-20260810t1546z",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200",
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3,
+        "fieldBootId": "29a19dbc-5021-4dc3-8979-0026660fad17"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "chn001-harness",
+      "observedAt": "2026-08-10T16:42:35.818Z",
+      "nonce": "24c06eb0358b4d72e42875bdb8426721",
+      "designation": "live",
+      "signingKeyId": "live-host-1",
+      "signature": "JOd4YZhNeXSMHozLRE21uUWkBDaqRB7VsWekH_rpOBggcJgULFBks3C3qJMjqR1efgjtNERQGKDefgM07qCoCw",
+      "recordVersion": "2.3",
+      "keyProtectionBackend": "tpm",
+      "keyCustodyEventId": "custody-live-host-1-1786384745669",
+      "registryPurpose": "live",
+      "recoveryGrantId": null,
+      "tpmProofId": "proof-1786384746916-c7b960"
     }
   ]
 }

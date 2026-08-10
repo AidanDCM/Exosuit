@@ -731,6 +731,55 @@
       "registryPurpose": "live",
       "recoveryGrantId": null,
       "tpmProofId": null
+    },
+    {
+      "eventId": "chn-001-ready-for-live-20260810",
+      "sequence": 40,
+      "testId": "CHN-001",
+      "previousStatus": "source_validated",
+      "newStatus": "ready_for_live",
+      "previousEventHash": "8e4514015bb7b94ca34c54bfeb244f8dcca2abdcbe81aadede895b2abf709762",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "evidenceIds": [],
+      "issuer": "codex-chn001-promotion-operator-20260810",
+      "reviewerRole": "technical_review",
+      "reason": "Complete G3 live matrix independently approved for promotion",
+      "recordedAt": "2026-08-10T17:59:23.309Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "kuEkRg0dWlKH4aDed9-hs4rO7pdHAm-qbt-uB3UZB88JK4jUMX5rdlcInzVvm85aqk-q_SXf0CwepEorW6rcCw",
+      "recordVersion": "2.3",
+      "keyProtectionBackend": "tpm",
+      "keyCustodyEventId": "custody-live-ledger-1-1786384764330",
+      "registryPurpose": "live",
+      "recoveryGrantId": null,
+      "tpmProofId": null
+    },
+    {
+      "eventId": "chn-001-passed-20260810",
+      "sequence": 41,
+      "testId": "CHN-001",
+      "previousStatus": "ready_for_live",
+      "newStatus": "passed",
+      "previousEventHash": "ef7b6b5a9df759eef2e48aff4c035edaddad7a5b9d0415f9802cfd667263bccb",
+      "exactCommit": "8efb63aa1452ebdb84f910309bbb284b2d25a980",
+      "evidenceIds": [
+        "chn001-run-407a194c9685"
+      ],
+      "issuer": "codex-chn001-promotion-operator-20260810",
+      "reviewer": "root:chn001_independent_review",
+      "reviewerRole": "technical_review",
+      "reviewerKeyId": "live-technical-review-1",
+      "reviewerSignature": "d8q3VWgGNLFYnS94tsd33IQkUQjt1WKi24sGwmdyWkJxN5tzlHdvuJIOLtBXVeynvOO0knRqRC9M6MDKg_8CCg",
+      "reason": "Independent technical review approved exact CHN-001 G3 candidate 407a194c9685",
+      "recordedAt": "2026-08-10T17:59:41.460Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "aiVqmat2xnbdptKZhUiu59-wJyDNhjx0e_xajtcPvdbfGD2cQj4sVGVlNavlX14cUU_LNtM98kAbkIZURLmiAA",
+      "recordVersion": "2.3",
+      "keyProtectionBackend": "tpm",
+      "keyCustodyEventId": "custody-live-ledger-1-1786384782391",
+      "registryPurpose": "live",
+      "recoveryGrantId": null,
+      "tpmProofId": null
     }
   ]
 }

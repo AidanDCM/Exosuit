@@ -312,6 +312,54 @@
       "recordedAt": "2026-08-08T22:22:28.195Z",
       "signingKeyId": "live-ledger-1",
       "signature": "YrojnPyCFYfFg53mAzguFJnyIsl_4lSUJB-hBPGMCuYll1b1arHJ3zhNKbrOuafypV9D8khn8cQal4JacPXoDQ"
+    },
+    {
+      "eventId": "custody-live-host-1-1786384745669",
+      "sequence": 26,
+      "previousEventHash": "bc2094b4cecbb493bd660ebc92d4e1be9efa03dea28f39b24eb6cc08f44d3206",
+      "keyId": "live-host-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-10T17:59:05.667Z",
+      "signingKeyId": "live-host-1",
+      "signature": "Hmb3heTB7-I25SjONRTcJg0QFkYqkPg7ipFdVDqKBFsyIqoe21gS7mhiELmFCTTMAs42UPNKOO3LR0gnD4rxAQ"
+    },
+    {
+      "eventId": "custody-live-ledger-1-1786384764330",
+      "sequence": 27,
+      "previousEventHash": "d08036814d451b69fb5c83dd008dcb57e69f95ad748e1b0daec63cf96847433c",
+      "keyId": "live-ledger-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-10T17:59:24.330Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "tcUOcum2qRdhH5oDQib8CjiTcce5ohJhAq6-nt55XXBPfS3RbZKKqsWIOkXSSbqKn27d1_yBGveWDBClLUpfCA"
+    },
+    {
+      "eventId": "custody-live-ledger-1-1786384767323",
+      "sequence": 28,
+      "previousEventHash": "56da80d5ce90b9f3d00563f3aca98042f0552f649f93cfbc9c29c31cdbe2526b",
+      "keyId": "live-ledger-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-10T17:59:27.323Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "j3avcmuoGNpi9I4zDSQovOnhkmi6BpntMhIXdDCrpWke6EyyorOnVYJP3nBPHGH2wcjQGtQ7-KzN8V7RBuQCBA"
+    },
+    {
+      "eventId": "custody-live-ledger-1-1786384782391",
+      "sequence": 29,
+      "previousEventHash": "15ceeafdb09759c5d44cad49016927808cd2d158eb5a75cf09301a52cb7db72a",
+      "keyId": "live-ledger-1",
+      "backend": "tpm",
+      "registryPurpose": "live",
+      "machineId": "machine-9c62d678dd970f15",
+      "recordedAt": "2026-08-10T17:59:42.391Z",
+      "signingKeyId": "live-ledger-1",
+      "signature": "PcClGQ8Bb9Cm6MX_9VDlSEgv79MRrPjHLSqfvJ2QoAhtw_ygN6CoyNOImZa0Si3lNF_GZkvBoydJ81jHIxEpAw"
     }
   ]
 }
