@@ -92,6 +92,12 @@
 `TCH-001.12`, because live recording authority does not exist until M3. Stop during
 active execution is `ACT-001.23`. Both remain mandatory before MVP or production.
 
+CHN evidence recording additionally requires a host-signed completion lifecycle created
+event bound to the exact VM/base, every observed boot transition recorded without
+overlap, a verified heartbeat observed after a signed boot opened, and a terminal
+destroyed event. Missing lifecycle evidence rejects recording; completed runs may not
+backdate or synthesize it.
+
 ## M2 — Live scenes, execution, verification, artifacts, recovery
 
 ### Scene observation

@@ -8,9 +8,13 @@ import {
   chn001InjectionArtifactSchema,
   chn001StopArtifactSchema,
   mergeVerifiedMessages,
+  selectRecordableChn001Heartbeat,
   validateChn001MigrationChangedFiles,
+  validateChn001RecordLifecycle,
   type Chn001Session,
 } from "../src/completion/chn001Harness.js";
+import type { FieldLifecycleEvent } from "../src/completion/contracts.js";
+import type { LifecycleVerificationResult } from "../src/completion/fieldLifecycle.js";
 
 const field = { fieldId: "6e090827-1642-45a8-b4ef-bfda4ca90b02", fieldGeneration: 2 };
 const bootId = "c40269d1-6c62-49fa-aaba-461a65a55af5";
@@ -93,6 +97,53 @@ function completeSession(): Chn001Session {
       artifactSha256: String(index + 6).repeat(64),
     })),
   };
+}
+
+function recordableLifecycle(): { lifecycle: LifecycleVerificationResult; events: FieldLifecycleEvent[] } {
+  const lifecycle: LifecycleVerificationResult = {
+    failures: [],
+    generations: [{
+      fieldId: field.fieldId,
+      generation: field.fieldGeneration,
+      createdMs: Date.parse("2026-08-08T20:00:00.500Z"),
+      destroyedMs: Date.parse("2026-08-08T20:05:00.000Z"),
+      baseImageSha256: digest,
+    }],
+    boots: [{
+      fieldId: field.fieldId,
+      generation: field.fieldGeneration,
+      bootId,
+      startedMs: Date.parse("2026-08-08T20:00:01.000Z"),
+      stoppedMs: Date.parse("2026-08-08T20:04:00.000Z"),
+    }],
+  };
+  const common = {
+    fieldId: field.fieldId,
+    generation: field.fieldGeneration,
+    previousEventHash: "0".repeat(64),
+    machineId: "machine-test",
+    recordedAt: "2026-08-08T20:00:00.500Z",
+    signingKeyId: "live-host-1",
+    signature: "A".repeat(86),
+  };
+  const events = [
+    {
+      ...common,
+      eventId: "chn-created",
+      sequence: 0,
+      kind: "created" as const,
+      baseImageSha256: digest,
+      vmGuid: "4e1596ad-0946-4ec4-9965-8cd11410139b",
+    },
+    {
+      ...common,
+      eventId: "chn-destroyed",
+      sequence: 1,
+      kind: "destroyed" as const,
+      recordedAt: "2026-08-08T20:05:00.000Z",
+    },
+  ] as FieldLifecycleEvent[];
+  return { lifecycle, events };
 }
 
 describe("CHN-001 acquisition harness", () => {
@@ -215,5 +266,28 @@ describe("CHN-001 acquisition harness", () => {
     expect(validateChn001MigrationChangedFiles(required)).toEqual([]);
     expect(validateChn001MigrationChangedFiles([...required, "apps/windows-agent/AgentHost.cs"]).join("\n")).toMatch(/runtime or unreviewed/);
     expect(validateChn001MigrationChangedFiles(required.slice(1)).join("\n")).toMatch(/chn001\.ts/);
+  });
+
+  it("selects only a verified heartbeat inside the exact signed boot window", () => {
+    const run = buildChn001Run(completeSession(), "2026-08-08T20:04:00.000Z", digest, {
+      exactGenerationDestroyed: true, vmAbsent: true, generationRootAbsent: true, baseUnchanged: true,
+    });
+    const { lifecycle } = recordableLifecycle();
+    expect(selectRecordableChn001Heartbeat(run, lifecycle)?.messageId).toBe(message(4, "heartbeat").messageId);
+    expect(selectRecordableChn001Heartbeat(run, { ...lifecycle, boots: [] })).toBeUndefined();
+  });
+
+  it("refuses recording without exact created, VM/base, destroyed, and boot-window bindings", () => {
+    const run = buildChn001Run(completeSession(), "2026-08-08T20:04:00.000Z", digest, {
+      exactGenerationDestroyed: true, vmAbsent: true, generationRootAbsent: true, baseUnchanged: true,
+    });
+    const { lifecycle, events } = recordableLifecycle();
+    expect(validateChn001RecordLifecycle(run, lifecycle, events)).toEqual([]);
+    expect(validateChn001RecordLifecycle(run, { ...lifecycle, boots: [] }, events).join("\n")).toMatch(/boot window/);
+    expect(validateChn001RecordLifecycle(run, lifecycle, events.filter((event) => event.kind !== "destroyed")).join("\n")).toMatch(/destroyed/);
+    const wrongVm = events.map((event) => event.kind === "created" ? { ...event, vmGuid: "11111111-1111-4111-8111-111111111111" } : event);
+    expect(validateChn001RecordLifecycle(run, lifecycle, wrongVm).join("\n")).toMatch(/VM GUID/);
+    const wrongMachine = events.map((event) => ({ ...event, machineId: "machine-other" }));
+    expect(validateChn001RecordLifecycle(run, lifecycle, wrongMachine).join("\n")).toMatch(/another machine/);
   });
 });

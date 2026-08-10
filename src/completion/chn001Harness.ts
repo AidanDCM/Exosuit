@@ -18,11 +18,21 @@ import { z } from "zod";
 import { fieldBootstrapManifestSchema, REQUIRED_FIELD_DIRECTORIES } from "../fieldBootstrap.js";
 import { createFieldProvisioningPlan, fieldProvisioningPlanSchema } from "../fieldProvisioningPlan.js";
 import { chn001InjectionIds, chn001RunSchema, validateChn001Run, type Chn001Run } from "./chn001.js";
+import {
+  buildCompletionManifestSchema,
+  fieldLifecycleLedgerSchema,
+  keyRegistrySchema,
+  type FieldLifecycleEvent,
+  type FieldLifecycleLedger,
+} from "./contracts.js";
+import { checkAgainstLifecycle, verifyFieldLifecycle, type LifecycleVerificationResult } from "./fieldLifecycle.js";
 
 const ROOT = resolve(process.cwd());
 const OUT = resolve(process.env["EXOSUIT_CHN001_DIR"] ?? join(ROOT, "artifacts", "chn001"));
 const CONFIRMATION = "START CHN-001 EVIDENCE SESSION";
 const MIGRATION_CONFIRMATION = "MIGRATE CHN-001 V1 SESSION TO PHASE-CORRECT V2";
+const RECORD_CONFIRMATION = "RECORD CHN-001 LIVE CANDIDATE";
+const COMPLETION_DIR = resolve(process.env["EXOSUIT_COMPLETION_DIR"] ?? join(ROOT, "docs", "qa", "completion"));
 const MIGRATION_ALLOWED_FILES = new Set([
   "docs/BUILD_COMPLETION_PLAN.md",
   "docs/FIELD_DEVELOPER_MANUAL.md",
@@ -509,6 +519,22 @@ export function mergeVerifiedMessages(existing: readonly VerifiedMessage[], inco
   return [...byId.values()].sort((left, right) => left.sequence - right.sequence);
 }
 
+export function selectRecordableChn001Heartbeat(
+  run: Chn001Run,
+  lifecycle: LifecycleVerificationResult,
+): VerifiedMessage | undefined {
+  return [...run.verifiedMessages]
+    .filter((message) => message.messageType === "heartbeat")
+    .sort((left, right) => Date.parse(right.verifiedAt) - Date.parse(left.verifiedAt))
+    .find((message) => checkAgainstLifecycle({
+      fieldId: run.field.fieldId,
+      generation: run.field.fieldGeneration,
+      bootId: message.bootId,
+      observedAtMs: Date.parse(message.verifiedAt),
+      lifecycle,
+    }).length === 0);
+}
+
 export function buildChn001Run(
   session: Session,
   completedAt: string,
@@ -550,9 +576,99 @@ function plan(): void {
     contractVersion: 1,
     mutatesHost: false,
     config,
-    commands: ["start", "capture (repeat until >=3 distinct heartbeats)", "add-injection (11)", "add-stop (2)", "finalize"],
+    commands: ["start", "signed lifecycle events at every transition", "capture (repeat until >=3 distinct heartbeats)", "add-injection (11)", "add-stop (2)", "finalize", "independent review", "record"],
     ownerCeremonies: ["guest reboot", "heartbeat loss", "session lock", "Secure Desktop", "display mismatch", "healthy/degraded emergency stop", "exact-generation destruction"],
     claimBoundary: "Planning and acquisition do not promote CHN-001; finalize only validates a candidate artifact.",
+  }, null, 2));
+}
+
+function completionCli(args: readonly string[]): void {
+  execFileSync("npx", ["tsx", join(ROOT, "src", "completion", "cli.ts"), ...args], {
+    stdio: "inherit",
+    cwd: ROOT,
+    shell: process.platform === "win32",
+  });
+}
+
+function assertAncestor(ancestor: string, descendant: string, label: string): void {
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], { cwd: ROOT, stdio: "ignore" });
+  } catch {
+    throw new Error(`${label} ${descendant} does not descend from completion baseline ${ancestor}.`);
+  }
+}
+
+export function validateChn001RecordLifecycle(
+  run: Chn001Run,
+  lifecycle: LifecycleVerificationResult,
+  events: readonly FieldLifecycleEvent[],
+): readonly string[] {
+  const failures = [...lifecycle.failures];
+  const matching = events.filter((event) => event.fieldId === run.field.fieldId
+    && event.generation === run.field.fieldGeneration);
+  if (matching.some((event) => event.machineId !== run.machineId)) {
+    failures.push("CHN-001 lifecycle events name another machine.");
+  }
+  const created = matching.filter((event) => event.kind === "created");
+  const destroyed = matching.filter((event) => event.kind === "destroyed");
+  if (created.length !== 1) failures.push(`CHN-001 recording requires exactly one signed created event; found ${created.length}.`);
+  if (created.length === 1) {
+    if (created[0]!.vmGuid?.toLowerCase() !== run.vmGuid.toLowerCase()) failures.push("CHN-001 created lifecycle event names another VM GUID.");
+    if (created[0]!.baseImageSha256 !== run.baseDigestBefore) failures.push("CHN-001 created lifecycle event names another immutable base digest.");
+  }
+  if (destroyed.length !== 1) failures.push(`CHN-001 recording requires exactly one signed destroyed event; found ${destroyed.length}.`);
+  if (selectRecordableChn001Heartbeat(run, lifecycle) === undefined) {
+    failures.push("CHN-001 recording requires a verified heartbeat inside a signed boot window.");
+  }
+  return failures;
+}
+
+function record(): void {
+  if (requiredArg("--confirm") !== RECORD_CONFIRMATION) {
+    throw new Error(`Typed confirmation must be exactly: ${RECORD_CONFIRMATION}`);
+  }
+  const runId = requiredArg("--run-id");
+  const path = join(OUT, runId, "chn001-run.json");
+  if (!existsSync(path)) throw new Error(`Finalized CHN-001 candidate is absent: ${path}`);
+  const run = chn001RunSchema.parse(readJson(path));
+  if (run.runId !== runId) throw new Error("CHN-001 candidate runId does not match its requested artifact path.");
+  if (run.machineId !== machineId()) throw new Error("CHN-001 candidate was produced on another machine.");
+  const runFailures = validateChn001Run(run);
+  if (runFailures.length > 0) throw new Error(`CHN-001 candidate is not recordable:\n- ${runFailures.join("\n- ")}`);
+
+  const manifest = buildCompletionManifestSchema.parse(readJson(join(COMPLETION_DIR, "manifest.json")));
+  const registry = keyRegistrySchema.parse(readJson(join(COMPLETION_DIR, "keys.json")));
+  const ledgerPath = join(COMPLETION_DIR, "field-lifecycle.json");
+  const ledger: FieldLifecycleLedger = fieldLifecycleLedgerSchema.parse(readJson(ledgerPath));
+  const lifecycle = verifyFieldLifecycle({ ledger, registry });
+  const lifecycleFailures = validateChn001RecordLifecycle(run, lifecycle, ledger.events);
+  if (lifecycleFailures.length > 0) {
+    throw new Error(`CHN-001 lifecycle is not recordable:\n- ${lifecycleFailures.join("\n- ")}`);
+  }
+  assertAncestor(manifest.baselineCommit, run.exactCommit, "CHN-001 evidence commit");
+  assertAncestor(manifest.baselineCommit, run.contractEvaluationCommit, "CHN-001 evaluation commit");
+  const heartbeat = selectRecordableChn001Heartbeat(run, lifecycle)!;
+  const artifactSha256 = sha256File(path);
+  const evidenceId = `chn001-run-${artifactSha256.slice(0, 12)}`;
+  completionCli([
+    "record-artifact",
+    "--test", "CHN-001",
+    "--class", "hyperv_host_guest",
+    "--file", path,
+    "--field-id", run.field.fieldId,
+    "--field-generation", String(run.field.fieldGeneration),
+    "--field-boot-id", heartbeat.bootId,
+    "--observed-at", heartbeat.verifiedAt,
+    "--run-id", run.runId,
+    "--issuer", "chn001-harness",
+    "--evidence-id", evidenceId,
+  ]);
+  console.log(JSON.stringify({
+    recorded: true,
+    evidenceId,
+    artifactSha256,
+    lifecycleHeartbeatId: heartbeat.messageId,
+    claimBoundary: "Evidence recorded; CHN-001 remains unpromoted until an independent reviewer authorizes a signed transition.",
   }, null, 2));
 }
 
@@ -722,7 +838,8 @@ function main(): void {
   if (command === "add-injection") return addInjection();
   if (command === "add-stop") return addStop();
   if (command === "finalize") return finalize();
-  throw new Error("Usage: chn001Harness.ts <prepare|bind|plan|start|capture|add-injection|add-stop|finalize> [arguments]");
+  if (command === "record") return record();
+  throw new Error("Usage: chn001Harness.ts <prepare|bind|plan|start|capture|add-injection|add-stop|finalize|record> [arguments]");
 }
 
 if (process.argv[1]?.replace(/\\/g, "/").endsWith("/chn001Harness.ts")) main();

@@ -98,6 +98,53 @@ an independent reviewer authorizes it, CHN-001 stays `source_validated` and no
 promotion command is permitted. v25 cannot satisfy the updated bootstrap boot-binding
 contract; rebuild and acceptance of a new immutable base are required first.
 
+### Mandatory signed completion lifecycle
+
+The completion lifecycle ledger is independent from the CHN candidate. A candidate can
+validate while remaining deliberately unrecordable if the host did not sign the Field
+generation and boot windows as they occurred. Never import or backdate lifecycle events
+from a completed run.
+
+For a new generation, append `created` after provisioning and `booted` after the first
+authenticated capture reveals the guest `bootId`. Then wait for and capture a **new**
+heartbeat; the pre-attestation heartbeat cannot be used because it predates the signed
+boot window.
+
+```powershell
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind created --base-image-sha256 <base-digest> --vm-guid <vm-guid> --event-id chn001-<run-id>-created
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind booted --boot-id <authenticated-boot-id> --vm-guid <vm-guid> --event-id chn001-<run-id>-boot-01
+npm run chn001:harness -- capture --run-id <run-id>
+```
+
+Every reboot or stop/restart ceremony must close the old boot and open the newly
+authenticated boot. Record `stopped` for the exact prior `bootId`; after a capture proves
+the replacement `bootId`, record `booted`, wait for the next heartbeat, and capture again.
+Do not leave the old boot open across an actual reboot.
+
+```powershell
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind stopped --boot-id <old-boot-id> --event-id chn001-<run-id>-stop-<nn>
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind booted --boot-id <new-authenticated-boot-id> --vm-guid <vm-guid> --event-id chn001-<run-id>-boot-<nn>
+```
+
+After the last emergency stop, sign `stopped` while the exact VM is Off. After the owner
+service destroys the exact generation and absence is verified, sign `destroyed`. Only
+then finalize, obtain independent candidate review, and attempt evidence recording:
+
+```powershell
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind stopped --boot-id <last-boot-id> --event-id chn001-<run-id>-stop-final
+npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind destroyed --event-id chn001-<run-id>-destroyed
+npx --no-install tsx src/completion/chn001Harness.ts record --run-id <run-id> --confirm "RECORD CHN-001 LIVE CANDIDATE"
+```
+
+`record` validates the candidate, completion baseline ancestry, the entire signed
+lifecycle chain, exact created VM/base binding, terminal destruction, and a verified
+heartbeat inside a signed boot window before it consumes the artifact. It records a
+claim only. Promotion still requires a different principal and the technical-review key.
+
+The finalized G1 candidate `ca9bfb10d13d...` is technically approved candidate evidence
+but is not recordable: its generation has no signed completion lifecycle. It must remain
+unpromoted; G2 or later must follow this real-time sequence.
+
 ### Phase-correct v1 session migration
 
 A v1 acquisition that already collected CHN-001.1-.11 plus healthy/degraded stops may
