@@ -199,6 +199,11 @@ Before adding a recorder:
 
 The recorder must never infer consent from task text or model output.
 
+Recording emergency-stop evidence belongs to TCH-001 after live capture hooks exist.
+Do not satisfy a channel gate with a synthetic recorder state, an owner assertion, or
+a stopped VM alone. The proof must bind active consent, visible indication, stopped
+hooks, invalidated pending input, exact Field/generation, and bounded stop timing.
+
 ## Demonstration data laws
 
 1. Raw events are immutable after episode completion except through a versioned migration.

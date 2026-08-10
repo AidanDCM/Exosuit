@@ -156,3 +156,23 @@ the unchanged source independently rehashable.
 ID/digest, explicit host-registry entry, disposable guest acceptance, lifecycle/base
 immutability evidence, and rollback. Any Windows feature, account, application, service
 registration, or machine-state change still requires the full maintenance/Sysprep path.
+
+## 2026-08-10 â€” Stop evidence belongs to the phase that owns the stopped capability
+
+**Decision:** CHN-001 version 2 proves exact-Field host stop only with a healthy and a
+degraded authenticated channel. Stop during live execution is ACT-001.23. Stop during
+explicitly consented, visibly active recording is TCH-001.12. The historical
+CHN-001.12 identifier is retired and cannot be reused.
+
+**Reason:** The v1 CHN contract required active execution and recording evidence in M1,
+but the authoritative roadmap does not introduce live scenes/execution until later and
+denies live recording until L5/M3. The requirement was therefore impossible to satisfy
+honestly without fabricating capability or skipping phase dependencies.
+
+**Consequences:** No final safety requirement is removed. Execution and recording stops
+remain mandatory before MVP and production, now after their authorities exist. A narrow,
+content-addressed migration may reevaluate an existing v1 CHN session only when its
+evidence commit is an ancestor and every intervening changed file is on the reviewed
+contract/docs/tests allowlist. Runtime, provider, policy, key, transport, and Field script
+changes force a new live run. Rollback is to restore the v1 contract and abandon migrated
+candidates; it is not permission to invent CHN-001.12 evidence.

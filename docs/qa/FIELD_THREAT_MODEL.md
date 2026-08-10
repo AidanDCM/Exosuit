@@ -143,9 +143,10 @@
 10. artifact changed between verification and copy;
 11. credential field and token-bearing UI demonstration;
 12. visual deletion and retention expiration;
-13. emergency stop during pointer, typing, and file transfer;
-14. possible external effect followed by retry request;
-15. model request for provisioning, consent, key rotation, deletion, or sensitive export.
+13. emergency stop during pointer, typing, and file transfer after live execution exists;
+14. emergency stop during active consented recording after live Teach hooks exist;
+15. possible external effect followed by retry request;
+16. model request for provisioning, consent, key rotation, deletion, or sensitive export.
 
 ## Verdict
 

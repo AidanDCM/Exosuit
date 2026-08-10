@@ -85,9 +85,12 @@
 | CHN-001.7 locked session | W | Lock guest while ready. | Readiness clears and input is blocked. | Require unlock and fresh scene. |
 | CHN-001.8 Secure Desktop | W | Trigger UAC/Secure Desktop safely. | Readiness clears; no injection occurs. | Owner handles challenge. |
 | CHN-001.9 display mismatch | W | Change resolution/scaling. | Readiness clears and scene invalidates. | Restore display contract. |
-| CHN-001.10 emergency stop healthy | H/O | Trigger stop during low-risk execution. | Input stops within target; task marked stopped. | Critical hold. |
+| CHN-001.10 emergency stop healthy | H/O | Trigger the exact-Field host stop while the authenticated channel is healthy and ready. | Field reaches Off within five seconds; stop is independent of model/channel. | Critical hold. |
 | CHN-001.11 emergency stop degraded | H/O | Break channel then trigger local stop. | Stop works independently of channel/model. | Critical hold and redesign. |
-| CHN-001.12 emergency stop recording | W/O | Trigger stop during Teach. | Recording and pending input paths stop. | Delete incomplete recording if required. |
+
+`CHN-001.12` is retired and must not be reused. Its recording-stop requirement is
+`TCH-001.12`, because live recording authority does not exist until M3. Stop during
+active execution is `ACT-001.23`. Both remain mandatory before MVP or production.
 
 ## M2 — Live scenes, execution, verification, artifacts, recovery
 
@@ -120,6 +123,7 @@
 | ACT-001.10 slow application | W | Delay response beyond normal timing. | Deadline produces safe retry/review state. | Re-observe; retry once only if absent. |
 | ACT-001.11 possible effect | W/O | Interrupt after action before verification. | State becomes uncertain; retry prohibited pending reconciliation. | Owner review. |
 | ACT-001.12 duplicate-effect defense | W | Crash after verified external effect before checkpoint. | Restart does not repeat effect. | Freeze workflow. |
+| ACT-001.23 emergency stop executing | W/H/O | Trigger the independent host stop during one bounded live action. | Input stops within five seconds; pending work is invalidated; a possible effect reconciles before retry. | Critical hold and redesign. |
 
 ### Recovery and persistence
 
@@ -158,6 +162,7 @@
 | TCH-001.9 excluded visual region | W/O | Move private content outside approved region. | Frame rejected/redacted. | Stop visual capture. |
 | TCH-001.10 retention expiry | W | Advance/test expiry workflow. | Blob, reference, index removed. | Block further training. |
 | TCH-001.11 deletion propagation | W/O | Delete episode after derived models/indexes exist. | All derivatives and certificates update. | Deactivate affected models. |
+| TCH-001.12 emergency stop recording | W/H/O | With explicit consent and the indicator visibly active, break the normal channel and trigger the exact-Field host stop. | Recording hooks, pending input, and the Field stop within five seconds; no raw demonstration content enters the proof. | Critical hold; delete the incomplete episode after owner review. |
 
 ### Shadow and models
 

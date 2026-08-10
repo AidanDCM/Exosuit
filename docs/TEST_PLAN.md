@@ -318,6 +318,7 @@ Required evidence:
 - Teach and Shadow have no input authority;
 - Pilot requires current scene, exact policy, action ordinal, budget, route, and capability;
 - emergency stop remains independent of model and normal channel;
+- channel-phase acceptance proves healthy/degraded host stop only; active-execution stop is ACT-owned and active-recording stop is Teach-owned;
 - generation replacement rejects stale messages and commands.
 
 ## 14. ChatGPT MCP acceptance

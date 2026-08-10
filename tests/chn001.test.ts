@@ -24,10 +24,9 @@ function makeRun(): Chn001Run {
     "CHN-001.9": "live_windows_guest",
     "CHN-001.10": "live_host_stop",
     "CHN-001.11": "live_host_stop",
-    "CHN-001.12": "live_teach_stop",
   } as const;
   return chn001RunSchema.parse({
-    contractVersion: 1,
+    contractVersion: 2,
     testId: "CHN-001",
     stage: "run",
     runId: "chn001-test-run",
@@ -75,7 +74,7 @@ function makeRun(): Chn001Run {
       actualCode: `actual-${index}`,
       artifactSha256: String((index % 9) + 1).repeat(64),
     })),
-    emergencyStops: ["healthy", "degraded", "recording"].map((scenario, index) => ({
+    emergencyStops: ["healthy", "degraded"].map((scenario, index) => ({
       scenario,
       triggeredAt: timestamp(45 + index * 2),
       stoppedAt: timestamp(46 + index * 2),
@@ -83,7 +82,7 @@ function makeRun(): Chn001Run {
       channelIndependent: true,
       modelIndependent: true,
       inputStopped: true,
-      recordingStopped: scenario === "recording",
+      recordingStopped: false,
       fieldState: "Off",
       artifactSha256: "f".repeat(64),
     })),
@@ -94,6 +93,8 @@ function makeRun(): Chn001Run {
       baseUnchanged: true,
     },
     sourceMutationCountDuringRun: 0,
+    contractEvaluationCommit: "b".repeat(40),
+    contractMigration: null,
   });
 }
 
@@ -137,19 +138,32 @@ describe("CHN-001 acceptance contract", () => {
 
   it("requires every injection once and with its live evidence mode", () => {
     const run = makeRun();
-    run.failureInjections[11] = { ...run.failureInjections[10]!, id: "CHN-001.11" };
+    run.failureInjections[10] = { ...run.failureInjections[9]!, id: "CHN-001.10" };
     run.failureInjections[7]!.evidenceMode = "mutated_live_capture";
     const failures = validateChn001Run(run).join("\n");
     expect(failures).toMatch(/duplicated/);
-    expect(failures).toMatch(/CHN-001\.12.*missing/);
+    expect(failures).toMatch(/CHN-001\.11.*missing/);
     expect(failures).toMatch(/CHN-001\.8 requires live_windows_guest/);
   });
 
-  it("requires three independent emergency-stop scenarios", () => {
+  it("requires healthy and degraded independent emergency-stop scenarios", () => {
     const run = makeRun();
-    run.emergencyStops[2] = { ...run.emergencyStops[1]!, scenario: "degraded" };
+    run.emergencyStops[1] = { ...run.emergencyStops[0]!, scenario: "healthy" };
     const failures = validateChn001Run(run).join("\n");
-    expect(failures).toMatch(/recording.*missing/);
+    expect(failures).toMatch(/degraded.*missing/);
+  });
+
+  it("binds an explicit, content-addressed contract migration", () => {
+    const run = makeRun();
+    const changedFiles = ["docs/MASTER_SYSTEM_ROADMAP.md", "src/completion/chn001.ts"];
+    run.contractEvaluationCommit = "c".repeat(40);
+    run.contractMigration = {
+      fromContractVersion: 1,
+      confirmation: "MIGRATE CHN-001 V1 SESSION TO PHASE-CORRECT V2",
+      changedFiles,
+      changedFilesSha256: "0".repeat(64),
+    };
+    expect(validateChn001Run(run).join("\n")).toMatch(/changed-files digest is invalid/);
   });
 
   it("rejects a changed immutable base", () => {

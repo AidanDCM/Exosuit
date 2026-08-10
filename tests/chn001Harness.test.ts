@@ -8,6 +8,7 @@ import {
   chn001InjectionArtifactSchema,
   chn001StopArtifactSchema,
   mergeVerifiedMessages,
+  validateChn001MigrationChangedFiles,
   type Chn001Session,
 } from "../src/completion/chn001Harness.js";
 
@@ -73,13 +74,13 @@ function completeSession(): Chn001Session {
     failureInjections: chn001InjectionIds.map((id, index) => ({
       id,
       verdict: "passed" as const,
-      evidenceMode: (["mutated_live_capture", "mutated_live_capture", "mutated_live_capture", "mutated_live_capture", "live_reboot", "live_heartbeat_loss", "live_windows_guest", "live_windows_guest", "live_windows_guest", "live_host_stop", "live_host_stop", "live_teach_stop"] as const)[index],
+      evidenceMode: (["mutated_live_capture", "mutated_live_capture", "mutated_live_capture", "mutated_live_capture", "live_reboot", "live_heartbeat_loss", "live_windows_guest", "live_windows_guest", "live_windows_guest", "live_host_stop", "live_host_stop"] as const)[index],
       observedAt: "2026-08-08T20:02:00.000Z",
       expectedCode: `expected-${index}`,
       actualCode: `expected-${index}`,
       artifactSha256: String((index + 1) % 10).repeat(64),
     })),
-    emergencyStops: (["healthy", "degraded", "recording"] as const).map((scenario, index) => ({
+    emergencyStops: (["healthy", "degraded"] as const).map((scenario, index) => ({
       scenario,
       triggeredAt: `2026-08-08T20:03:0${index}.000Z`,
       stoppedAt: `2026-08-08T20:03:0${index}.500Z`,
@@ -87,7 +88,7 @@ function completeSession(): Chn001Session {
       channelIndependent: true as const,
       modelIndependent: true as const,
       inputStopped: true as const,
-      recordingStopped: scenario === "recording",
+      recordingStopped: false,
       fieldState: "Off" as const,
       artifactSha256: String(index + 6).repeat(64),
     })),
@@ -176,7 +177,7 @@ describe("CHN-001 acquisition harness", () => {
       generationRootAbsent: true,
       baseUnchanged: true,
     });
-    expect(chn001RunSchema.parse(run).testId).toBe("CHN-001");
+    expect(chn001RunSchema.parse(run)).toMatchObject({ testId: "CHN-001", contractVersion: 2 });
   });
 
   it("refuses development access in the acquisition configuration", () => {
@@ -201,5 +202,18 @@ describe("CHN-001 acquisition harness", () => {
       latencyMs: 6_000, channelIndependent: true, modelIndependent: true, inputStopped: true,
       recordingStopped: false, fieldState: "Off", sourceArtifactSha256: "d".repeat(64), extra: true,
     })).toThrow();
+  });
+
+  it("allows only the phase-correct contract review diff during v1 migration", () => {
+    const required = [
+      "src/completion/chn001.ts",
+      "src/completion/chn001Harness.ts",
+      "docs/MASTER_SYSTEM_ROADMAP.md",
+      "docs/qa/BUILD_COMPLETION_TEST_MATRIX.md",
+      "docs/qa/ATOMIC_AUDIT_2026-08-10_PHASE_CORRECT_STOP_GATES.md",
+    ];
+    expect(validateChn001MigrationChangedFiles(required)).toEqual([]);
+    expect(validateChn001MigrationChangedFiles([...required, "apps/windows-agent/AgentHost.cs"]).join("\n")).toMatch(/runtime or unreviewed/);
+    expect(validateChn001MigrationChangedFiles(required.slice(1)).join("\n")).toMatch(/chn001\.ts/);
   });
 });

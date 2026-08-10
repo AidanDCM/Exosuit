@@ -176,6 +176,11 @@ After emergency stop:
 - the event is written to audit,
 - restart or explicit local recovery is required.
 
+Acceptance is phase-correct: channel validation first proves host stop with a healthy
+and a broken guest channel. A later execution test proves interruption of real input,
+and Teach acceptance separately proves interruption of an explicitly consented,
+visibly active recording. A stopped VM alone is not proof that recording hooks stopped.
+
 ## When to trust a taught task
 
 A task should progress through:

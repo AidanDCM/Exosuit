@@ -1558,10 +1558,12 @@ Connect one host and one guest using the signed channel and heartbeat contracts.
 - guest reboot;
 - guest crash;
 - heartbeat pause.
+- healthy-channel host emergency stop;
+- degraded-channel host emergency stop.
 
 ### Promotion gate
 
-TypeScript and .NET accept the same canonical fixture and fail closed for every injected fault. Emergency stop remains independent of MCP.
+TypeScript and .NET accept the same canonical fixture and fail closed for every injected fault. Healthy- and degraded-channel host emergency stops remain independent of MCP and the guest channel. Stop-during-execution belongs to the later live execution gate; stop-during-recording belongs to L5 after consented recording exists.
 
 ### Rollback
 
@@ -1700,12 +1702,13 @@ Record complete owner demonstrations inside the Field without input injection or
 - session lock;
 - Secure Desktop;
 - recorder crash;
+- host emergency stop during active consented recording;
 - encrypted-store tampering;
 - deletion interruption.
 
 ### Promotion gate
 
-Teach records only with consent, visibly indicates recording, never injects input, protects credentials, stops independently, and produces reproducible encrypted and deletion evidence.
+Teach records only with consent, visibly indicates recording, never injects input, protects credentials, stops independently, and produces reproducible encrypted and deletion evidence. A host emergency stop during active recording must stop capture hooks, invalidate pending input, and stop the Field within five seconds without depending on the model or normal channel.
 
 ### Rollback
 

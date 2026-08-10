@@ -502,6 +502,8 @@ No personal model may weaken Field isolation, policy, verification, audit, deadl
 - approved process/origin/route/capability;
 - expected result and verification;
 - emergency stop independent of normal channel.
+- L2/CHN proves the exact-Field host stop in healthy and degraded channel states;
+- active-execution stop waits for the live action phase, and active-recording stop waits for consented Teach recording;
 
 ### Synthetic workflow
 
@@ -532,6 +534,7 @@ Using only the local deterministic fixture:
 - VM suspend/resume;
 - supervisor restart;
 - emergency stop during physical input.
+- emergency stop during active consented recording, with visible indicator and capture-hook shutdown proven separately from channel stop.
 
 No blind retry is allowed after a possible external effect.
 

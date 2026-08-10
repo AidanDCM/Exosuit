@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 const canonicalTimestamp = z.string().datetime().regex(
@@ -10,7 +11,7 @@ const uuid = z.string().uuid();
 export const chn001InjectionIds = [
   "CHN-001.1", "CHN-001.2", "CHN-001.3", "CHN-001.4",
   "CHN-001.5", "CHN-001.6", "CHN-001.7", "CHN-001.8",
-  "CHN-001.9", "CHN-001.10", "CHN-001.11", "CHN-001.12",
+  "CHN-001.9", "CHN-001.10", "CHN-001.11",
 ] as const;
 
 const fieldRef = z.object({
@@ -45,7 +46,6 @@ const injection = z.object({
     "live_heartbeat_loss",
     "live_windows_guest",
     "live_host_stop",
-    "live_teach_stop",
   ]),
   observedAt: canonicalTimestamp,
   expectedCode: z.string().min(1).max(120),
@@ -54,7 +54,7 @@ const injection = z.object({
 }).strict();
 
 const stopProof = z.object({
-  scenario: z.enum(["healthy", "degraded", "recording"]),
+  scenario: z.enum(["healthy", "degraded"]),
   triggeredAt: canonicalTimestamp,
   stoppedAt: canonicalTimestamp,
   latencyMs: z.number().int().nonnegative().max(5_000),
@@ -67,7 +67,7 @@ const stopProof = z.object({
 }).strict();
 
 export const chn001RunSchema = z.object({
-  contractVersion: z.literal(1),
+  contractVersion: z.literal(2),
   testId: z.literal("CHN-001"),
   stage: z.literal("run"),
   runId: z.string().min(1).max(200),
@@ -91,7 +91,7 @@ export const chn001RunSchema = z.object({
   completedAt: canonicalTimestamp,
   verifiedMessages: z.array(verifiedMessage).min(5).max(10_000),
   failureInjections: z.array(injection).length(chn001InjectionIds.length),
-  emergencyStops: z.array(stopProof).length(3),
+  emergencyStops: z.array(stopProof).length(2),
   cleanup: z.object({
     exactGenerationDestroyed: z.literal(true),
     vmAbsent: z.literal(true),
@@ -99,6 +99,13 @@ export const chn001RunSchema = z.object({
     baseUnchanged: z.literal(true),
   }).strict(),
   sourceMutationCountDuringRun: z.literal(0),
+  contractEvaluationCommit: z.string().regex(/^[a-f0-9]{40}$/),
+  contractMigration: z.object({
+    fromContractVersion: z.literal(1),
+    confirmation: z.literal("MIGRATE CHN-001 V1 SESSION TO PHASE-CORRECT V2"),
+    changedFiles: z.array(z.string().min(1)).min(1),
+    changedFilesSha256: sha256,
+  }).strict().nullable(),
 }).strict();
 
 export type Chn001Run = z.infer<typeof chn001RunSchema>;
@@ -115,7 +122,6 @@ const expectedInjectionModes: Readonly<Record<(typeof chn001InjectionIds)[number
   "CHN-001.9": "live_windows_guest",
   "CHN-001.10": "live_host_stop",
   "CHN-001.11": "live_host_stop",
-  "CHN-001.12": "live_teach_stop",
 };
 
 export function validateChn001Run(candidate: unknown): readonly string[] {
@@ -126,6 +132,23 @@ export function validateChn001Run(candidate: unknown): readonly string[] {
   const startedAt = Date.parse(run.startedAt);
   const completedAt = Date.parse(run.completedAt);
   if (completedAt <= startedAt) failures.push("CHN-001 run must complete after it starts.");
+  if (run.contractMigration === null && run.contractEvaluationCommit !== run.exactCommit) {
+    failures.push("non-migrated CHN-001 evidence and contract commits differ.");
+  }
+  if (run.contractMigration !== null && run.contractEvaluationCommit === run.exactCommit) {
+    failures.push("CHN-001 contract migration cannot name the evidence commit as its evaluation commit.");
+  }
+  if (run.contractMigration !== null) {
+    const canonicalFiles = [...new Set(run.contractMigration.changedFiles)].sort();
+    if (canonicalFiles.length !== run.contractMigration.changedFiles.length ||
+        canonicalFiles.some((file, index) => file !== run.contractMigration!.changedFiles[index])) {
+      failures.push("CHN-001 contract migration changed files must be unique and sorted.");
+    }
+    const filesHash = createHash("sha256").update(canonicalFiles.join("\n")).digest("hex");
+    if (filesHash !== run.contractMigration.changedFilesSha256) {
+      failures.push("CHN-001 contract migration changed-files digest is invalid.");
+    }
+  }
   if (run.baseDigestBefore !== run.baseDigestAfter || !run.cleanup.baseUnchanged) {
     failures.push("CHN-001 immutable base digest changed during the run.");
   }
@@ -178,13 +201,12 @@ export function validateChn001Run(candidate: unknown): readonly string[] {
   for (const id of chn001InjectionIds) if (!injectionIds.has(id)) failures.push(`required failure injection ${id} is missing.`);
 
   const stopScenarios = new Set(run.emergencyStops.map((proof) => proof.scenario));
-  for (const scenario of ["healthy", "degraded", "recording"] as const) {
+  for (const scenario of ["healthy", "degraded"] as const) {
     if (!stopScenarios.has(scenario)) failures.push(`emergency-stop scenario ${scenario} is missing.`);
   }
   for (const proof of run.emergencyStops) {
     if (Date.parse(proof.stoppedAt) < Date.parse(proof.triggeredAt)) failures.push(`${proof.scenario} emergency stop ended before it started.`);
-    if (proof.scenario === "recording" && !proof.recordingStopped) failures.push("recording emergency stop did not stop recording.");
-    if (proof.scenario !== "recording" && proof.recordingStopped) failures.push(`${proof.scenario} stop falsely claims a recording was active.`);
+    if (proof.recordingStopped) failures.push(`${proof.scenario} stop falsely claims a recording was active.`);
   }
   return failures;
 }

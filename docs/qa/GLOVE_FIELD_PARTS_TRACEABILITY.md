@@ -157,6 +157,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - artifact broker
 - Field audit
 - Field emergency stop integration
+- phase-correct stop evidence: channel healthy/degraded at L2, active execution after the live adapter, and active recording at L5
 - local Field owner lifecycle service with fixed job vocabulary
 
 ## Rejected shortcuts

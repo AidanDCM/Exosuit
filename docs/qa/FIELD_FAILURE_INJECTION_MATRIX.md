@@ -112,6 +112,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Session visual budget exhausted | stop capture | U | W |
 | Retention expires | delete reference and blob through future live store | U reference ledger | W |
 | Credential-bearing control appears | redact/exclude; no raw bytes or value | source rules | W/O |
+| Host emergency stop during active consented recording | stop hooks and pending input within five seconds without model/channel dependency; Field Off | strict TCH-001.12 proof schema | W/H/O after live hooks exist |
 
 ## Shadow
 
@@ -195,7 +196,9 @@ A release candidate must have:
 2. every W/H row either passing with evidence or explicitly held out of the promoted capability;
 3. no Critical or High row marked “unknown” for a capability being enabled;
 4. emergency stop, generation isolation, guest authentication, base-image immutability, destruction confinement, and no-blind-retry tests passing;
-5. CHN-001 promotion requires one machine-checkable run satisfying every row
-   CHN-001.1 through CHN-001.12; source tests or partial KVP captures cannot
-   substitute for live lock, Secure Desktop, display, heartbeat-loss, and stop evidence;
-6. owner verdict recorded.
+5. CHN-001 v2 promotion requires one machine-checkable run satisfying every row
+   CHN-001.1 through CHN-001.11; source tests or partial KVP captures cannot
+   substitute for live lock, Secure Desktop, display, heartbeat-loss, and healthy/degraded stop evidence;
+6. ACT-001.23 and TCH-001.12 remain mandatory downstream proofs once live execution
+   and consented recording exist; neither can be asserted or migrated from CHN evidence;
+7. owner verdict recorded.

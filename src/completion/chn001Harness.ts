@@ -22,6 +22,48 @@ import { chn001InjectionIds, chn001RunSchema, validateChn001Run, type Chn001Run 
 const ROOT = resolve(process.cwd());
 const OUT = resolve(process.env["EXOSUIT_CHN001_DIR"] ?? join(ROOT, "artifacts", "chn001"));
 const CONFIRMATION = "START CHN-001 EVIDENCE SESSION";
+const MIGRATION_CONFIRMATION = "MIGRATE CHN-001 V1 SESSION TO PHASE-CORRECT V2";
+const MIGRATION_ALLOWED_FILES = new Set([
+  "docs/BUILD_COMPLETION_PLAN.md",
+  "docs/FIELD_DEVELOPER_MANUAL.md",
+  "docs/FIELD_OWNER_MANUAL.md",
+  "docs/FIELD_TEST_PLAN.md",
+  "docs/MASTER_SYSTEM_ROADMAP.md",
+  "docs/TEST_PLAN.md",
+  "docs/engineering_log/2026-08-10-phase-correct-stop-gates.md",
+  "docs/logs/DECISION_LOG.md",
+  "docs/project-driver/CHN001_SESSION_RUNBOOK.md",
+  "docs/qa/ATOMIC_AUDIT_2026-08-10_PHASE_CORRECT_STOP_GATES.md",
+  "docs/qa/BUILD_COMPLETION_TEST_MATRIX.md",
+  "docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md",
+  "docs/qa/FIELD_THREAT_MODEL.md",
+  "docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md",
+  "package.json",
+  "src/completion/chn001.ts",
+  "src/completion/chn001Harness.ts",
+  "src/completion/index.ts",
+  "src/completion/tch001.ts",
+  "tests/chn001.test.ts",
+  "tests/chn001Harness.test.ts",
+  "tests/tch001.test.ts",
+]);
+const MIGRATION_REQUIRED_FILES = [
+  "src/completion/chn001.ts",
+  "src/completion/chn001Harness.ts",
+  "docs/MASTER_SYSTEM_ROADMAP.md",
+  "docs/qa/BUILD_COMPLETION_TEST_MATRIX.md",
+  "docs/qa/ATOMIC_AUDIT_2026-08-10_PHASE_CORRECT_STOP_GATES.md",
+] as const;
+
+export function validateChn001MigrationChangedFiles(changedFiles: readonly string[]): readonly string[] {
+  const failures: string[] = [];
+  const forbidden = changedFiles.filter((file) => !MIGRATION_ALLOWED_FILES.has(file));
+  if (forbidden.length > 0) failures.push(`runtime or unreviewed files changed: ${forbidden.join(", ")}`);
+  for (const required of MIGRATION_REQUIRED_FILES) {
+    if (!changedFiles.includes(required)) failures.push(`required review file is missing: ${required}`);
+  }
+  return failures;
+}
 
 const configSchema = z.object({
   contractVersion: z.literal(1),
@@ -86,7 +128,7 @@ export const chn001InjectionArtifactSchema = z.object({
   machineId: z.string().min(1),
   field: configSchema.shape.field,
   vmGuid: z.string().uuid(),
-  evidenceMode: z.enum(["mutated_live_capture", "live_reboot", "live_heartbeat_loss", "live_windows_guest", "live_host_stop", "live_teach_stop"]),
+  evidenceMode: z.enum(["mutated_live_capture", "live_reboot", "live_heartbeat_loss", "live_windows_guest", "live_host_stop"]),
   observedAt: z.string().datetime({ offset: true }),
   expectedCode: z.string().min(1).max(120),
   actualCode: z.string().min(1).max(120),
@@ -97,7 +139,7 @@ export const chn001InjectionArtifactSchema = z.object({
 export const chn001StopArtifactSchema = z.object({
   contractVersion: z.literal(1),
   testId: z.literal("CHN-001"),
-  scenario: z.enum(["healthy", "degraded", "recording"]),
+  scenario: z.enum(["healthy", "degraded"]),
   exactCommit: z.string().regex(/^[a-f0-9]{40}$/),
   machineId: z.string().min(1),
   field: configSchema.shape.field,
@@ -159,7 +201,7 @@ const injectionModes: Readonly<Record<(typeof chn001InjectionIds)[number], Injec
   "CHN-001.5": "live_reboot", "CHN-001.6": "live_heartbeat_loss",
   "CHN-001.7": "live_windows_guest", "CHN-001.8": "live_windows_guest",
   "CHN-001.9": "live_windows_guest", "CHN-001.10": "live_host_stop",
-  "CHN-001.11": "live_host_stop", "CHN-001.12": "live_teach_stop",
+  "CHN-001.11": "live_host_stop",
 };
 
 function arg(name: string): string | undefined {
@@ -221,6 +263,36 @@ function assertCleanExactCommit(expected?: string): string {
     throw new Error("CHN-001 acquisition requires a clean tracked worktree.");
   }
   return commit;
+}
+
+function assertFinalizationCommit(expected: string, migrationConfirmation?: string): {
+  readonly evaluationCommit: string;
+  readonly migration: Chn001Run["contractMigration"];
+} {
+  const evaluationCommit = assertCleanExactCommit();
+  if (evaluationCommit === expected) return { evaluationCommit, migration: null };
+  if (migrationConfirmation !== MIGRATION_CONFIRMATION) {
+    throw new Error(`Session commit ${expected} differs from HEAD ${evaluationCommit}; typed contract-migration confirmation is required.`);
+  }
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", expected, evaluationCommit], { cwd: ROOT, stdio: "ignore" });
+  } catch {
+    throw new Error("CHN-001 contract migration requires the evidence commit to be an ancestor of the evaluation commit.");
+  }
+  const changedFiles = git("diff", "--name-only", "--diff-filter=ACMRT", `${expected}..${evaluationCommit}`)
+    .split(/\r?\n/u).filter(Boolean).sort();
+  if (changedFiles.length === 0) throw new Error("CHN-001 contract migration has no reviewable source diff.");
+  const migrationFailures = validateChn001MigrationChangedFiles(changedFiles);
+  if (migrationFailures.length > 0) throw new Error(`CHN-001 contract migration rejected:\n- ${migrationFailures.join("\n- ")}`);
+  return {
+    evaluationCommit,
+    migration: {
+      fromContractVersion: 1,
+      confirmation: MIGRATION_CONFIRMATION,
+      changedFiles,
+      changedFilesSha256: createHash("sha256").update(changedFiles.join("\n")).digest("hex"),
+    },
+  };
 }
 
 function machineId(): string {
@@ -442,9 +514,13 @@ export function buildChn001Run(
   completedAt: string,
   baseDigestAfter: string,
   cleanup: Chn001Run["cleanup"],
+  evaluation: Pick<Chn001Run, "contractEvaluationCommit" | "contractMigration"> = {
+    contractEvaluationCommit: session.exactCommit,
+    contractMigration: null,
+  },
 ): Chn001Run {
   return chn001RunSchema.parse({
-    contractVersion: 1,
+    contractVersion: 2,
     testId: "CHN-001",
     stage: "run",
     runId: session.runId,
@@ -464,6 +540,7 @@ export function buildChn001Run(
     emergencyStops: session.emergencyStops,
     cleanup,
     sourceMutationCountDuringRun: 0,
+    ...evaluation,
   });
 }
 
@@ -473,8 +550,8 @@ function plan(): void {
     contractVersion: 1,
     mutatesHost: false,
     config,
-    commands: ["start", "capture (repeat until >=3 distinct heartbeats)", "add-injection (12)", "add-stop (3)", "finalize"],
-    ownerCeremonies: ["guest reboot", "heartbeat loss", "session lock", "Secure Desktop", "display mismatch", "healthy/degraded/recording emergency stop", "exact-generation destruction"],
+    commands: ["start", "capture (repeat until >=3 distinct heartbeats)", "add-injection (11)", "add-stop (2)", "finalize"],
+    ownerCeremonies: ["guest reboot", "heartbeat loss", "session lock", "Secure Desktop", "display mismatch", "healthy/degraded emergency stop", "exact-generation destruction"],
     claimBoundary: "Planning and acquisition do not promote CHN-001; finalize only validates a candidate artifact.",
   }, null, 2));
 }
@@ -579,7 +656,7 @@ function addStop(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
   assertCleanExactCommit(session.exactCommit);
-  const scenario = z.enum(["healthy", "degraded", "recording"]).parse(requiredArg("--scenario"));
+  const scenario = z.enum(["healthy", "degraded"]).parse(requiredArg("--scenario"));
   if ((session.emergencyStops as StopProof[]).some((item) => item.scenario === scenario)) throw new Error(`${scenario} stop is already recorded.`);
   const artifact = resolve(requiredArg("--artifact"));
   if (!existsSync(artifact)) throw new Error(`Stop artifact is absent: ${artifact}`);
@@ -592,8 +669,7 @@ function addStop(): void {
   const triggeredAt = canonicalTime(source.triggeredAt);
   const stoppedAt = canonicalTime(source.stoppedAt);
   const latencyMs = Date.parse(stoppedAt) - Date.parse(triggeredAt);
-  if (latencyMs !== source.latencyMs || latencyMs < 0 ||
-      source.recordingStopped !== (scenario === "recording")) {
+  if (latencyMs !== source.latencyMs || latencyMs < 0 || source.recordingStopped) {
     throw new Error(`${scenario} stop artifact has inconsistent timing or recording state.`);
   }
   const proof: StopProof = {
@@ -608,7 +684,7 @@ function addStop(): void {
 function finalize(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
-  assertCleanExactCommit(session.exactCommit);
+  const evaluation = assertFinalizationCommit(session.exactCommit, arg("--confirm-contract-migration"));
   if (existsSync(session.config.baseImagePath) === false) throw new Error("Immutable base image is absent at finalize.");
   const baseDigestAfter = sha256File(session.config.baseImagePath);
   const hostConfig = z.object({ storageRoot: z.string().min(1) }).passthrough().parse(readJson(session.config.hostConfigPath));
@@ -628,7 +704,7 @@ function finalize(): void {
     baseUnchanged: baseDigestAfter === session.config.baseDigest
       ? true
       : (() => { throw new Error("Immutable base digest changed during CHN-001."); })(),
-  });
+  }, { contractEvaluationCommit: evaluation.evaluationCommit, contractMigration: evaluation.migration });
   const failures = validateChn001Run(run);
   if (failures.length > 0) throw new Error(`CHN-001 candidate is incomplete:\n- ${failures.join("\n- ")}`);
   const path = join(OUT, runId, "chn001-run.json");

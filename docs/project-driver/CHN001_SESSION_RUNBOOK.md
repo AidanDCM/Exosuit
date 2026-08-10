@@ -6,7 +6,8 @@ CHN-001 proves the authenticated Hyper-V KVP channel, readiness invalidation,
 and emergency stop on one exact production-configured disposable Field. It does
 not prove scenes, actions, Teach quality, Shadow, Pilot, MCP, or production.
 
-The canonical machine-checkable run schema is `src/completion/chn001.ts`. A run
+The canonical machine-checkable run schema is `src/completion/chn001.ts` (contract
+version 2). A run
 cannot pass by combining source tests with prose or by relabeling development
 access as production evidence.
 
@@ -21,11 +22,11 @@ access as production evidence.
   and never copied into logs or committed artifacts.
 - The guest agent and host verifier are built from the reviewed commit.
 - A local owner can perform the visible lock, Secure Desktop, display, healthy
-  stop, degraded stop, and recording-stop ceremonies.
+  stop and degraded-stop ceremonies.
 
 ## Required live matrix
 
-Every row CHN-001.1 through CHN-001.12 in
+Every row CHN-001.1 through CHN-001.11 in
 `docs/qa/BUILD_COMPLETION_TEST_MATRIX.md` is mandatory. In particular:
 
 - at least one verified handshake and bootstrap plus three verified heartbeats;
@@ -33,7 +34,7 @@ Every row CHN-001.1 through CHN-001.12 in
   direction/key/generation, and boot-ID replacement rejection;
 - real heartbeat degradation/fault;
 - real guest lock, Secure Desktop, and display mismatch observations;
-- healthy-channel, degraded-channel, and active-recording emergency stops;
+- healthy-channel and degraded-channel host emergency stops;
 - exact-generation destruction and unchanged immutable-base digest.
 
 Captured real envelopes may be mutated offline for CHN-001.1–.4, but the source
@@ -75,8 +76,9 @@ npm run chn001:harness -- add-stop --run-id <run-id> --scenario healthy --artifa
 npm run chn001:harness -- finalize --run-id <run-id>
 ```
 
-Repeat `add-injection` for all 12 IDs and `add-stop` for healthy, degraded, and
-recording. Finalize independently verifies the VM and exact generation root are absent
+Repeat `add-injection` for all 11 IDs and `add-stop` for healthy and degraded.
+`CHN-001.12` is retired; active-execution stop is owned by `ACT-001.23` and
+active-recording stop by `TCH-001.12`. Finalize independently verifies the VM and exact generation root are absent
 and rehashes the immutable base. It writes a candidate only; it does not record
 completion evidence or promote the gate.
 
@@ -95,6 +97,16 @@ Until the driver emits a `chn001RunSchema` document with zero validation failure
 an independent reviewer authorizes it, CHN-001 stays `source_validated` and no
 promotion command is permitted. v25 cannot satisfy the updated bootstrap boot-binding
 contract; rebuild and acceptance of a new immutable base are required first.
+
+### Phase-correct v1 session migration
+
+A v1 acquisition that already collected CHN-001.1-.11 plus healthy/degraded stops may
+be evaluated under v2 without relabeling its evidence. Finalize requires the exact typed
+phrase `MIGRATE CHN-001 V1 SESSION TO PHASE-CORRECT V2`, proves the evidence commit is
+an ancestor of the evaluation commit, and rejects any intervening runtime, provider,
+Field script, policy, key, or transport change. The candidate preserves the original
+evidence commit, records the evaluation commit, sorted changed-file list, and its digest.
+This migration cannot invent `.12`, recording, execution, or promotion evidence.
 
 ## Rollback
 
