@@ -9,12 +9,15 @@ import {
   chn001StopArtifactSchema,
   mergeVerifiedMessages,
   selectRecordableChn001Heartbeat,
+  validateChn001LifecycleAppend,
   validateChn001MigrationChangedFiles,
   validateChn001RecordLifecycle,
   type Chn001Session,
 } from "../src/completion/chn001Harness.js";
 import type { FieldLifecycleEvent } from "../src/completion/contracts.js";
+import type { FieldLifecycleLedger, KeyRegistry } from "../src/completion/contracts.js";
 import type { LifecycleVerificationResult } from "../src/completion/fieldLifecycle.js";
+import { createCompletionFixture, MACHINE_ID } from "./support/completionFixture.js";
 
 const field = { fieldId: "6e090827-1642-45a8-b4ef-bfda4ca90b02", fieldGeneration: 2 };
 const bootId = "c40269d1-6c62-49fa-aaba-461a65a55af5";
@@ -289,5 +292,38 @@ describe("CHN-001 acquisition harness", () => {
     expect(validateChn001RecordLifecycle(run, lifecycle, wrongVm).join("\n")).toMatch(/VM GUID/);
     const wrongMachine = events.map((event) => ({ ...event, machineId: "machine-other" }));
     expect(validateChn001RecordLifecycle(run, lifecycle, wrongMachine).join("\n")).toMatch(/another machine/);
+  });
+
+  it("allows only valid signed lifecycle appends for the active Field generation", () => {
+    const fixture = createCompletionFixture();
+    const empty = structuredClone(fixture.fieldLifecycle);
+    fixture.addLifecycle({ fieldId: field.fieldId, generation: field.fieldGeneration, kind: "created" });
+    expect(validateChn001LifecycleAppend({
+      committed: empty,
+      current: fixture.fieldLifecycle,
+      registry: fixture.registry,
+      field,
+      machineId: MACHINE_ID,
+    })).toEqual([]);
+
+    const { events } = recordableLifecycle();
+    const committed = { contractVersion: 2, events: events.slice(0, 1) } as FieldLifecycleLedger;
+    const current = { contractVersion: 2, events } as FieldLifecycleLedger;
+    const registry = { contractVersion: 2, keys: [] } as unknown as KeyRegistry;
+
+    // Signature verification is deliberately part of the boundary; unsigned fixtures fail.
+    expect(validateChn001LifecycleAppend({ committed, current, registry, field, machineId: "machine-test" }).join("\n"))
+      .toMatch(/ledger is invalid/);
+    expect(validateChn001LifecycleAppend({ committed: current, current: committed, registry, field, machineId: "machine-test" }).join("\n"))
+      .toMatch(/not an append/);
+    const otherField = { ...current, events: [events[0]!, { ...events[1]!, fieldId: "11111111-1111-4111-8111-111111111111" }] } as FieldLifecycleLedger;
+    expect(validateChn001LifecycleAppend({ committed, current: otherField, registry, field, machineId: "machine-test" }).join("\n"))
+      .toMatch(/another Field generation/);
+    const otherMachine = { ...current, events: [events[0]!, { ...events[1]!, machineId: "machine-other" }] } as FieldLifecycleLedger;
+    expect(validateChn001LifecycleAppend({ committed, current: otherMachine, registry, field, machineId: "machine-test" }).join("\n"))
+      .toMatch(/another machine/);
+    const changedPrefix = { ...current, events: [{ ...events[0]!, eventId: "changed-created" }, events[1]!] } as FieldLifecycleLedger;
+    expect(validateChn001LifecycleAppend({ committed, current: changedPrefix, registry, field, machineId: "machine-test" }).join("\n"))
+      .toMatch(/changed or removed/);
   });
 });

@@ -14,7 +14,10 @@ access as production evidence.
 ## Entry conditions
 
 - HYP-001 is proven.
-- Worktree and exact harness commit are clean.
+- Source/configuration files and the exact harness commit are clean. During an
+  active session, the only permitted tracked change is a verified append to
+  `docs/qa/completion/field-lifecycle.json` for that session's exact Field,
+  generation, and machine.
 - Secure Boot, TPM-sealed completion keys, private Hyper-V switch, immutable
   base v25 digest, and memory preflight pass.
 - The plan contains no `developmentAccess` and no personal state.
@@ -109,6 +112,13 @@ For a new generation, append `created` after provisioning and `booted` after the
 authenticated capture reveals the guest `bootId`. Then wait for and capture a **new**
 heartbeat; the pre-attestation heartbeat cannot be used because it predates the signed
 boot window.
+
+The acquisition driver treats this ledger append as evidence state, not source drift.
+It compares the working ledger with `HEAD`, requires every committed event to remain an
+identical prefix, verifies the complete signed chain, and rejects any appended event for
+another Field generation or machine. Any other tracked change still stops acquisition.
+Do not stage or commit the lifecycle ledger until the run has been finalized and
+reviewed; doing so would change the session's exact commit.
 
 ```powershell
 npx --no-install tsx src/completion/cli.ts field-lifecycle --field-id <field-id> --generation <generation> --kind created --base-image-sha256 <base-digest> --vm-guid <vm-guid> --event-id chn001-<run-id>-created

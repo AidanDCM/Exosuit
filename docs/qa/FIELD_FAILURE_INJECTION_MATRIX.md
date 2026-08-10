@@ -187,6 +187,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Re-verify an unchanged KVP envelope at a later host time | retain the first valid verification time; compare all immutable identity, replay, boot, key, hash, status, and transport fields | CHN merge regression test | repeated authenticated v26 capture W/H |
 | Reuse a CHN capture message ID/nonce or change a retained message | acquisition session rejects before write | CHN harness unit tests | production-repeatable H |
 | Claim cleanup while VM or exact generation root remains | finalize performs read-only host checks and denies | CHN harness source tests/inspection | production-repeatable H |
+| Sign lifecycle events during a clean-commit CHN session | accept only a valid append to the tracked lifecycle ledger for the exact active Field/generation/machine; reject prefix edits, invalid signatures, cross-Field events, and every other tracked diff | CHN lifecycle-append unit/adversarial tests | fresh G3 real-time signed lifecycle H |
 
 ## Promotion rule
 

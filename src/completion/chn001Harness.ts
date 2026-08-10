@@ -15,6 +15,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, ren
 import { hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
+import { canonicalJson } from "../fieldContracts.js";
 import { fieldBootstrapManifestSchema, REQUIRED_FIELD_DIRECTORIES } from "../fieldBootstrap.js";
 import { createFieldProvisioningPlan, fieldProvisioningPlanSchema } from "../fieldProvisioningPlan.js";
 import { chn001InjectionIds, chn001RunSchema, validateChn001Run, type Chn001Run } from "./chn001.js";
@@ -266,20 +267,73 @@ function psLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-function assertCleanExactCommit(expected?: string): string {
+export function validateChn001LifecycleAppend(input: {
+  readonly committed: FieldLifecycleLedger;
+  readonly current: FieldLifecycleLedger;
+  readonly registry: z.infer<typeof keyRegistrySchema>;
+  readonly field: { readonly fieldId: string; readonly fieldGeneration: number };
+  readonly machineId: string;
+}): readonly string[] {
+  const failures: string[] = [];
+  const committedVerification = verifyFieldLifecycle({ ledger: input.committed, registry: input.registry });
+  const currentVerification = verifyFieldLifecycle({ ledger: input.current, registry: input.registry });
+  if (committedVerification.failures.length > 0) failures.push("committed lifecycle ledger is invalid");
+  if (currentVerification.failures.length > 0) failures.push("current lifecycle ledger is invalid");
+  if (input.current.events.length <= input.committed.events.length) {
+    failures.push("lifecycle evidence change is not an append");
+    return failures;
+  }
+  for (const [index, event] of input.committed.events.entries()) {
+    if (canonicalJson(event) !== canonicalJson(input.current.events[index])) {
+      failures.push(`committed lifecycle event ${index} was changed or removed`);
+      break;
+    }
+  }
+  for (const event of input.current.events.slice(input.committed.events.length)) {
+    if (event.fieldId !== input.field.fieldId || event.generation !== input.field.fieldGeneration) {
+      failures.push(`appended lifecycle event ${event.eventId} names another Field generation`);
+    }
+    if (event.machineId !== input.machineId) {
+      failures.push(`appended lifecycle event ${event.eventId} names another machine`);
+    }
+  }
+  return failures;
+}
+
+function assertCleanExactCommit(
+  expected?: string,
+  lifecycleScope?: { readonly fieldId: string; readonly fieldGeneration: number; readonly machineId: string },
+): string {
   const commit = git("rev-parse", "HEAD");
   if (expected !== undefined && commit !== expected) throw new Error(`Session commit ${expected} differs from HEAD ${commit}.`);
-  if (git("status", "--porcelain", "--untracked-files=no") !== "") {
+  const changedFiles = git("diff", "--name-only", "HEAD", "--").split(/\r?\n/u).filter(Boolean).map((path) => path.replace(/\\/gu, "/"));
+  if (changedFiles.length === 0) return commit;
+  const lifecycleRelativePath = "docs/qa/completion/field-lifecycle.json";
+  const lifecyclePath = join(COMPLETION_DIR, "field-lifecycle.json");
+  const defaultLifecyclePath = join(ROOT, ...lifecycleRelativePath.split("/"));
+  if (lifecycleScope === undefined || resolve(lifecyclePath) !== resolve(defaultLifecyclePath)
+      || changedFiles.length !== 1 || changedFiles[0] !== lifecycleRelativePath) {
     throw new Error("CHN-001 acquisition requires a clean tracked worktree.");
+  }
+  const committed = fieldLifecycleLedgerSchema.parse(JSON.parse(git("show", `HEAD:${lifecycleRelativePath}`)));
+  const current = fieldLifecycleLedgerSchema.parse(readJson(lifecyclePath));
+  const registry = keyRegistrySchema.parse(readJson(join(COMPLETION_DIR, "keys.json")));
+  const failures = validateChn001LifecycleAppend({ committed, current, registry, field: lifecycleScope, machineId: lifecycleScope.machineId });
+  if (failures.length > 0) {
+    throw new Error(`CHN-001 acquisition permits only a valid, signed, exact-generation lifecycle append:\n- ${failures.join("\n- ")}`);
   }
   return commit;
 }
 
-function assertFinalizationCommit(expected: string, migrationConfirmation?: string): {
+function assertFinalizationCommit(
+  expected: string,
+  migrationConfirmation: string | undefined,
+  lifecycleScope: { readonly fieldId: string; readonly fieldGeneration: number; readonly machineId: string },
+): {
   readonly evaluationCommit: string;
   readonly migration: Chn001Run["contractMigration"];
 } {
-  const evaluationCommit = assertCleanExactCommit();
+  const evaluationCommit = assertCleanExactCommit(undefined, lifecycleScope);
   if (evaluationCommit === expected) return { evaluationCommit, migration: null };
   if (migrationConfirmation !== MIGRATION_CONFIRMATION) {
     throw new Error(`Session commit ${expected} differs from HEAD ${evaluationCommit}; typed contract-migration confirmation is required.`);
@@ -722,7 +776,7 @@ function start(): void {
 function capture(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
-  assertCleanExactCommit(session.exactCommit);
+  assertCleanExactCommit(session.exactCommit, { ...session.config.field, machineId: session.machineId });
   const captureNumber = session.captures + 1;
   const captureDirectory = join(OUT, runId, "captures", String(captureNumber).padStart(4, "0"));
   const observationState = join(OUT, runId, "guest-to-host-observation.json");
@@ -746,7 +800,7 @@ function capture(): void {
 function addInjection(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
-  assertCleanExactCommit(session.exactCommit);
+  assertCleanExactCommit(session.exactCommit, { ...session.config.field, machineId: session.machineId });
   const id = z.enum(chn001InjectionIds).parse(requiredArg("--id"));
   if ((session.failureInjections as Injection[]).some((item) => item.id === id)) throw new Error(`${id} is already recorded.`);
   const artifact = resolve(requiredArg("--artifact"));
@@ -771,7 +825,7 @@ function addInjection(): void {
 function addStop(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
-  assertCleanExactCommit(session.exactCommit);
+  assertCleanExactCommit(session.exactCommit, { ...session.config.field, machineId: session.machineId });
   const scenario = z.enum(["healthy", "degraded"]).parse(requiredArg("--scenario"));
   if ((session.emergencyStops as StopProof[]).some((item) => item.scenario === scenario)) throw new Error(`${scenario} stop is already recorded.`);
   const artifact = resolve(requiredArg("--artifact"));
@@ -800,7 +854,11 @@ function addStop(): void {
 function finalize(): void {
   const runId = requiredArg("--run-id");
   const session = loadSession(runId);
-  const evaluation = assertFinalizationCommit(session.exactCommit, arg("--confirm-contract-migration"));
+  const evaluation = assertFinalizationCommit(
+    session.exactCommit,
+    arg("--confirm-contract-migration"),
+    { ...session.config.field, machineId: session.machineId },
+  );
   if (existsSync(session.config.baseImagePath) === false) throw new Error("Immutable base image is absent at finalize.");
   const baseDigestAfter = sha256File(session.config.baseImagePath);
   const hostConfig = z.object({ storageRoot: z.string().min(1) }).passthrough().parse(readJson(session.config.hostConfigPath));
