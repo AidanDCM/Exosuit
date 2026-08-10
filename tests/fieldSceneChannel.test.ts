@@ -42,7 +42,7 @@ function payload(overrides: Partial<FieldSceneObservationPayload> = {}): FieldSc
         id: "element-1", windowId: "window-1", name: "", controlType: "Button", automationId: "save",
         enabled: true, focused: true, offscreen: false, isSensitive: false, source: "accessibility",
         supportedActions: ["invoke_element"],
-      }], warnings: [],
+      }], warnings: ["UI text and provider warning text were removed before structural Field scene transport."],
     },
     cursor: { x: 100, y: 100, visible: true }, modal: { present: false }, ...overrides,
   };
@@ -100,7 +100,9 @@ describe("authenticated structural Field scene receiver", () => {
     expect(() => receiver(1_024, replayStateFilePath).accept({ envelope: firstEnvelope, heartbeat: heartbeat(), secret, now })).toThrow();
     const regressed = payload({ observation: { ...payload().observation, capturedAt: "2026-08-10T17:59:59.999Z" } });
     expect(() => target.accept({ envelope: envelope(2, regressed), heartbeat: heartbeat(), secret, now })).toThrow(/backwards/);
-    const oversized = payload({ observation: { ...payload().observation, warnings: ["x".repeat(2_000)] } });
+    const oversized = payload({ observation: { ...payload().observation, windows: Array.from({ length: 10 }, (_, index) => ({
+      ...payload().observation.windows[0]!, id: `window-${index + 1}`, isActive: index === 0,
+    })) } });
     expect(() => target.accept({ envelope: envelope(2, oversized), heartbeat: heartbeat(), secret, now })).toThrow(/byte bound/);
     const next = payload({ observation: { ...payload().observation, observationId: "observation-2", capturedAt: "2026-08-10T18:00:00.500Z" } });
     expect(target.accept({ envelope: envelope(2, next), heartbeat: heartbeat(), secret, now }).sceneVersion).toBe(2);

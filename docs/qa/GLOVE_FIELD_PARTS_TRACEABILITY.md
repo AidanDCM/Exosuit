@@ -193,6 +193,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - `src/encryptedDemonstrationStore.ts` — authenticated encrypted terminal storage and deletion.
 - `src/fieldScene.ts` — versioned scene/readiness foundation.
 - `src/fieldSceneObservation.ts` and `src/fieldSceneChannel.ts` — structural-only scene adaptation plus authenticated exact-Field/boot/agent/session receipt; runtime emission remains disabled.
+- `apps/windows-agent/FieldSceneProducerBoundary.cs` — session-bound, non-SYSTEM, observe-only structural payload sanitizer and KVP-safe byte-budget guard; launcher/relay remains disabled.
 - `src/shadowLearning.ts` — non-executing prediction comparison and metrics.
 - `src/fieldPathScope.ts` — adapted Windows path-scope guard.
 - `src/fieldArtifactBroker.ts` — bounded in-memory transfer contract.

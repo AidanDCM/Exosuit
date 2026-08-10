@@ -383,7 +383,13 @@ Window titles, element names/values, screenshots, and sensitive automation
 authority are rejected before replay or scene state advances. The LocalSystem
 Field service is a transport/environment authority in session 0, not the UIA
 producer. Live wiring therefore requires a separate session-local Glove agent
-and an authenticated bounded relay; that relay is not implemented yet.
+and an authenticated bounded relay. The compiled guest now has a source-tested
+producer boundary that refuses LocalSystem/session 0, wrong sessions, non-UIA
+providers, non-observe modes, stale state, screenshots, inconsistent graphs,
+and collection or 12 KiB payload overflow. It strips titles, element names and
+values, provider warning text, and sensitive automation authority before a
+payload can reach the relay. The session launcher and relay are not implemented
+yet.
 
 ## Local reflex engine
 

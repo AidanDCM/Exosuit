@@ -123,6 +123,8 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Zero scene sequence, replay, non-increasing sequence, or capture-time regression | reject; next valid durable sequence remains usable | U | W/H restart stream |
 | Payload, window, element, or warning bound exceeded | reject before state advances | U | W/H backpressure |
 | LocalSystem/session-0 process presented as interactive producer | no producer wiring exists; reject architecture promotion | S/U contract boundary | W/H session-local identity proof |
+| Provider warning contains private UI content | discard warning text before serialization; receiver permits only fixed sanitization notice | .NET/TS U | W/O leakage inspection |
+| Structural payload exceeds safe KVP budget | reject above 12 KiB without truncating the scene | .NET/TS U | W/H backpressure |
 
 ## Shadow
 

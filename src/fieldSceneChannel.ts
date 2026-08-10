@@ -12,7 +12,7 @@ const structuralObservationSchema = observationSchema.extend({
   elements: z.array(uiElementSchema).max(2_000).default([]),
   screenshotBase64: z.undefined().optional(),
   screenshotMimeType: z.undefined().optional(),
-  warnings: z.array(z.string().max(2_000)).max(100).default([]),
+  warnings: z.array(z.literal("UI text and provider warning text were removed before structural Field scene transport.")).max(1),
 }).strict().superRefine((observation, context) => {
   for (const [index, window] of observation.windows.entries()) {
     if (window.title !== "") context.addIssue({ code: "custom", path: ["windows", index, "title"], message: "Structural scene transport forbids window-title text." });
@@ -66,9 +66,9 @@ export class FieldSceneChannelReceiver {
     this.#agentId = z.string().min(1).max(200).parse(input.agentId);
     this.#windowsSessionId = z.string().min(1).max(100).parse(input.windowsSessionId);
     this.#expectedKeyId = z.string().min(1).max(200).parse(input.expectedKeyId);
-    this.#maximumPayloadBytes = input.maximumPayloadBytes ?? 256 * 1_024;
-    if (!Number.isInteger(this.#maximumPayloadBytes) || this.#maximumPayloadBytes < 1_024 || this.#maximumPayloadBytes > 1024 * 1_024) {
-      throw new Error("maximumPayloadBytes must be from 1,024 through 1,048,576.");
+    this.#maximumPayloadBytes = input.maximumPayloadBytes ?? 12 * 1_024;
+    if (!Number.isInteger(this.#maximumPayloadBytes) || this.#maximumPayloadBytes < 1_024 || this.#maximumPayloadBytes > 12 * 1_024) {
+      throw new Error("maximumPayloadBytes must be from 1,024 through 12,288.");
     }
     this.#replayGuard = new FieldChannelReplayGuard({
       field: this.#field,
