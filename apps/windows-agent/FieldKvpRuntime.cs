@@ -686,7 +686,7 @@ public static class FieldKvpRuntime
     private static string WireDate(DateTimeOffset value) =>
         value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static bool IsSessionLocked(uint sessionId)
+    internal static bool IsSessionLocked(uint sessionId)
     {
         if (sessionId == uint.MaxValue) return true;
         if (!WTSQuerySessionInformation(IntPtr.Zero, sessionId, 25, out var buffer, out var byteCount) ||
