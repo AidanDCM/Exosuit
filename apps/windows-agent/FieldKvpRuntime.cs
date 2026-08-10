@@ -40,6 +40,7 @@ public static class FieldKvpRuntime
     public const string HandshakeValueName = "Exosuit.Field.Handshake";
     public const string BootstrapValueName = "Exosuit.Field.Bootstrap";
     public const string HeartbeatValueName = "Exosuit.Field.Heartbeat";
+    public const string SceneValueName = "Exosuit.Field.Scene";
     private const string GuestKvpRegistryPath = @"SOFTWARE\Microsoft\Virtual Machine\Guest";
     // Hyper-V KVP values are bounded to 2,048 bytes. Keep UTF-16 values at or
     // below 1,000 characters so a heartbeat fits atomically with safety margin.
@@ -614,6 +615,34 @@ public static class FieldKvpRuntime
         "session_unlocked", "secure_desktop_inactive", "heartbeat_started",
     };
 
+    /// <summary>
+    /// Publishes an already signed scene envelope on the guest KVP transport.
+    ///
+    /// This writes; it never signs. The envelope must already have come through
+    /// <see cref="FieldSceneRelayBoundary"/>, so a transport caller cannot introduce a scene
+    /// that no policy accepted. The message type and Field binding are checked here as well,
+    /// because a writer that will publish anything handed to it is a second signing path in
+    /// everything but name.
+    /// </summary>
+    public static void PublishScene(
+        FieldKvpRuntimeConfiguration configuration,
+        FieldChannelEnvelope envelope,
+        string? callerSid)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(envelope);
+        FieldGuestServiceHost.AssertSystemIdentity(callerSid);
+
+        if (envelope.MessageType != FieldChannelMessageType.SceneObservation)
+            throw new InvalidOperationException("Only a scene observation envelope may be published on the scene value.");
+        if (envelope.Field != configuration.Field)
+            throw new InvalidOperationException("Scene envelope is bound to a different Field generation than the channel.");
+
+        using var guestKey = Registry.LocalMachine.CreateSubKey(GuestKvpRegistryPath, writable: true)
+            ?? throw new InvalidOperationException("The Hyper-V guest KVP registry key could not be opened.");
+        WriteEnvelope(guestKey, SceneValueName, envelope);
+    }
+
     private static void WriteEnvelope(RegistryKey guestKey, string name, FieldChannelEnvelope envelope)
     {
         var value = SerializeEnvelope(envelope);
@@ -680,7 +709,7 @@ public static class FieldKvpRuntime
         }
     }
 
-    private static uint GetActiveInteractiveSessionId()
+    internal static uint GetActiveInteractiveSessionId()
     {
         if (WTSEnumerateSessions(IntPtr.Zero, 0, 1, out var sessions, out var count) && sessions != IntPtr.Zero)
         {
