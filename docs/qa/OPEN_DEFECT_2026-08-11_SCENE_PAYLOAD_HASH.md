@@ -1,7 +1,7 @@
 # OPEN DEFECT — a guest scene cannot be verified by the host
 
 **Found:** 2026-08-11, by the scene wire-contract fixture.
-**Status:** open. Not fixed. **Blocks SCN-001 live injection.**
+**Status:** open. Cause isolated, fix not applied. **Blocks SCN-001 live injection.**
 **Severity:** every scene the guest publishes would be rejected by the host.
 
 ## Two defects, one found while fixing the other
@@ -41,29 +41,71 @@ heartbeat across both languages and passes. Heartbeat payloads are flat dictiona
 and pre-formatted strings. Scene payloads carry a nested `DesktopObservation` with enums, a
 timestamp, and arrays — and that is where the two canonicalisations part company.
 
-## What has been ruled out
+## Cause — isolated 2026-08-11
 
-- **Character escaping.** C# escapes `+` as `+`; TypeScript does not. Emulating the C#
-  escaping on the TypeScript side produced a byte-identical string and the identical hash, so this
-  is not the cause.
-- **Enum representation.** Both forms emit `"mode":"observe"`, `"source":"accessibility"`, and
-  `"supportedActions":["invoke_element"]`. They agree.
-- **Field values generally.** Every field inspected matches between the hashed form and the wire
-  form.
-- **Key ordering.** Both canonicalisers sort keys; the hashed form is sorted and the verifier
-  re-canonicalises before comparing.
+A byte-level diff of the two canonical strings for the identical payload shows **exactly one
+difference**, at character 380:
 
-The remaining candidates are how each side treats a value the other omits or renders differently —
-most likely a null, an absent optional, or an empty collection inside the nested observation. That
-has not been isolated, and this document does not guess at it.
+```
+C#:  "capturedAt":"2026-08-11T12:00:00\u002B00:00"
+TS:  "capturedAt":"2026-08-11T12:00:00+00:00"
+```
 
-## Why it is not fixed here
+`System.Text.Json`'s default encoder escapes `+` as the six characters `\u002B`. TypeScript's `JSON.stringify` does
+not. The strings are otherwise identical, so the hashes diverge on those five extra characters.
 
-The fix changes payload canonicalisation, which changes `payloadHash`, which is covered by the
-signature. That touches the channel used by **CHN-001 evidence that has already passed**. Whatever
-the fix is, it warrants a deliberate decision about re-verification of existing artifacts, not a
-drive-by change made while chasing a test failure — and certainly not one landed immediately
-before a live session.
+Confirmed rather than inferred:
+
+- `sha256(C# canonical)` reproduces the declared `payloadHash` exactly.
+- Replacing `\u002B` with `+` makes the C# string **byte-identical** to the TypeScript string,
+  and the hashes then match.
+- The escape occurs **once**; there are no other escapes in the payload.
+
+### Correction to an earlier claim
+
+An earlier revision of this document stated that character escaping had been "ruled out by
+measurement". **That was wrong.** The probe behind it was flawed, and escaping is the entire
+cause. The byte-level diff supersedes it. Recorded rather than quietly edited, because a wrong
+exoneration is worse than an open question — it sends the next reader away from the answer.
+
+## Blast radius on existing evidence — measured
+
+All 115 artifact JSON files in the CHN-001 g3 run were scanned: **106 channel payloads, none
+containing `+`, `<`, `>`, `&`, or any non-ASCII character.** Nothing C# would escape appears in
+any payload of the passed live evidence.
+
+So a fix that changes the encoder would leave every existing CHN-001 payload hash unchanged. The
+re-verification concern that motivated leaving this open is, empirically, nil for the artifacts
+that exist today.
+
+## Candidate fixes
+
+Two, and they are independent:
+
+1. **Relax the C# encoder** in `CanonicalJson.Options` to `UnsafeRelaxedJsonEscaping`, so C#
+   emits `+`, `<`, `>`, `&` and non-ASCII the way TypeScript does. This is the general fix; it
+   closes the class, not just this instance.
+2. **Make `capturedAt` canonical** (`.fffZ`, like every other wire timestamp). This removes the
+   `+` from scene payloads and is correct independently — a scene timestamp should not be written
+   in a different format from `sentAt`. On its own it hides the escaping mismatch rather than
+   fixing it, leaving it latent for any future payload containing `&`, `<`, `>`, or non-ASCII.
+
+Doing both is the honest repair: 1 fixes the defect, 2 fixes an inconsistency that would
+otherwise keep producing candidates for it.
+
+Either changes `payloadHash` for payloads containing such characters, and the signature covers
+`payloadHash`. The measurement above says no existing artifact is in that set, but that is a
+statement about today's evidence, not a guarantee about any artifact anyone else holds.
+
+## Why it is still not fixed
+
+The cause is isolated and the blast radius on existing evidence is measured at zero, so the
+original reason for holding off — uncertainty about re-verifying passed artifacts — no longer
+applies in the form it was written.
+
+What remains is that the change alters `payloadHash`, and the signature covers `payloadHash`. That
+is the owner's call to make deliberately, not a repair to slip in while chasing a test failure.
+The measurement narrows the decision; it does not replace it.
 
 ## Consequences for the SCN-001 session
 
