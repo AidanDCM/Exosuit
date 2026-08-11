@@ -26,6 +26,11 @@ public static class Program
                 Console.WriteLine(FieldChannelSecretProtectionCommand.SerializeResult(result));
                 return 0;
             }
+            if (args.Length == 3 && string.Equals(args[0], "--field-author-scene-session", StringComparison.Ordinal))
+            {
+                Console.WriteLine(FieldSceneSessionAuthoringCommand.Run(args[1], args[2]));
+                return 0;
+            }
             if (args.Length == 6 && string.Equals(args[0], "--field-observe-kvp-snapshot", StringComparison.Ordinal))
             {
                 var verified = FieldKvpRuntime.ObserveSnapshot(args[1], args[2], args[3], args[4], args[5]);
