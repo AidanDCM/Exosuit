@@ -30,7 +30,8 @@ public sealed class FieldSceneSupervisorTests
     }
 
     private static FieldSceneProducerLaunchPolicy LaunchPolicy() =>
-        new(SessionId, ApprovedSid, @"C:\Exosuit\Agent\Exosuit.Agent.exe", new string('a', 64));
+        new(SessionId, ApprovedSid, @"C:\Exosuit\Agent\Exosuit.Agent.exe", new string('a', 64),
+            @"C:\Exosuit\Config\scene-producer.json");
 
     private static FieldChannelEnvelope Scene() =>
         new(1, Guid.NewGuid(), Field, FieldChannelDirection.GuestToHost, 1,

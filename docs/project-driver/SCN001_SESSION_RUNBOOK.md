@@ -87,6 +87,10 @@ Stop without recording completion evidence if:
 
 Stated so a failure is recognised rather than debugged blind. In rough order of likelihood:
 
+0. **A real observation may not fit the 12 KiB structural bound.** `WindowsUiAutomationProvider`
+   has never run under the producer host, so element counts on a busy desktop are unknown, and the
+   producer boundary rejects rather than truncates. If L2 fails with a bound error rather than a
+   transport one, this is why.
 1. **`WindowsFieldSceneSessionPorts`** — zero coverage. Real `CreateProcessAsUser` across a
    session boundary, a real producer connecting to the intake, real signing of a real frame, a
    real KVP write. Any of these can be wrong.

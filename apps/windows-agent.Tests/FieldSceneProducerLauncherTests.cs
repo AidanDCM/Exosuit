@@ -7,11 +7,13 @@ public sealed class FieldSceneProducerLauncherTests : IDisposable
     private const string ApprovedSid = "S-1-5-21-1000-1000-1000-1001";
 
     private readonly string imagePath = Path.Combine(Path.GetTempPath(), $"exosuit-producer-{Guid.NewGuid():N}.bin");
+    private readonly string configPath = Path.Combine(Path.GetTempPath(), $"exosuit-producer-{Guid.NewGuid():N}.json");
     private readonly string imageDigest;
 
     public FieldSceneProducerLauncherTests()
     {
         File.WriteAllBytes(imagePath, "producer"u8.ToArray());
+        File.WriteAllText(configPath, "{}");
         using var stream = File.OpenRead(imagePath);
         imageDigest = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
@@ -19,14 +21,16 @@ public sealed class FieldSceneProducerLauncherTests : IDisposable
     public void Dispose()
     {
         if (File.Exists(imagePath)) File.Delete(imagePath);
+        if (File.Exists(configPath)) File.Delete(configPath);
     }
 
     private FieldSceneProducerLaunchPolicy Policy(
         int sessionId = 2,
         string sid = ApprovedSid,
         string? path = null,
-        string? digest = null) =>
-        new(sessionId, sid, path ?? imagePath, digest ?? imageDigest);
+        string? digest = null,
+        string? config = null) =>
+        new(sessionId, sid, path ?? imagePath, digest ?? imageDigest, config ?? configPath);
 
     [Fact]
     public void AcceptsAnExactMatchingInteractiveLaunch()
@@ -128,6 +132,31 @@ public sealed class FieldSceneProducerLauncherTests : IDisposable
         Assert.Throws<InvalidOperationException>(() =>
             FieldSceneProducerLauncher.ValidateLaunchPolicy(
                 Policy(digest: digest), 2, ApprovedSid, FieldGuestServiceHost.SystemSid));
+    }
+
+    [Fact]
+    public void RefusesToLaunchWithoutAProducerConfiguration()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var absent = Path.Combine(Path.GetTempPath(), $"absent-{Guid.NewGuid():N}.json");
+
+        // Started without one, the image runs the general agent host and never connects to the
+        // intake — a launch that reports success and produces nothing, which is worse than a
+        // crash because the ceremony appears to have begun.
+        Assert.Throws<InvalidOperationException>(() =>
+            FieldSceneProducerLauncher.ValidateLaunchPolicy(
+                Policy(config: absent), 2, ApprovedSid, FieldGuestServiceHost.SystemSid));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RefusesAnEmptyProducerConfigurationPath(string config)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        Assert.Throws<InvalidOperationException>(() =>
+            FieldSceneProducerLauncher.ValidateLaunchPolicy(
+                Policy(config: config), 2, ApprovedSid, FieldGuestServiceHost.SystemSid));
     }
 
     [Fact]

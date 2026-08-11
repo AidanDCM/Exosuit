@@ -187,7 +187,7 @@ public static class FieldKvpRuntime
         var supervisor = new FieldSceneSupervisor(
             lifecycle, environment ?? new WindowsFieldSceneEnvironment(bootId));
         var ports = portsFactory is null
-            ? new WindowsFieldSceneSessionPorts(configuration, session, secret, callerSid)
+            ? new WindowsFieldSceneSessionPorts(configuration, session, secret, callerSid, bootId)
             : portsFactory(session);
         return new FieldSceneSessionRunner(session, supervisor, ports).RunAsync(cancellationToken);
     }

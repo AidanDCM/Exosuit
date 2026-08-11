@@ -9,7 +9,8 @@ public sealed class FieldSceneLifecycleTests
     private const int ProducerPid = 4242;
 
     private static FieldSceneProducerLaunchPolicy LaunchPolicy() =>
-        new(SessionId, ApprovedSid, @"C:\Exosuit\Agent\Exosuit.Agent.exe", new string('a', 64));
+        new(SessionId, ApprovedSid, @"C:\Exosuit\Agent\Exosuit.Agent.exe", new string('a', 64),
+            @"C:\Exosuit\Config\scene-producer.json");
 
     private static FieldSceneLifecycle Lifecycle() => new(Field, BootId, LaunchPolicy());
 

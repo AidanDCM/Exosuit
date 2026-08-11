@@ -14,7 +14,13 @@ public sealed record FieldSceneProducerLaunchPolicy(
     int ExpectedSessionId,
     string ExpectedInteractiveUserSid,
     string ProducerExecutablePath,
-    string ProducerExecutableSha256);
+    string ProducerExecutableSha256,
+    /// <summary>
+    /// Path to the producer configuration the launched process reads. Required: without it the
+    /// image starts in its general agent mode and never connects to the intake, which presents as
+    /// a successful launch that produces nothing.
+    /// </summary>
+    string ProducerConfigurationPath);
 
 /// <summary>Facts about a launch that actually happened.</summary>
 public sealed record FieldSceneProducerLaunchResult(int ProcessId, int SessionId, string UserSid);
@@ -71,6 +77,12 @@ public static class FieldSceneProducerLauncher
                 "Field scene producer session belongs to a different user than the approved interactive owner.");
 
         ValidateProducerImage(policy);
+
+        if (string.IsNullOrWhiteSpace(policy.ProducerConfigurationPath))
+            throw new InvalidOperationException("Field scene producer requires a configuration path to launch with.");
+        if (!File.Exists(policy.ProducerConfigurationPath))
+            throw new InvalidOperationException(
+                $"Field scene producer configuration is missing at {policy.ProducerConfigurationPath}.");
     }
 
     /// <summary>
@@ -140,10 +152,18 @@ public static class FieldSceneProducerLauncher
                     lpDesktop = @"winsta0\default",
                 };
 
+                // The image must be told to be a producer. Started bare it runs the general agent
+                // host, which never connects to the intake — a launch that looks successful and
+                // produces nothing. The command line's first token is the image path by
+                // convention, and it is quoted because the installed path contains no spaces today
+                // but nothing guarantees that.
+                var commandLine =
+                    $"\"{policy.ProducerExecutablePath}\" --field-scene-producer \"{policy.ProducerConfigurationPath}\"";
+
                 if (!CreateProcessAsUser(
                         primaryToken,
                         policy.ProducerExecutablePath,
-                        null,
+                        commandLine,
                         IntPtr.Zero,
                         IntPtr.Zero,
                         bInheritHandles: false,

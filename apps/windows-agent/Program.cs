@@ -26,6 +26,11 @@ public static class Program
                 Console.WriteLine(FieldChannelSecretProtectionCommand.SerializeResult(result));
                 return 0;
             }
+            if (args.Length == 2 && string.Equals(args[0], "--field-scene-producer", StringComparison.Ordinal))
+            {
+                await FieldSceneProducerHost.RunProductionAsync(args[1], CancellationToken.None);
+                return 0;
+            }
             if (args.Length == 3 && string.Equals(args[0], "--field-author-scene-session", StringComparison.Ordinal))
             {
                 Console.WriteLine(FieldSceneSessionAuthoringCommand.Run(args[1], args[2]));

@@ -44,7 +44,15 @@ public sealed record FieldSceneSessionConfiguration(
     }
 
     public FieldSceneProducerLaunchPolicy ToLaunchPolicy() =>
-        new(ExpectedSessionId, InteractiveUserSid, ProducerExecutablePath, ProducerExecutableSha256);
+        new(ExpectedSessionId, InteractiveUserSid, ProducerExecutablePath, ProducerExecutableSha256,
+            FieldSceneProducerConfiguration.ProductionPath);
+
+    /// <summary>
+    /// The configuration the launched producer reads. Built from the session and the current boot,
+    /// so a producer cannot be started for a boot the session does not belong to.
+    /// </summary>
+    public FieldSceneProducerConfiguration ToProducerConfiguration(FieldReference field, Guid bootId, string agentId) =>
+        new(1, field, bootId, agentId, ExpectedSessionId, Display, PollIntervalMilliseconds);
 
     /// <summary>
     /// Reads the configuration, or returns null when the file is absent. A malformed or invalid
@@ -100,10 +108,23 @@ public sealed class WindowsFieldSceneSessionPorts(
     FieldKvpRuntimeConfiguration channel,
     FieldSceneSessionConfiguration session,
     string channelSecret,
-    string? callerSid) : IFieldSceneSessionPorts
+    string? callerSid,
+    Guid bootId) : IFieldSceneSessionPorts
 {
-    public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy) =>
-        FieldSceneProducerLauncher.Launch(policy, callerSid);
+    public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy)
+    {
+        // Written before the launch, because the launcher refuses to start a producer whose
+        // configuration is absent. A producer started without one runs the general agent host and
+        // never connects to the intake — a launch that looks successful and produces nothing.
+        var producer = session.ToProducerConfiguration(channel.Field, bootId, channel.AgentId);
+        var directory = Path.GetDirectoryName(FieldSceneProducerConfiguration.ProductionPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(
+            FieldSceneProducerConfiguration.ProductionPath,
+            JsonSerializer.Serialize(producer, FieldSceneProducerConfiguration.Json));
+
+        return FieldSceneProducerLauncher.Launch(policy, callerSid);
+    }
 
     public async Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken)
     {
