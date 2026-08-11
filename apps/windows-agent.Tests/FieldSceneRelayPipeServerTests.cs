@@ -187,9 +187,22 @@ public sealed class FieldSceneRelayPipeServerTests
             await client.ConnectAsync(5_000);
             await client.WriteAsync(Header(payload.Length));
             await client.WriteAsync(payload);
-            await client.WriteAsync(Header(payload.Length));
-            await client.WriteAsync(payload);
-            await client.FlushAsync();
+
+            // The second frame may not finish writing. The intake rejects as soon as it sees a
+            // byte past the declared payload and disposes the pipe, so the client can legitimately
+            // observe a broken pipe mid-write. That prompt rejection is the behaviour under test,
+            // not a race to be waited out — an intake that let the whole second frame land before
+            // reacting would be the worse outcome.
+            try
+            {
+                await client.WriteAsync(Header(payload.Length));
+                await client.WriteAsync(payload);
+                await client.FlushAsync();
+            }
+            catch (IOException)
+            {
+                // Rejected before the write completed.
+            }
         }
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => accept);
