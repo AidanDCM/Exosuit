@@ -10,9 +10,12 @@ actions, Teach, Shadow, Pilot, MCP, or production, and it does not re-prove CHN-
 unit coverage, and none of it has ever run against a guest. The purpose of this session is to
 find out where that source is wrong.
 
-> **Before running for scene acceptance:** the structural budget defect below blocks L2 and L3.
-> The other ceremonies — L1, L4, L6, L7, L8, L10, L11 — do not depend on a scene being accepted and
-> remain worth running.
+> **On the structural budget:** an earlier revision of this runbook said the budget defect blocks
+> L2 and L3 outright. That was based on an unmeasured assumption and is **corrected**: measured on
+> a real desktop the observation was 9 windows and 14 elements, which fits. Elements come from the
+> *active window's descendants only*, so the risk depends on which window is focused, not on how
+> cluttered the desktop is. Run L2 with a simple window focused; expect a budget rejection if a
+> browser or file manager has focus.
 
 ## Entry conditions
 
@@ -91,12 +94,12 @@ Stop without recording completion evidence if:
 
 Stated so a failure is recognised rather than debugged blind. In rough order of likelihood:
 
-0. **A real observation will not fit the 12 KiB structural bound — measured, not predicted.**
-   The ceiling is 34–39 elements depending on window count, at ~290 bytes per element. A single
-   ordinary window exposes far more. The boundary rejects rather than truncates, so oversize means
-   no scene at all. **L2 and L3 cannot pass as things stand.** See
-   `docs/qa/OPEN_DEFECT_2026-08-11_SCENE_STRUCTURAL_BUDGET.md`; this needs a decision before the
-   session is worth running for scene acceptance.
+0. **The 12 KiB structural bound, if a complex window has focus.** The ceiling is 34–39 elements
+   depending on window count, at ~290 bytes per element. Elements come from the active window's
+   descendants only: a console or small dialog measured at 14 and fits; a browser or file manager
+   can have hundreds and will be rejected outright, since the boundary rejects rather than
+   truncates. Not a certain blocker — a conditional one. See
+   `docs/qa/OPEN_RISK_2026-08-11_SCENE_STRUCTURAL_BUDGET.md`.
 1. **`WindowsFieldSceneSessionPorts`** — zero coverage. Real `CreateProcessAsUser` across a
    session boundary, a real producer connecting to the intake, real signing of a real frame, a
    real KVP write. Any of these can be wrong.

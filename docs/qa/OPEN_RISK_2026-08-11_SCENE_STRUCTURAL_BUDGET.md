@@ -1,8 +1,8 @@
-# OPEN DEFECT — the scene path cannot produce a scene from a real desktop
+# OPEN RISK — the scene budget can reject a complex focused window
 
-**Found:** 2026-08-11, by measuring the structural budget rather than assuming it.
+**Found:** 2026-08-11. **Severity corrected the same day after measuring a real desktop.**
 **Status:** open. Not fixed — the fix is a design decision, not a repair.
-**Severity:** **SCN-001.L2 and L3 cannot pass.** The producer would be rejected on every cycle.
+**Severity:** conditional. Depends on which window is focused. **Corrected 2026-08-11 — see below.**
 
 ## The measurement
 
@@ -19,18 +19,42 @@ desktop produces:
 Cost is roughly **290 bytes per element**. One window with ten elements is 3,657 bytes of the
 12,288 available.
 
-## Why this blocks the session
+## Correction — the original severity claim was wrong
 
-A single ordinary application window commonly exposes well over a hundred UI Automation elements.
-A desktop with a browser, an editor, and a file manager is in the hundreds.
+The first version of this document asserted that "a single ordinary application window commonly
+exposes well over a hundred UI Automation elements" and concluded that L2 and L3 **cannot** pass.
+That was an assumption presented as a finding. It was then measured.
 
-The boundary **rejects rather than truncates** — deliberately, and correctly: a silently truncated
-scene is a partial view of the desktop that looks complete, and acting on one could target the
-wrong control. The consequence is that oversize means *no scene at all*, not a smaller scene.
+**Measured on a real desktop, via the shipped `WindowsUiAutomationProvider`: 9 windows, 14
+elements.** That fits the budget comfortably. Requesting up to 1,000 elements changed nothing, so
+the observation was not truncated — 14 is the whole of it.
 
-So on a live guest: the producer observes, the boundary throws, the loop ends, the supervisor
-relaunches, and the next observation fails identically. L2 never sees a scene. L3 — a scene large
-enough to chunk — is unreachable by construction, because nothing that large can ever be produced.
+The mechanism was misunderstood. `ObserveCore` enumerates **all top-level windows**, but elements
+come from the **active window's descendants only** — never the whole desktop. So desktop clutter
+does not drive the element count; the complexity of the *focused window* does.
+
+That makes the risk conditional rather than certain:
+
+- A simple focused window — a console, a small dialog, an editor — fits easily.
+- A complex focused window — a browser, a file manager, a data-heavy application — can have
+  hundreds of descendants and will exceed the budget.
+
+The ceilings below stand: they were measured and are correct. What was wrong was the claim about
+what a real observation contains.
+
+## What still matters
+
+The boundary **rejects rather than truncates** — deliberately and correctly, since a silently
+truncated scene is a partial view that looks complete and acting on one could target the wrong
+control. So when the budget is exceeded, the result is no scene at all, and the producer loop ends
+and is relaunched into the same failure for as long as that window stays focused.
+
+There is also a truncation path that is easy to miss: the provider applies
+`Take(Math.Clamp(request.MaxElements, 1, 2_000))`. Lowering `MaxElements` to fit the budget would
+make every oversize observation *silently partial* — the boundary would accept it, because it never
+sees what was dropped. That is the option-3 hazard arriving through the back door, and it is why
+the `MaxElements` default of 250 against a 128 constant against a ~35 real ceiling is worth fixing
+deliberately rather than by lowering a number.
 
 ## A second, smaller incoherence
 

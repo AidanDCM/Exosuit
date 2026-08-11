@@ -3,12 +3,14 @@ namespace Exosuit.Agent.Tests;
 /// <summary>
 /// What actually fits in the 12 KiB structural budget.
 ///
-/// These numbers were measured, not assumed, and they are pinned here because they are the
-/// difference between a scene path that works on a real desktop and one that cannot produce a
-/// single scene. The declared collection limits — 32 windows, 128 elements — are **unreachable**:
-/// the byte budget binds first, always, and by a wide margin.
+/// These numbers were measured, not assumed. The declared collection limits — 32 windows, 128
+/// elements — are **unreachable**: the byte budget binds first, always, and by a wide margin.
 ///
-/// See `docs/qa/OPEN_DEFECT_2026-08-11_SCENE_STRUCTURAL_BUDGET.md`.
+/// A real desktop measured at 9 windows and 14 elements and fits comfortably. Elements come from
+/// the active window's descendants only, so the budget risk depends on which window has focus, not
+/// on how many windows are open.
+///
+/// See `docs/qa/OPEN_RISK_2026-08-11_SCENE_STRUCTURAL_BUDGET.md`.
 /// </summary>
 public sealed class FieldSceneStructuralBudgetTests
 {
@@ -73,10 +75,11 @@ public sealed class FieldSceneStructuralBudgetTests
     }
 
     [Fact]
-    public void ARealisticDesktopDoesNotFit()
+    public void AComplexFocusedWindowDoesNotFit()
     {
-        // A single application window commonly exposes well over a hundred automation elements.
-        // This is the case the live session will hit on its first observation.
+        // Elements come from the active window's descendants only, so this is the complex-window
+        // case — a browser or file manager — not "any desktop". A real desktop measured here at
+        // 9 windows and 14 elements, which fits; the risk is conditional on what has focus.
         Assert.False(Fits(3, 60));
     }
 
