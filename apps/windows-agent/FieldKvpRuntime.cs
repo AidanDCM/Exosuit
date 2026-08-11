@@ -125,26 +125,9 @@ public static class FieldKvpRuntime
                 var shellReady = Process.GetProcessesByName("explorer").Any(process => process.SessionId == activeSessionId);
                 var desktopReady = activeSessionId != uint.MaxValue && !locked && !secureDesktop && shellReady;
                 var process = Process.GetCurrentProcess();
-                var heartbeat = new Dictionary<string, object?>
-                {
-                    ["contractVersion"] = 1,
-                    ["field"] = new Dictionary<string, object?>
-                    {
-                        ["fieldId"] = configuration.Field.FieldId.ToString(),
-                        ["fieldGeneration"] = configuration.Field.FieldGeneration,
-                    },
-                    ["agentId"] = configuration.AgentId,
-                    ["bootId"] = bootId.ToString(),
-                    ["sequence"] = heartbeatSequence++,
-                    ["observedAt"] = WireDate(DateTimeOffset.UtcNow),
-                    ["lifecycle"] = desktopReady ? "ready" : "provisioning",
-                    ["desktopReady"] = desktopReady,
-                    ["sessionLocked"] = locked,
-                    ["secureDesktopActive"] = secureDesktop,
-                    ["inputQueueDepth"] = 0,
-                    ["pendingCommandCount"] = 0,
-                    ["workingSetBytes"] = process.WorkingSet64,
-                };
+                var heartbeat = BuildHeartbeatPayload(
+                    configuration, bootId, heartbeatSequence++, DateTimeOffset.UtcNow,
+                    desktopReady, locked, secureDesktop, process.WorkingSet64);
                 WriteEnvelope(guestKey, HeartbeatValueName, CreateEnvelope(
                     configuration, secret, bootId, ReserveNextGuestSequence(configuration), FieldChannelMessageType.Heartbeat, heartbeat));
                 lastSecureDesktopActive = secureDesktop;
@@ -434,6 +417,43 @@ public static class FieldKvpRuntime
             verified.Payload,
         };
     }
+
+    /// <summary>
+    /// The heartbeat payload exactly as the guest publishes it.
+    ///
+    /// Extracted from the runtime loop so it can be pinned against the host's schema. The host
+    /// keys readiness off `bootId`, `sessionLocked` and `secureDesktopActive`, and until this was
+    /// testable nothing checked that the shape the guest writes is the shape the host parses —
+    /// the same gap that hid two real defects in the scene payload.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, object?> BuildHeartbeatPayload(
+        FieldKvpRuntimeConfiguration configuration,
+        Guid bootId,
+        long sequence,
+        DateTimeOffset observedAt,
+        bool desktopReady,
+        bool sessionLocked,
+        bool secureDesktopActive,
+        long workingSetBytes) => new Dictionary<string, object?>
+    {
+        ["contractVersion"] = 1,
+        ["field"] = new Dictionary<string, object?>
+        {
+            ["fieldId"] = configuration.Field.FieldId.ToString(),
+            ["fieldGeneration"] = configuration.Field.FieldGeneration,
+        },
+        ["agentId"] = configuration.AgentId,
+        ["bootId"] = bootId.ToString(),
+        ["sequence"] = sequence,
+        ["observedAt"] = WireDate(observedAt),
+        ["lifecycle"] = desktopReady ? "ready" : "provisioning",
+        ["desktopReady"] = desktopReady,
+        ["sessionLocked"] = sessionLocked,
+        ["secureDesktopActive"] = secureDesktopActive,
+        ["inputQueueDepth"] = 0,
+        ["pendingCommandCount"] = 0,
+        ["workingSetBytes"] = workingSetBytes,
+    };
 
     internal static IReadOnlyDictionary<string, object?> BindBootstrapToBoot(
         IReadOnlyDictionary<string, object?> bootstrap,
