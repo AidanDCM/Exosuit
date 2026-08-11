@@ -19,6 +19,20 @@ function Get-Digest([string]$Path) {
     (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function Assert-StandaloneAgentBundle([string]$Path) {
+    $agent = Get-Item -LiteralPath $Path -Force
+    $directory = Split-Path -Parent $agent.FullName
+    $stem = [IO.Path]::GetFileNameWithoutExtension($agent.Name)
+    $companions = @(
+        "$stem.dll",
+        "$stem.deps.json",
+        "$stem.runtimeconfig.json"
+    ) | ForEach-Object { Join-Path $directory $_ }
+    if ($agent.Length -lt 16MB -or @($companions | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }).Count -ne 0) {
+        throw 'Derived base requires a standalone single-file Field agent; an apphost or deployment with required companion files is refused.'
+    }
+}
+
 function Assert-UnderRoot([string]$Path, [string]$Root) {
     $resolved = [IO.Path]::GetFullPath($Path)
     $resolvedRoot = [IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
@@ -93,6 +107,7 @@ $setupCompleteSource = Join-Path $agentRoot 'SetupComplete-ExosuitFieldGuest.cmd
 foreach ($path in @($components.Values) + @($setupCompleteSource)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Derived-base component is missing: $path" }
 }
+Assert-StandaloneAgentBundle -Path $components['Exosuit.Agent.exe']
 $componentDigests = [ordered]@{}
 foreach ($entry in $components.GetEnumerator()) { $componentDigests[$entry.Key] = Get-Digest $entry.Value }
 $setupCompleteDigest = Get-Digest $setupCompleteSource
@@ -107,6 +122,7 @@ $plan = [ordered]@{
     networkAttached = $false
     sourceMountedWritable = $false
     perGenerationConfigurationAllowed = $false
+    standaloneAgentBundleRequired = $true
     components = $componentDigests
     setupCompleteSha256 = $setupCompleteDigest
     applyRequested = [bool]$Apply
@@ -189,6 +205,7 @@ try {
         networkAttached = $false
         sourceMountedWritable = $false
         perGenerationConfigurationAbsent = $true
+        standaloneAgentBundleVerified = $true
         componentAclHardened = $true
         componentDigests = $componentDigests
         setupCompleteSha256 = $setupCompleteDigest

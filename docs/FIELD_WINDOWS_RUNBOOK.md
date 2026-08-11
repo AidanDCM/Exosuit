@@ -96,7 +96,7 @@ from the last accepted generalized base. Review the dry-run first:
   -TargetImagePath C:\ProgramData\Exosuit\Images\exosuit-field-base-v26.vhdx `
   -TargetImageId exosuit-field-base-v26 `
   -SourceCommit <exact-clean-commit> `
-  -AgentPath <exact-published-agent.exe> `
+  -AgentPath <exact-standalone-single-file-agent.exe> `
   -EvidenceDirectory <exact-evidence-directory>
 ```
 
@@ -106,6 +106,12 @@ refuses per-generation configuration, verifies component digests and ACLs, dismo
 hashes, marks the copy read-only, and publishes v26 without overwriting. On failure it
 removes only the exact unpublished temporary/target copy. It never creates or starts a
 VM and never mounts v25 writable.
+
+The agent input must be published as a standalone single-file executable. Use
+`--self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true`.
+The derivation refuses a small apphost or an input directory containing required
+`Exosuit.Agent.dll`, `.deps.json`, or `.runtimeconfig.json` companions; copying only an
+apphost would install a service that cannot load its application inside the guest.
 
 The receipt is build evidence, not acceptance. Add v26 to the host registry only after
 reviewing it, then run disposable guest acceptance and immutable-base lifecycle checks.

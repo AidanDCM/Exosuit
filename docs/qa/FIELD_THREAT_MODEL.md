@@ -131,6 +131,9 @@
   denies overwrite and per-generation config and rolls back the exact derived copy;
   live elevated derivation, source immutability, target boot, and acceptance remain
   required before the new image may enter a production plan.
+- A framework-dependent .NET apphost without its deployment companions can be sealed
+  into a base while its guest service cannot start. Derived-base input therefore
+  requires a standalone single-file agent and fails closed before copying or mounting.
 - The guest Windows agent is not yet wired to the new command/channel modules.
 - No real visual sensor or input hook exists, so privacy behavior is not live-tested.
 - Personal-state encryption ownership and key rotation are not implemented.

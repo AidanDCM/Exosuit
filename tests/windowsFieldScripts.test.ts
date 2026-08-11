@@ -148,6 +148,11 @@ describe("Windows Field administration scripts", () => {
     const derive = await script("New-ExosuitDerivedFieldBase.ps1");
     expect(derive).toContain("BUILD FIELD BASE $TargetImageId FROM $SourceImageId");
     expect(derive).toContain("Derived base requires the exact clean source commit");
+    expect(derive).toContain("Assert-StandaloneAgentBundle -Path $components['Exosuit.Agent.exe']");
+    expect(derive).toContain("standalone single-file Field agent");
+    expect(derive).toContain("$agent.Length -lt 16MB");
+    expect(derive).toContain('"$stem.runtimeconfig.json"');
+    expect(derive).toContain("standaloneAgentBundleVerified = $true");
     expect(derive).toContain("if (-not $sourceItem.IsReadOnly)");
     expect(derive).toContain("if (Test-Path -LiteralPath $target)");
     expect(derive).toContain("Mount-VHD -Path $temporary");
