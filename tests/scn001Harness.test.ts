@@ -43,7 +43,14 @@ function config() {
       producerPath: PRODUCER_PATH,
       producerExecutableSha256: digest("c"),
     },
-    chn001PassedGeneration: 4,
+    channelVerifiedForGeneration: {
+      channelVerifiedFieldId: FIELD_ID,
+      channelVerifiedGeneration: 4,
+      channelVerificationRunId: "chnverify-test-run",
+      result: "verified",
+      verifiedAt: timestamp(-30),
+      evidenceSha256: digest("e"),
+    },
   });
 }
 
@@ -222,12 +229,27 @@ describe("SCN-001 harness", () => {
     expect(Object.keys(artifact)).not.toContain("expectedCodes");
   });
 
-  it("refuses a configuration whose generation was never proven by CHN-001", () => {
-    expect(() => scn001ConfigSchema.parse({ ...config(), chn001PassedGeneration: 3 })).not.toThrow();
-    // The schema allows it; `start` is where the run is refused, and the contract catches it too.
+  it("carries the channel verification through to the candidate unchanged", () => {
+    const run = buildScn001Run(session(), timestamp(120), HASH, cleanup) as Record<string, unknown>;
+    expect(run["channelVerifiedForGeneration"]).toEqual(config().channelVerifiedForGeneration);
+  });
+
+  it("refuses a configuration pointed at a generation whose channel was not verified", () => {
     const drifted = session();
-    drifted.config = { ...drifted.config, chn001PassedGeneration: 3 };
+    drifted.config = {
+      ...drifted.config,
+      channelVerifiedForGeneration: {
+        ...drifted.config.channelVerifiedForGeneration,
+        channelVerifiedGeneration: 3,
+      },
+    };
     const failures = validateScn001Run(buildScn001Run(drifted, timestamp(120), HASH, cleanup));
-    expect(failures).toContain("SCN-001 rides a Field generation whose channel was never proven by CHN-001.");
+    expect(failures.some((failure) =>
+      failure.includes("only generation 3 has a verified channel"))).toBe(true);
+  });
+
+  it("has no configuration field that asserts a global CHN-001 pass", () => {
+    expect(Object.keys(config())).not.toContain("chn001PassedGeneration");
+    expect(Object.keys(config().channelVerifiedForGeneration)).not.toContain("chn001Passed");
   });
 });

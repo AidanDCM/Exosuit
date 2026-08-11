@@ -56,8 +56,20 @@ export const scn001ConfigSchema = z.object({
     producerPath: z.string().min(1).max(400),
     producerExecutableSha256: sha256,
   }).strict(),
-  /** The generation CHN-001 proved. A scene on an unverified channel proves nothing. */
-  chn001PassedGeneration: z.number().int().positive(),
+  /**
+   * The channel verification for this exact generation. Carried explicitly rather than derived
+   * from `field` above: the mistake worth catching is pointing a scene session at a generation
+   * other than the one whose channel was verified, and a value copied from `field` could never
+   * disagree with it.
+   */
+  channelVerifiedForGeneration: z.object({
+    channelVerifiedFieldId: uuid,
+    channelVerifiedGeneration: z.number().int().positive(),
+    channelVerificationRunId: z.string().min(1).max(200),
+    result: z.literal("verified"),
+    verifiedAt: canonicalTimestamp,
+    evidenceSha256: sha256,
+  }).strict(),
 }).strict();
 
 export type Scn001Config = z.infer<typeof scn001ConfigSchema>;
@@ -271,10 +283,7 @@ export function buildScn001Run(
       sessionFileAuthored: true,
       sessionFileHandWritten: false,
     },
-    channelProvenGeneration: {
-      chn001Passed: true,
-      fieldGeneration: session.config.chn001PassedGeneration,
-    },
+    channelVerifiedForGeneration: session.config.channelVerifiedForGeneration,
     startedAt: session.startedAt,
     completedAt,
     acceptedScenes: session.acceptedScenes,
@@ -312,8 +321,18 @@ function start(): void {
   if (!existsSync(config.baseImagePath)) throw new Error(`Immutable base image is absent: ${config.baseImagePath}`);
   const digest = sha256File(config.baseImagePath);
   if (digest !== config.baseDigest) throw new Error("Configured base digest does not match the immutable image bytes.");
-  if (config.chn001PassedGeneration !== config.field.fieldGeneration) {
-    throw new Error("SCN-001 refuses a Field generation whose channel was not proven by CHN-001.");
+  const verification = config.channelVerifiedForGeneration;
+  if (verification.channelVerifiedFieldId !== config.field.fieldId) {
+    throw new Error(
+      `SCN-001 targets Field ${config.field.fieldId} but the verified channel belongs to ${verification.channelVerifiedFieldId}.`,
+    );
+  }
+  if (verification.channelVerifiedGeneration !== config.field.fieldGeneration) {
+    throw new Error(
+      `SCN-001 targets generation ${config.field.fieldGeneration} but only generation `
+      + `${verification.channelVerifiedGeneration} has a verified channel. Channel verification does not `
+      + "transfer across generations; stand the new generation up and verify its channel first.",
+    );
   }
   const runId = arg("--run-id") ?? `scn001-${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${randomUUID().slice(0, 8)}`;
   if (existsSync(sessionPath(runId))) throw new Error(`SCN-001 session already exists: ${runId}`);

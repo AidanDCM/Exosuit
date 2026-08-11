@@ -52,7 +52,14 @@ function makeRun(): Scn001Run {
       sessionFileAuthored: true,
       sessionFileHandWritten: false,
     },
-    channelProvenGeneration: { chn001Passed: true, fieldGeneration: 4 },
+    channelVerifiedForGeneration: {
+      channelVerifiedFieldId: FIELD_ID,
+      channelVerifiedGeneration: 4,
+      channelVerificationRunId: "chnverify-test-run",
+      result: "verified",
+      verifiedAt: timestamp(-30),
+      evidenceSha256: digest("e"),
+    },
     startedAt: timestamp(0),
     completedAt: timestamp(120),
     acceptedScenes: [
@@ -376,11 +383,61 @@ describe("SCN-001 evidence contract", () => {
     expect(failures.some((failure) => failure.includes("must come from one commit"))).toBe(true);
   });
 
-  it("rejects a run on a generation whose channel was never proven", () => {
-    const failures = validateScn001Run(mutate((draft) => {
-      (draft["channelProvenGeneration"] as Record<string, unknown>)["fieldGeneration"] = 3;
-    }));
-    expect(failures).toContain("SCN-001 rides a Field generation whose channel was never proven by CHN-001.");
+  /**
+   * The situation this contract was rewritten for. CHN-001 is globally passed, and it proved
+   * field 4401b702 generation 3 — a VM that was destroyed at cleanup. A fresh generation inherits
+   * the gate but not the verification, and nothing about "CHN-001 == passed" may stand in for it.
+   */
+  describe("generation-specific channel verification", () => {
+    it("rejects a scene session on a generation whose channel was never verified", () => {
+      const failures = validateScn001Run(mutate((draft) => {
+        (draft["channelVerifiedForGeneration"] as Record<string, unknown>)["channelVerifiedGeneration"] = 3;
+      }));
+      expect(failures.some((failure) =>
+        failure.includes("only generation 3 has a verified channel") &&
+        failure.includes("passed CHN-001 gate is not a substitute"))).toBe(true);
+    });
+
+    it("rejects a verification belonging to a different Field", () => {
+      const failures = validateScn001Run(mutate((draft) => {
+        (draft["channelVerifiedForGeneration"] as Record<string, unknown>)["channelVerifiedFieldId"] =
+          "99999999-9999-4999-8999-999999999999";
+      }));
+      expect(failures.some((failure) => failure.includes("the verified channel belongs to"))).toBe(true);
+    });
+
+    it("rejects a channel verified only after the scene session began", () => {
+      const failures = validateScn001Run(mutate((draft) => {
+        (draft["channelVerifiedForGeneration"] as Record<string, unknown>)["verifiedAt"] = timestamp(60);
+      }));
+      expect(failures).toContain(
+        "the channel was verified after the scene session started; it must be verified first.",
+      );
+    });
+
+    it("rejects scenes produced on the unverified generation, stated per scene", () => {
+      const failures = validateScn001Run(mutate((draft) => {
+        // The run header and the scenes agree with each other, and both disagree with the
+        // verification: the drift a transitive check would have missed.
+        (draft["field"] as Record<string, unknown>)["fieldGeneration"] = 5;
+        for (const scene of draft["acceptedScenes"] as Record<string, unknown>[]) {
+          (scene["field"] as Record<string, unknown>)["fieldGeneration"] = 5;
+        }
+      }));
+      expect(failures.some((failure) =>
+        failure.includes("was produced on a generation whose channel was not verified"))).toBe(true);
+    });
+
+    it("offers no way to assert a global CHN-001 pass in place of verification", () => {
+      const run = makeRun() as unknown as Record<string, unknown>;
+      const verification = run["channelVerifiedForGeneration"] as Record<string, unknown>;
+      expect(Object.keys(run)).not.toContain("channelProvenGeneration");
+      expect(Object.keys(verification)).not.toContain("chn001Passed");
+      // The only accepted result is a verification outcome, not a gate status.
+      expect(verification["result"]).toBe("verified");
+      expect(validateScn001Run({ ...run, channelVerifiedForGeneration: { ...verification, result: "passed" } }))
+        .not.toEqual([]);
+    });
   });
 
   it("rejects a stale-generation case that presented the run's own generation", () => {

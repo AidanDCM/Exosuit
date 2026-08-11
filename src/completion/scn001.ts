@@ -251,6 +251,28 @@ const teardownProof = z.object({
   artifactSha256: sha256,
 }).strict();
 
+/**
+ * Proof that *this* Field generation had a verified authenticated channel.
+ *
+ * Not "CHN-001 is passed". CHN-001 is a gate over the channel design and it stays passed once
+ * promoted; channel verification is a property of a particular generation and does not transfer
+ * when a generation is destroyed and a new one stood up. The authoritative CHN-001 run proved
+ * field 4401b702 generation 3, and that VM was destroyed at cleanup — so a later generation
+ * inherits the gate but not the verification.
+ *
+ * A scene rides the authenticated channel. If the channel of the generation that produced the
+ * scene was never verified, the scene proves nothing about either, however well it authenticates
+ * against a receiver the same run configured.
+ */
+const channelVerificationProof = z.object({
+  channelVerifiedFieldId: uuid,
+  channelVerifiedGeneration: z.number().int().positive(),
+  channelVerificationRunId: z.string().min(1).max(200),
+  result: z.literal("verified"),
+  verifiedAt: canonicalTimestamp,
+  evidenceSha256: sha256,
+}).strict();
+
 export const scn001RunSchema = z.object({
   contractVersion: z.literal(1),
   testId: z.literal("SCN-001"),
@@ -275,10 +297,7 @@ export const scn001RunSchema = z.object({
     sessionFileAuthored: z.literal(true),
     sessionFileHandWritten: z.literal(false),
   }).strict(),
-  channelProvenGeneration: z.object({
-    chn001Passed: z.literal(true),
-    fieldGeneration: z.number().int().positive(),
-  }).strict(),
+  channelVerifiedForGeneration: channelVerificationProof,
   startedAt: canonicalTimestamp,
   completedAt: canonicalTimestamp,
   acceptedScenes: z.array(acceptedScene).min(2).max(10_000),
@@ -328,8 +347,26 @@ export function validateScn001Run(candidate: unknown): readonly string[] {
   if (run.baseDigestBefore !== run.baseDigestAfter || !run.cleanup.baseUnchanged) {
     failures.push("SCN-001 immutable base digest changed during the run.");
   }
-  if (run.channelProvenGeneration.fieldGeneration !== run.field.fieldGeneration) {
-    failures.push("SCN-001 rides a Field generation whose channel was never proven by CHN-001.");
+  // ---- the channel of this exact generation was verified ----
+  // Stated field by field rather than left to follow from the per-scene binding, because this is
+  // the rule most likely to be satisfied in appearance only: CHN-001 is globally passed, and a
+  // reader who knows that will accept a scene on an unverified generation unless the contract
+  // says otherwise in as many words.
+  const verification = run.channelVerifiedForGeneration;
+  if (verification.channelVerifiedFieldId !== run.field.fieldId) {
+    failures.push(
+      `SCN-001 runs against Field ${run.field.fieldId} but the verified channel belongs to ${verification.channelVerifiedFieldId}.`,
+    );
+  }
+  if (verification.channelVerifiedGeneration !== run.field.fieldGeneration) {
+    failures.push(
+      `SCN-001 runs against generation ${run.field.fieldGeneration} but only generation `
+      + `${verification.channelVerifiedGeneration} has a verified channel; channel verification does not `
+      + "transfer across generations, and a passed CHN-001 gate is not a substitute for it.",
+    );
+  }
+  if (Date.parse(verification.verifiedAt) > startedAt) {
+    failures.push("the channel was verified after the scene session started; it must be verified first.");
   }
 
   // ---- accepted scenes ----
@@ -343,6 +380,12 @@ export function validateScn001Run(candidate: unknown): readonly string[] {
     const label = `scene ${scene.sceneId}`;
     if (scene.field.fieldId !== run.field.fieldId || scene.field.fieldGeneration !== run.field.fieldGeneration) {
       failures.push(`${label} is bound to a different Field generation.`);
+    }
+    // The same binding against the verified channel directly, so a scene can never be accepted
+    // on the strength of a run header that itself drifted from the verification.
+    if (scene.field.fieldId !== run.channelVerifiedForGeneration.channelVerifiedFieldId ||
+        scene.field.fieldGeneration !== run.channelVerifiedForGeneration.channelVerifiedGeneration) {
+      failures.push(`${label} was produced on a generation whose channel was not verified.`);
     }
     if (scene.bootId !== run.bootId) failures.push(`${label} is bound to a different boot.`);
     if (scene.agentId !== run.agentId) failures.push(`${label} carries the wrong agent identity.`);
