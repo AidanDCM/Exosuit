@@ -10,6 +10,10 @@ actions, Teach, Shadow, Pilot, MCP, or production, and it does not re-prove CHN-
 unit coverage, and none of it has ever run against a guest. The purpose of this session is to
 find out where that source is wrong.
 
+> **Before running for scene acceptance:** the structural budget defect below blocks L2 and L3.
+> The other ceremonies — L1, L4, L6, L7, L8, L10, L11 — do not depend on a scene being accepted and
+> remain worth running.
+
 ## Entry conditions
 
 - CHN-001 is proven for the Field generation in use, or a new generation is stood up and its
@@ -87,10 +91,12 @@ Stop without recording completion evidence if:
 
 Stated so a failure is recognised rather than debugged blind. In rough order of likelihood:
 
-0. **A real observation may not fit the 12 KiB structural bound.** `WindowsUiAutomationProvider`
-   has never run under the producer host, so element counts on a busy desktop are unknown, and the
-   producer boundary rejects rather than truncates. If L2 fails with a bound error rather than a
-   transport one, this is why.
+0. **A real observation will not fit the 12 KiB structural bound — measured, not predicted.**
+   The ceiling is 34–39 elements depending on window count, at ~290 bytes per element. A single
+   ordinary window exposes far more. The boundary rejects rather than truncates, so oversize means
+   no scene at all. **L2 and L3 cannot pass as things stand.** See
+   `docs/qa/OPEN_DEFECT_2026-08-11_SCENE_STRUCTURAL_BUDGET.md`; this needs a decision before the
+   session is worth running for scene acceptance.
 1. **`WindowsFieldSceneSessionPorts`** — zero coverage. Real `CreateProcessAsUser` across a
    session boundary, a real producer connecting to the intake, real signing of a real frame, a
    real KVP write. Any of these can be wrong.
