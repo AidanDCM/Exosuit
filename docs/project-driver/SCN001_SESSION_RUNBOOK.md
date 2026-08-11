@@ -100,10 +100,13 @@ Stated so a failure is recognised rather than debugged blind. In rough order of 
 1. **`WindowsFieldSceneSessionPorts`** — zero coverage. Real `CreateProcessAsUser` across a
    session boundary, a real producer connecting to the intake, real signing of a real frame, a
    real KVP write. Any of these can be wrong.
-2. **The Hyper-V exchange reader** — the CIM class names, the association traversal to
-   `Msvm_KvpExchangeComponent`, and the real shape of `GuestExchangeItems` are taken from the
-   existing PowerShell script rather than observed. The first query is the test of that.
-3. **Producer image path and ACL** — the installed path ACL is assumed, not proven.
+2. **The Hyper-V exchange reader** — partially resolved. The namespace, `Msvm_ComputerSystem`, and
+   the name filter were verified read-only against this host and match exactly one VM. The
+   association to `Msvm_KvpExchangeComponent` and the shape of `GuestExchangeItems` remain
+   unproven, because that component only exists while a VM is running.
+3. **Producer image ACL** — the installed path ACL is assumed, not proven. The *path* itself is no
+   longer a risk: the session configuration now refuses any producer path the relay would reject,
+   at authoring time.
 4. **Poll cadence** — bounded to 250–10,000 ms but no value has been shown adequate. Too slow and
    host readiness outlives the desktop that justified it, which no unit test can detect.
 5. **The pipe ACL under a real cross-session client** — the minimal right set was measured

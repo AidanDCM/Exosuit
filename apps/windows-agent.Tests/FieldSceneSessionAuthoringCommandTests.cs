@@ -46,7 +46,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     [Fact]
     public void ComputesTheDigestFromTheProducerImage()
     {
-        var configuration = FieldSceneSessionAuthoringCommand.Author(Request());
+        var configuration = FieldSceneSessionAuthoringCommand.Author(Request(), producerPath);
 
         Assert.Equal(producerDigest, configuration.ProducerExecutableSha256);
     }
@@ -54,9 +54,9 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     [Fact]
     public void RecomputesTheDigestWhenTheImageChanges()
     {
-        var first = FieldSceneSessionAuthoringCommand.Author(Request());
+        var first = FieldSceneSessionAuthoringCommand.Author(Request(), producerPath);
         File.WriteAllBytes(producerPath, "replaced-image"u8.ToArray());
-        var second = FieldSceneSessionAuthoringCommand.Author(Request());
+        var second = FieldSceneSessionAuthoringCommand.Author(Request(), producerPath);
 
         Assert.NotEqual(first.ProducerExecutableSha256, second.ProducerExecutableSha256);
     }
@@ -69,7 +69,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
         // Authoring a config whose digest cannot be computed would produce a file the launcher is
         // guaranteed to reject later, on the guest, where it is far more expensive to notice.
         Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Author(Request(path: absent)));
+            FieldSceneSessionAuthoringCommand.Author(Request(path: absent), producerPath));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     public void RefusesSessionZeroAtAuthoringTime(int sessionId)
     {
         Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Author(Request(sessionId: sessionId)));
+            FieldSceneSessionAuthoringCommand.Author(Request(sessionId: sessionId), producerPath));
     }
 
     [Theory]
@@ -109,7 +109,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     public void RefusesANonInteractiveSidAtAuthoringTime(string sid)
     {
         Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Author(Request(sid: sid)));
+            FieldSceneSessionAuthoringCommand.Author(Request(sid: sid), producerPath));
     }
 
     [Theory]
@@ -119,7 +119,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     {
         // The same bound the runtime enforces, from the same method.
         Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Author(Request(pollInterval: interval)));
+            FieldSceneSessionAuthoringCommand.Author(Request(pollInterval: interval), producerPath));
     }
 
     [Fact]
@@ -128,8 +128,8 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
         var requestPath = WriteRequest(Request());
         var outputPath = Path.Combine(root, "config", "scene-session.json");
 
-        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath);
-        var readBack = FieldSceneSessionConfiguration.ReadOptional(outputPath);
+        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath, producerPath);
+        var readBack = FieldSceneSessionConfiguration.ReadOptional(outputPath, producerPath);
 
         Assert.NotNull(readBack);
         Assert.Equal(2, readBack!.ExpectedSessionId);
@@ -145,12 +145,12 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
         var requestPath = WriteRequest(Request(enabled: false));
         var outputPath = Path.Combine(root, "disabled", "scene-session.json");
 
-        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath);
+        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath, producerPath);
 
         // Authoring a disabled session is legitimate: it stages a configuration without turning
         // scene production on.
         Assert.True(File.Exists(outputPath));
-        Assert.Null(FieldSceneSessionConfiguration.ReadOptional(outputPath));
+        Assert.Null(FieldSceneSessionConfiguration.ReadOptional(outputPath, producerPath));
     }
 
     [Fact]
@@ -158,16 +158,29 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
     {
         var requestPath = WriteRequest(Request());
         var outputPath = Path.Combine(root, "existing", "scene-session.json");
-        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath);
+        FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath, producerPath);
         var original = File.ReadAllText(outputPath);
 
         // Silently replacing a live session file, possibly on a Field mid-ceremony, is exactly the
         // side effect the opt-in default exists to prevent.
         var failure = Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath));
+            FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath, producerPath));
 
         Assert.Contains("already exists", failure.Message, StringComparison.Ordinal);
         Assert.Equal(original, File.ReadAllText(outputPath));
+    }
+
+    [Fact]
+    public void RefusesAProducerAnywhereButTheFixedCompiledAgentPath()
+    {
+        // The relay accepts scenes only from C:\Exosuit\Agent\Exosuit.Agent.exe. Without this
+        // check a session naming any other path authors cleanly, launches cleanly, and then has
+        // every scene silently rejected at the relay — the failure appearing three layers from
+        // its cause. No expectation is passed here, so the production rule is the one under test.
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            FieldSceneSessionAuthoringCommand.Author(Request()));
+
+        Assert.Contains(FieldSceneRelayBoundary.ProductionAgentPath, failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -177,7 +190,7 @@ public sealed class FieldSceneSessionAuthoringCommandTests : IDisposable
         var outputPath = Path.Combine(root, "invalid", "scene-session.json");
 
         Assert.Throws<InvalidOperationException>(() =>
-            FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath));
+            FieldSceneSessionAuthoringCommand.Run(requestPath, outputPath, producerPath));
 
         // Validation runs before the write, so a rejected request leaves no partial file behind.
         Assert.False(File.Exists(outputPath));

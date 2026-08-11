@@ -24,7 +24,12 @@ public sealed record FieldSceneSessionConfiguration(
     /// <summary>Where the guest looks. Absent means disabled.</summary>
     public const string ProductionPath = @"C:\Exosuit\Config\scene-session.json";
 
-    public void Validate()
+    /// <summary>
+    /// Validates the session. <paramref name="expectedProducerPath"/> defaults to the path the
+    /// relay actually demands; it is a parameter only so tests can exercise the rest of the rules
+    /// without installing a binary at the production location. Production callers never pass it.
+    /// </summary>
+    public void Validate(string? expectedProducerPath = null)
     {
         if (ContractVersion != 1)
             throw new InvalidOperationException("Unsupported Field scene session contract version.");
@@ -36,6 +41,17 @@ public sealed record FieldSceneSessionConfiguration(
             throw new InvalidOperationException("Field scene session requires an exact local interactive-user SID.");
         if (string.IsNullOrWhiteSpace(ProducerExecutablePath))
             throw new InvalidOperationException("Field scene session requires a producer executable path.");
+        // The relay accepts scenes only from the fixed compiled agent path. Checking it here means
+        // a wrong path is refused when the session is authored, rather than authoring cleanly,
+        // launching cleanly, and then having every scene silently rejected at the relay.
+        var requiredPath = expectedProducerPath ?? FieldSceneRelayBoundary.ProductionAgentPath;
+        if (!string.Equals(
+                Path.GetFullPath(ProducerExecutablePath),
+                Path.GetFullPath(requiredPath),
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Field scene producer must be the fixed compiled agent at {requiredPath}; "
+                + $"the relay rejects scenes from {ProducerExecutablePath}.");
         if (ProducerExecutableSha256.Length != 64 ||
             ProducerExecutableSha256.Any(character => character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f')))
             throw new InvalidOperationException("Field scene session producer digest must be lowercase SHA-256.");
@@ -59,13 +75,13 @@ public sealed record FieldSceneSessionConfiguration(
     /// file is an error rather than a silent disable: a guest that was meant to produce scenes
     /// and quietly does not is worse than one that refuses to start.
     /// </summary>
-    public static FieldSceneSessionConfiguration? ReadOptional(string path)
+    public static FieldSceneSessionConfiguration? ReadOptional(string path, string? expectedProducerPath = null)
     {
         if (!File.Exists(path)) return null;
         var configuration = JsonSerializer.Deserialize<FieldSceneSessionConfiguration>(
             File.ReadAllText(path), SessionJson)
             ?? throw new InvalidOperationException("Field scene session configuration is empty.");
-        configuration.Validate();
+        configuration.Validate(expectedProducerPath);
         return configuration.Enabled ? configuration : null;
     }
 

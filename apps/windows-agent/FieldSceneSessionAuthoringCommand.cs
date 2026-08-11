@@ -40,7 +40,9 @@ public static class FieldSceneSessionAuthoringCommand
     private static readonly JsonSerializerOptions Json = CreateJson();
 
     /// <summary>Builds a validated configuration, computing the digest from the producer image.</summary>
-    public static FieldSceneSessionConfiguration Author(FieldSceneSessionAuthoringRequest request)
+    public static FieldSceneSessionConfiguration Author(
+        FieldSceneSessionAuthoringRequest request,
+        string? expectedProducerPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!File.Exists(request.ProducerExecutablePath))
@@ -58,7 +60,7 @@ public static class FieldSceneSessionAuthoringCommand
             request.PollIntervalMilliseconds);
 
         // The runtime's own rules, not a copy of them.
-        configuration.Validate();
+        configuration.Validate(expectedProducerPath);
         return configuration;
     }
 
@@ -80,13 +82,13 @@ public static class FieldSceneSessionAuthoringCommand
     /// Reads a request, authors a validated configuration, and writes it. Returns the JSON that
     /// was written so the caller can show it rather than guess at it.
     /// </summary>
-    public static string Run(string requestPath, string outputPath)
+    public static string Run(string requestPath, string outputPath, string? expectedProducerPath = null)
     {
         if (File.Exists(outputPath))
             throw new InvalidOperationException(
                 $"{outputPath} already exists. Remove it deliberately before authoring a new scene session.");
 
-        var configuration = Author(ReadRequest(requestPath));
+        var configuration = Author(ReadRequest(requestPath), expectedProducerPath);
         var json = Serialize(configuration);
 
         var directory = Path.GetDirectoryName(Path.GetFullPath(outputPath));

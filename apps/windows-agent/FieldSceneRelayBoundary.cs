@@ -25,7 +25,12 @@ public sealed record FieldSceneRelayClientFacts(
 
 public static class FieldSceneRelayBoundary
 {
-    private const string ProductionAgentPath = @"C:\Exosuit\Agent\Exosuit.Agent.exe";
+    /// <summary>
+    /// The only path a scene producer may run from. Exposed because the session configuration must
+    /// be able to check against it at authoring time: the relay rejects any other path, and a
+    /// mismatch is otherwise invisible until the first scene is silently refused.
+    /// </summary>
+    public const string ProductionAgentPath = @"C:\Exosuit\Agent\Exosuit.Agent.exe";
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
 
     public static FieldChannelEnvelope AcceptAndSign(
