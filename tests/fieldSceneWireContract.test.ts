@@ -12,6 +12,11 @@ import { FieldSceneChannelReceiver } from "../src/fieldSceneChannel.js";
 /**
  * The TypeScript half of the scene wire contract.
  *
+ * This fixture found two real defects the day it was written — a non-canonical envelope timestamp
+ * and a payload hash that C# and TypeScript computed differently. Both are fixed; see
+ * `docs/qa/RESOLVED_2026-08-11_SCENE_PAYLOAD_HASH.md`. Keeping these assertions is what stops
+ * either from returning.
+ *
  * `field-channel-v1.json` already pins a signed **heartbeat** across both languages. Nothing
  * pinned a **scene observation** — the structural representation produced by
  * `FieldSceneProducerBoundary` in C# and consumed by `FieldSceneChannelReceiver` here agreed only
@@ -69,17 +74,7 @@ describe("Field scene cross-language fixture", () => {
     expect(parsed.sequence).toBe(7);
   });
 
-  // OPEN DEFECT — see docs/qa/OPEN_DEFECT_2026-08-11_SCENE_PAYLOAD_HASH.md
-  //
-  // The TypeScript receiver rejects a genuine C#-signed scene with "Field channel payload hash is
-  // invalid". Each language is self-consistent — C# verifies its own envelope and TypeScript
-  // verifies its own — but they canonicalise a scene payload differently, so the guest's hash
-  // cannot be reproduced on the host. Heartbeat payloads agree, which is why nothing caught this.
-  //
-  // Skipped rather than deleted or weakened: the assertion is correct and the product is wrong.
-  // Fixing it changes payload hashing, which is signature-adjacent and touches CHN-001 evidence,
-  // so it is a deliberate decision rather than a drive-by change.
-  it.skip("is accepted by the receiver and yields a usable scene", () => {
+  it("is accepted by the receiver and yields a usable scene", () => {
     const scene = receiver().accept({
       envelope: envelope(),
       heartbeat: heartbeat(),
@@ -91,12 +86,18 @@ describe("Field scene cross-language fixture", () => {
     // whole fixture exists for.
     expect(scene).toMatchObject({
       field: fixture.receiver.field,
-      sceneVersion: 1,
+      // The scene version tracks the envelope sequence, not a per-scene counter.
+      sceneVersion: 7,
       observationId: "observation-1",
+      capturedAt: "2026-08-11T12:00:00.000Z",
     });
+
+    // Structure survived the crossing: this is a usable scene, not merely a verified blob.
+    expect(scene.windows).toHaveLength(1);
+    expect(scene.elements).toHaveLength(2);
   });
 
-  it.skip("carries structure but no UI text — blocked by the same payload-hash defect", () => {
+  it("carries structure but no UI text", () => {
     const json = JSON.stringify(fixture.envelope);
 
     // The source observation had a window title, an element name, and a password value. If any
@@ -133,7 +134,7 @@ describe("Field scene cross-language fixture", () => {
     })).toThrow();
   });
 
-  it.skip("rejects a replay of the same scene — blocked by the same payload-hash defect", () => {
+  it("rejects a replay of the same scene", () => {
     const target = receiver();
     target.accept({ envelope: envelope(), heartbeat: heartbeat(), secret: fixture.secret, now: now() });
 

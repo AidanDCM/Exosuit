@@ -47,7 +47,10 @@ the signature covers — on the channel CHN-001 evidence has already passed on. 
 deliberate decision about re-verifying existing artifacts, not a change made while chasing a test
 failure, and not one landed immediately before a live session.
 
-Full detail: `docs/qa/OPEN_DEFECT_2026-08-11_SCENE_PAYLOAD_HASH.md`.
+Full detail: `docs/qa/RESOLVED_2026-08-11_SCENE_PAYLOAD_HASH.md`.
+
+**Update, same day:** both defects are now fixed and all seven cases pass. See
+`docs/engineering_log/2026-08-11-scene-payload-hash-fix.md`.
 
 ## What this means for the runbook
 

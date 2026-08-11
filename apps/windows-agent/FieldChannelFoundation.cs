@@ -301,7 +301,19 @@ public sealed class FieldHeartbeatMonitor
 
 internal static class CanonicalJson
 {
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    // The encoder must match the peer's. System.Text.Json's default escapes characters that are
+    // safe in JSON but that it treats as HTML-unsafe — notably '+' becomes "+" — while
+    // JavaScript's JSON.stringify emits them literally. Canonical bytes that differ by an escape
+    // hash differently, so a payload signed on the guest could not be verified on the host. That
+    // is not a theoretical concern: it was exactly the defect this encoder change fixes.
+    //
+    // "Unsafe" here refers to HTML/JS injection contexts. These bytes are hashed and compared,
+    // never interpolated into markup or script, so the relaxed encoder is the correct choice and
+    // the strict default was actively wrong.
+    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     public static string Serialize(object? value)
     {

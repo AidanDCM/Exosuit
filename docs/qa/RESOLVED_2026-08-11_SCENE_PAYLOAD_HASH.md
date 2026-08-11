@@ -1,7 +1,7 @@
-# OPEN DEFECT — a guest scene cannot be verified by the host
+# RESOLVED — a guest scene could not be verified by the host
 
 **Found:** 2026-08-11, by the scene wire-contract fixture.
-**Status:** open. Cause isolated, fix not applied. **Blocks SCN-001 live injection.**
+**Status:** RESOLVED 2026-08-11. Both fixes applied and verified. No longer blocks SCN-001.
 **Severity:** every scene the guest publishes would be rejected by the host.
 
 ## Two defects, one found while fixing the other
@@ -97,27 +97,41 @@ Either changes `payloadHash` for payloads containing such characters, and the si
 `payloadHash`. The measurement above says no existing artifact is in that set, but that is a
 statement about today's evidence, not a guarantee about any artifact anyone else holds.
 
-## Why it is still not fixed
+## Resolution
 
-The cause is isolated and the blast radius on existing evidence is measured at zero, so the
-original reason for holding off — uncertainty about re-verifying passed artifacts — no longer
-applies in the form it was written.
+Both candidate fixes were applied, because either alone would have been unsatisfying: the encoder
+change closes the class, and the timestamp change removes the inconsistency that produced this
+instance of it.
 
-What remains is that the change alters `payloadHash`, and the signature covers `payloadHash`. That
-is the owner's call to make deliberately, not a repair to slip in while chasing a test failure.
-The measurement narrows the decision; it does not replace it.
+1. `CanonicalJson.Options` now uses `JavaScriptEncoder.UnsafeRelaxedJsonEscaping`. "Unsafe" refers
+   to HTML and script injection contexts; these bytes are hashed and compared, never interpolated
+   into markup, so the relaxed encoder is correct here and the strict default was actively wrong.
+2. `FieldSceneProducerBoundary`'s wire options now use `CanonicalUtcDateTimeOffsetConverter`, so
+   `capturedAt` is written as canonical milliseconds like every other wire timestamp. Two formats
+   in one message was the underlying inconsistency, and the offset form was the only thing in the
+   payload carrying a character for the encoder to escape.
+
+Verified: a C#-signed scene envelope, generated from the real producer boundary and signing path,
+is now accepted by `FieldSceneChannelReceiver` and yields a usable scene — one active window, two
+elements, `capturedAt` canonical, `sceneVersion` tracking the envelope sequence.
+
+The three previously skipped tests are un-skipped and pass. One of them had a wrong expectation of
+its own — it asserted `sceneVersion: 1` where the value tracks the envelope sequence, 7 — which
+only became visible once the hash defect stopped masking it.
+
+Suites after the fix: agent 250/250, TypeScript 802/802 across 107 files, both validators pass.
+Existing CHN-001 evidence is unaffected, as the blast-radius measurement predicted: no payload in
+that run contains a character the encoder change would treat differently.
 
 ## Consequences for the SCN-001 session
 
-The runbook's "where this is most likely to break first" list did not include this, and should
-have. As it stands:
+**SCN-001.L2 is no longer blocked by this.** The runbook's "where this is most likely to break
+first" list did not include this defect and should have; that omission is the lesson worth keeping,
+since the list was written from what was untested rather than from what was untested *and
+unproven between components*.
 
-- **SCN-001.L2 cannot pass.** A scene will reach the host, parse, and then fail hash verification.
-- The failure will present as `scene rejected: Field channel payload hash is invalid` through
-  `readSceneFromKvp`, and the host monitor will invalidate with that reason. That is the correct
-  fail-closed behaviour, and it is not the ceremony passing.
-- Running the session before this is fixed would prove the transport and the fail-closed path, and
-  nothing about scene acceptance.
+A scene can now cross the authenticated path in source. Whether it does so on a real guest is
+still unproven — everything in the runbook's prediction list remains open.
 
 ## Reproduction
 
@@ -125,9 +139,8 @@ have. As it stands:
 npx vitest run tests/fieldSceneWireContract.test.ts
 ```
 
-Three cases are skipped and marked with this document. They are skipped rather than deleted or
-weakened, because the assertions are correct and the product is wrong. Un-skip them to see the
-failure.
+All seven cases pass. They were skipped and marked while the defect was open, rather than deleted
+or weakened, because the assertions were correct and the product was wrong.
 
 `tests/fixtures/field-scene-v1.json` was generated from the real C# producer boundary and signing
 path, not hand-authored.

@@ -175,6 +175,11 @@ public static class FieldSceneProducerBoundary
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
+        // A scene timestamp is a wire timestamp and must be written like every other one. Without
+        // this, `capturedAt` was serialised in offset form while `sentAt` used canonical
+        // milliseconds — two formats in one message, and the only one carrying a '+' for the
+        // encoder to escape.
+        options.Converters.Add(new CanonicalUtcDateTimeOffsetConverter());
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         return options;
     }
