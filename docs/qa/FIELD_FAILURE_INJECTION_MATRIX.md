@@ -130,6 +130,18 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Duplicate/unknown JSON or post-producer payload modification | reject before signature; require exact normalized representation | .NET U | W/H relay fuzzing |
 | Connected relay pipe absent or client exits during Windows fact resolution | reject without returning client facts or signing | .NET U/local Windows | W/H process race |
 | Pipe payload claims a different PID/session/SID/path | ignore claims; derive facts from connected pipe and Windows process/token | local Windows | W/H production IPC |
+| Unapproved principal opens the scene intake pipe | ACL names only SYSTEM and the one approved interactive SID; every other principal falls to default deny | .NET U/local Windows | W/H hostile local principal |
+| Producer reads from the intake or creates a rival instance on the name | `ReadData` and `CreateNewInstance` withheld; name squatting refused | .NET U | W/H |
+| Frame declares zero, oversized, or truncated length, or sends a second frame on one connection | reject before or at read; the connection budget is spent so no retry on the same instance | .NET U/local Windows | W/H |
+| Producer launched into session 0, a wrong session, a wrong user, or from a replaced binary | refuse before `CreateProcessAsUser`; digest recomputed from the file about to run | .NET U | W/H live cross-session launch |
+| Non-scene envelope or wrong generation offered to the KVP scene writer | refuse to publish; the writer never signs | .NET U | W/H |
+| Producer dies, guest reboots, desktop locks, or Secure Desktop appears mid-session | readiness clears with the most fundamental cause recorded; a boot change is terminal for the lifecycle | .NET U | W/H live transitions |
+| Teardown after the lifecycle has forgotten the producer | the supervisor's own PID tracking still terminates it; no orphan | .NET U | W/H live kill |
+| Scene value absent, missing a chunk, digest mismatch, or holding fragments of two writes | unreadable with a specific reason; never answered with the last good scene | TS U | W/H live KVP |
+| Host offered a scene captured before the desktop stopped being observable | refuse despite valid signature, boot, session, and sequence; observability barrier, ties fail closed | TS U | W/H lock/unlock cycle |
+| Host-side hypervisor read fails | report a failed read, never an empty exchange | TS U | W/H |
+| Exchange item declares a DOCTYPE/ENTITY, duplicates a name, or breaks size/count bounds | reject that item with an indexed reason; no XML entity machinery exists to exploit | TS U | W/H hostile guest exchange |
+| Wrong VM queried for a guest exchange | constrained VM name refused before the hypervisor is called | TS U | W/H — a wrong-VM read is authentic and otherwise undetectable |
 
 ## Shadow
 

@@ -115,6 +115,27 @@ Every message binds:
 
 Replay, mutation, wrong direction/key/generation, expiration, and sequence rollback are denied. Replay guards support bounded atomic local persistence bound to the exact Field generation, direction, and key ID. The compiled KVP observation state is stored in an HMAC-SHA256 envelope authenticated by the existing channel secret and bound to the exact Field generation, key ID, algorithm, and payload. Well-formed corruption, a new key, or a new generation fails closed without replacing prior bytes. The v22 canary passed copy-based protected-state faults. A transactional source coordinator now requires exact interactive-owner authorization, opaque provider-owned secret handles, prepare/commit, reconciliation, rollback, and blocks every key after unknown state; tests feed a committed next key into the existing replay guard and reject old-key traffic. Coordinator metadata has a bounded atomic HMAC-protected file store that authenticates before state deserialization. A bounded compiled Windows primitive protects channel-secret bytes with guest-machine DPAPI entropy bound to Field/generation/key and an exact SYSTEM/Administrators file DACL. Local DPAPI and ACL checks pass separately. A SYSTEM-only conversion transaction confines one seed path, denies protected-looking corruption and reparse endpoints, atomically replaces the seed, verifies it in fixed time, and re-verifies exact generation/key binding after restart. A fixed CLI invokes it only from literal `C:\Exosuit\Config\guest-runtime.json`, after LocalSystem and strict bounded configuration checks, and emits metadata only. The fixed guest launcher now invokes that command before the emitter and validates the exact metadata receipt; failure produces no heartbeat. The guest KVP emitter reads only the exact protected envelope through the real store, with no plaintext fallback. Host verification still has a separate plaintext key lifecycle. Atomic namespace replacement is not secure erasure. Combined guest LocalSystem execution, restart/failure injection, host protected-key storage, crash/power-loss behavior, and a live host/guest ceremony remain pending.
 
+### Scene boundary
+
+The full SCN-001 path now exists in source on both sides: an unprivileged producer client writing
+one bounded frame; a SYSTEM-side one-way named pipe bound to the exact Field generation and boot,
+with an ACL naming only SYSTEM and one approved interactive SID; Windows-derived client facts; the
+relay signing boundary as the single place an envelope is signed; a KVP scene writer that publishes
+but never signs; a session-local producer launcher pinning session, user, image path, and image
+digest; a lifecycle and supervisor that derive readiness rather than latching it; and, on the host,
+a constrained VM query, a CIM-XML parser with no XML-entity machinery, chunk reassembly with digest
+verification, a four-outcome intake, and a monitor carrying an observability barrier so a scene
+captured before a lock cannot be promoted after it clears.
+
+Scene production is opt-in and off unless an explicit session file enables it, so an unconfigured
+guest behaves exactly as the one that produced the CHN-001 live evidence.
+
+**None of this is live-validated.** No scene has crossed the path;
+`WindowsFieldSceneSessionPorts` has no coverage at all; no `GuestExchangeReader` exists, so the
+host has never queried Hyper-V; guest writer and host reader agree by construction rather than by
+an end-to-end run; and real lock, Secure Desktop, and PID-reuse behaviour is untested. SCN-001
+remains `source_validated`. See `docs/qa/SCN001_COMPONENT_STATUS.md` for the component-level view.
+
 ### Guest action boundary
 
 The guest accepts only typed status, observation, bounded desktop action, emergency-stop, and shutdown commands. Action execution requires:
