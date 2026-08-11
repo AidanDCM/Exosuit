@@ -103,6 +103,7 @@ function session() {
           artifactSha256: digest("7"),
         },
         readinessBetweenUnlockAndFreshScene: "invalidated",
+        artifactSha256: digest("0"),
       },
       relaunch: {
         killedPid: 4_100, killedAt: timestamp(60), readinessClearedAt: timestamp(61),

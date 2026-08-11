@@ -142,6 +142,7 @@ function makeRun(): Scn001Run {
         artifactSha256: digest("7"),
       },
       readinessBetweenUnlockAndFreshScene: "invalidated",
+      artifactSha256: digest("0"),
     },
     producerRelaunch: {
       killedPid: 4_100,

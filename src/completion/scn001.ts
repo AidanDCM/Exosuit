@@ -202,6 +202,7 @@ const unlockProof = z.object({
     artifactSha256: sha256,
   }).strict(),
   readinessBetweenUnlockAndFreshScene: z.literal("invalidated"),
+  artifactSha256: sha256,
 }).strict();
 
 const producerLaunchProof = z.object({
