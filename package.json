@@ -58,8 +58,10 @@
     "hyp001:record": "tsx src/completion/hyp001Harness.ts record",
     "test:hyp001": "vitest run tests/hyp001Harness.test.ts",
     "test:chn001": "vitest run tests/chn001.test.ts tests/chn001Harness.test.ts tests/fieldChannel.test.ts tests/fieldHeartbeat.test.ts tests/fieldLiveReadiness.test.ts",
+    "test:scn001": "vitest run tests/scn001.test.ts tests/scn001Harness.test.ts tests/scn001ReasonCoupling.test.ts tests/fieldScene.test.ts tests/fieldSceneChannel.test.ts tests/fieldSceneHostMonitor.test.ts tests/fieldSceneKvpIntake.test.ts tests/fieldSceneKvpReader.test.ts tests/fieldSceneObservation.test.ts tests/fieldSceneWireContract.test.ts",
     "test:tch001": "vitest run tests/tch001.test.ts tests/teachRecorder.test.ts tests/visualRetention.test.ts",
     "chn001:harness": "tsx src/completion/chn001Harness.ts",
+    "scn001:harness": "tsx src/completion/scn001Harness.ts",
     "validate:evidence-artifacts": "vitest run tests/completionArtifactReconciliation.test.ts",
     "scan:evidence-artifacts": "node scripts/scan-evidence-artifacts.mjs"
   },
