@@ -754,6 +754,10 @@ public static class FieldKvpRuntime
     private static JsonSerializerOptions CreateWireJson()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        // Timestamps must be written as canonical UTC milliseconds. The default round-trip form
+        // is valid ISO-8601 and is not the Field channel wire format; the TypeScript envelope
+        // schema rejects it.
+        options.Converters.Add(new CanonicalUtcDateTimeOffsetConverter());
         options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
         return options;
     }
