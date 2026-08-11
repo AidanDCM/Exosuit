@@ -8,11 +8,16 @@ namespace Exosuit.Agent.Tests;
 public sealed class FieldSceneRelayPipeServerTests
 {
     private static readonly FieldReference Field = new(Guid.Parse("4401b702-334f-475e-b867-b7d06798443d"), 3);
-    private static readonly Guid BootId = Guid.Parse("29a19dbc-5021-4dc3-8979-0026660fad17");
+    private static readonly Guid NameBindingBootId = Guid.Parse("29a19dbc-5021-4dc3-8979-0026660fad17");
+
+    // Per-test boot identity. The pipe name is derived from it, so sharing one value across the
+    // class makes every LocalWindows test here contend for a single pipe name — which surfaces
+    // as an intermittent UnauthorizedAccessException at pipe creation, not as a clear collision.
+    private readonly Guid BootId = Guid.NewGuid();
 
     private static string CurrentUserSid() => WindowsIdentity.GetCurrent().User!.Value;
 
-    private static FieldSceneRelayPipeServer CreateIntake() =>
+    private FieldSceneRelayPipeServer CreateIntake() =>
         new(Field, BootId, CurrentUserSid(), FieldGuestServiceHost.SystemSid);
 
     [Fact]
@@ -47,14 +52,14 @@ public sealed class FieldSceneRelayPipeServerTests
     public void PipeNameBindsExactGenerationAndBoot()
     {
         if (!OperatingSystem.IsWindows()) return;
-        var name = FieldSceneRelayPipeServer.BuildPipeName(Field, BootId);
+        var name = FieldSceneRelayPipeServer.BuildPipeName(Field, NameBindingBootId);
 
         Assert.Contains(Field.FieldId.ToString("N"), name, StringComparison.Ordinal);
         Assert.Contains($".g{Field.FieldGeneration}.", name, StringComparison.Ordinal);
-        Assert.Contains(BootId.ToString("N"), name, StringComparison.Ordinal);
+        Assert.Contains(NameBindingBootId.ToString("N"), name, StringComparison.Ordinal);
 
         // A neighbouring generation and a different boot must not collide with this intake.
-        Assert.NotEqual(name, FieldSceneRelayPipeServer.BuildPipeName(Field with { FieldGeneration = 4 }, BootId));
+        Assert.NotEqual(name, FieldSceneRelayPipeServer.BuildPipeName(Field with { FieldGeneration = 4 }, NameBindingBootId));
         Assert.NotEqual(name, FieldSceneRelayPipeServer.BuildPipeName(Field, Guid.NewGuid()));
     }
 
