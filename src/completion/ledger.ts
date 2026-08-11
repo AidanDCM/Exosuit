@@ -159,6 +159,18 @@ export function verifyCompletionLedger(request: LedgerVerificationRequest): Ledg
       if (Date.parse(record.observedAt) > recordedAt) {
         failures.push(`${label}: cites evidence observed after the transition was recorded`);
       }
+
+      // ---- the approver must not be the producer of the evidence ----
+      // Bound to keys, not to names. `issuer` on both records is operator-chosen free
+      // text, so comparing display strings would let one actor pick "harness-a" and
+      // "reviewer-b" and satisfy the rule while changing nothing. The signing key is the
+      // part an actor cannot choose without holding it.
+      if (event.reviewerKeyId !== undefined && record.signingKeyId === event.reviewerKeyId) {
+        failures.push(
+          `${label}: approval key ${event.reviewerKeyId} also signed cited evidence ${evidenceId}; `
+          + `an issuer may not approve its own evidence`,
+        );
+      }
     }
 
     failures.push(...verifyRecordSignature(event, {

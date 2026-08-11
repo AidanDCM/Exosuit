@@ -49,7 +49,16 @@ is given. The live registry is single-role per key, so the ledger key cannot min
 This is real. It defeats the obvious forgery — a ledger-key holder naming an arbitrary
 reviewer — and it is why class B is not class C.
 
-## Gap 1 — evidence-issuer separation
+## Gap 1 — evidence-issuer separation — **CLOSED 2026-08-11**
+
+Implemented in [`src/completion/ledger.ts`](../../src/completion/ledger.ts): a promotion into
+`passed` is rejected when `reviewerKeyId` equals the `signingKeyId` of any cited evidence
+record. Bound to keys, not names, exactly as scoped below. The frozen fingerprint did not move,
+and all eight historical promotions still verify — the rule revoked nothing. Covered by
+`tests/completionIssuerSeparation.test.ts`, including a case proving that renaming the issuer
+does not satisfy it.
+
+The original analysis follows, unchanged.
 
 **Problem.** No check compares a cited evidence record's authorship to the approving
 principal. The enforced separation is between the *ledger sealer* and the *reviewer*, never
