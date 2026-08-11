@@ -93,8 +93,7 @@ public static class FieldKvpRuntime
             // Scene production is opt-in and off unless a valid session file says otherwise.
             // With no file this runtime behaves exactly as the one that produced the CHN-001
             // live evidence; enabling scenes is a deliberate act, not a deployment side effect.
-            var sceneSession = FieldSceneSessionConfiguration.ReadOptional(
-                FieldSceneSessionConfiguration.ProductionPath);
+            var sceneSession = ReadSceneSessionConfiguration();
             using var sceneCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var sceneTask = StartSceneSessionIfEnabled(
                 sceneSession, configuration, secret, bootId, callerSid, sceneCancellation.Token);
@@ -183,22 +182,39 @@ public static class FieldKvpRuntime
     /// <summary>
     /// Builds and runs one scene session when configured. Returns a completed task when scene
     /// production is off, so the caller needs no special case.
+    ///
+    /// The ports and environment are injectable so the runtime's own opt-in decision can be
+    /// tested without launching a producer or touching the registry. Without that seam the
+    /// property that matters most here — that an unconfigured guest starts nothing — could only
+    /// be argued from reading the code.
     /// </summary>
-    private static Task StartSceneSessionIfEnabled(
+    internal static Task StartSceneSessionIfEnabled(
         FieldSceneSessionConfiguration? session,
         FieldKvpRuntimeConfiguration configuration,
         string secret,
         Guid bootId,
         string? callerSid,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<FieldSceneSessionConfiguration, IFieldSceneSessionPorts>? portsFactory = null,
+        IFieldSceneEnvironment? environment = null)
     {
         if (session is null) return Task.CompletedTask;
 
         var lifecycle = new FieldSceneLifecycle(configuration.Field, bootId, session.ToLaunchPolicy());
-        var supervisor = new FieldSceneSupervisor(lifecycle, new WindowsFieldSceneEnvironment(bootId));
-        var ports = new WindowsFieldSceneSessionPorts(configuration, session, secret, callerSid);
+        var supervisor = new FieldSceneSupervisor(
+            lifecycle, environment ?? new WindowsFieldSceneEnvironment(bootId));
+        var ports = portsFactory is null
+            ? new WindowsFieldSceneSessionPorts(configuration, session, secret, callerSid)
+            : portsFactory(session);
         return new FieldSceneSessionRunner(session, supervisor, ports).RunAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// The scene session configuration the guest runtime actually uses. Extracted so a test can
+    /// pin that the runtime reads the fixed production path and treats its absence as "off".
+    /// </summary>
+    internal static FieldSceneSessionConfiguration? ReadSceneSessionConfiguration(string? path = null) =>
+        FieldSceneSessionConfiguration.ReadOptional(path ?? FieldSceneSessionConfiguration.ProductionPath);
 
     public static FieldChannelEnvelope CreateEnvelope(
         FieldKvpRuntimeConfiguration configuration,
