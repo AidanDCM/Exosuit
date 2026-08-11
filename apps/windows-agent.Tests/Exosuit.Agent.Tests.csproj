@@ -27,5 +27,6 @@
     <None Include="../../tests/fixtures/field-channel-v1.json" Link="field-channel-v1.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../tests/fixtures/field-scene-v1.json" Link="field-scene-v1.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../tests/fixtures/field-heartbeat-v1.json" Link="field-heartbeat-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-bootstrap-v1.json" Link="field-bootstrap-v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
