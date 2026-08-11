@@ -695,6 +695,42 @@ public static class FieldKvpRuntime
         WriteEnvelope(guestKey, SceneValueName, envelope);
     }
 
+    /// <summary>
+    /// The exact key/value entries a KVP value becomes on the wire, short or chunked.
+    ///
+    /// Extracted as a pure function because the host reader has to reproduce this format exactly
+    /// and lives in a different language. Both sides are now tested against one committed
+    /// fixture, so a drift in either implementation fails a test instead of surfacing as an
+    /// unreadable scene on a live guest.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> BuildKvpEntries(string name, string value)
+    {
+        if (value.Length <= KvpChunkCharacters)
+        {
+            return new Dictionary<string, string> { [name] = value };
+        }
+
+        var chunks = Enumerable.Range(0, (value.Length + KvpChunkCharacters - 1) / KvpChunkCharacters)
+            .Select(index => value.Substring(
+                index * KvpChunkCharacters,
+                Math.Min(KvpChunkCharacters, value.Length - index * KvpChunkCharacters)))
+            .ToArray();
+
+        var entries = new Dictionary<string, string>();
+        for (var index = 0; index < chunks.Length; index++)
+        {
+            entries[$"{name}.{index:D3}"] = chunks[index];
+        }
+        entries[name] = JsonSerializer.Serialize(new
+        {
+            contractVersion = 1,
+            transport = "chunked",
+            chunkCount = chunks.Length,
+            sha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant(),
+        }, WireJson);
+        return entries;
+    }
+
     private static void WriteEnvelope(RegistryKey guestKey, string name, FieldChannelEnvelope envelope)
     {
         var value = SerializeEnvelope(envelope);
@@ -704,28 +740,15 @@ public static class FieldKvpRuntime
         {
             guestKey.DeleteValue(staleName, throwOnMissingValue: false);
         }
-        if (value.Length <= KvpChunkCharacters)
+        // One implementation of the wire format, shared with the fixture the host reader is
+        // tested against. Chunks are written before the manifest so a reader that catches the
+        // value mid-write finds a manifest only once its chunks exist.
+        var entries = BuildKvpEntries(name, value);
+        foreach (var entry in entries.Where(entry => entry.Key != name))
         {
-            guestKey.SetValue(name, value, RegistryValueKind.String);
-            return;
+            guestKey.SetValue(entry.Key, entry.Value, RegistryValueKind.String);
         }
-        var chunks = Enumerable.Range(0, (value.Length + KvpChunkCharacters - 1) / KvpChunkCharacters)
-            .Select(index => value.Substring(
-                index * KvpChunkCharacters,
-                Math.Min(KvpChunkCharacters, value.Length - index * KvpChunkCharacters)))
-            .ToArray();
-        for (var index = 0; index < chunks.Length; index++)
-        {
-            guestKey.SetValue($"{name}.{index:D3}", chunks[index], RegistryValueKind.String);
-        }
-        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
-        guestKey.SetValue(name, JsonSerializer.Serialize(new
-        {
-            contractVersion = 1,
-            transport = "chunked",
-            chunkCount = chunks.Length,
-            sha256 = digest,
-        }, WireJson), RegistryValueKind.String);
+        guestKey.SetValue(name, entries[name], RegistryValueKind.String);
     }
 
     private static JsonSerializerOptions CreateWireJson()
