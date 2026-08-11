@@ -35,6 +35,14 @@ is a plausible but unproven cause. This is recorded as an unexplained intermitte
 as a resolved defect. The timing-sensitive `LocalWindows` pipe tests are the next candidate if
 it returns.
 
+**Update 2026-08-11:** a probable cause was found while adding the scene producer client — see
+`ATOMIC_AUDIT_2026-08-11_FIELD_SCENE_PRODUCER_CLIENT.md`. The pipe name derives from Field
+generation and boot ID, and `FieldSceneRelayPipeServerTests` shared one `BootId` constant across
+the class, so every `LocalWindows` test there created a server on the same name;
+`UnauthorizedAccessException` at pipe creation is what name contention looks like. It reproduced
+deterministically in the new client tests. Both classes now use per-test boot identities. This
+remains probable rather than proven, because the original failing test was never identified.
+
 Unchanged and still the dominant risk: `WindowsFieldSceneSessionPorts` and
 `WindowsFieldSceneEnvironment` have no coverage whatsoever. Real `CreateProcessAsUser` across a
 session boundary, a real producer connecting to the intake, real relay signing of a real frame, a
