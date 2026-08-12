@@ -167,4 +167,14 @@ public sealed class FieldSceneProducerLauncherTests : IDisposable
         Assert.Throws<InvalidOperationException>(() =>
             FieldSceneProducerLauncher.Launch(Policy(), ApprovedSid));
     }
+
+    [Fact]
+    public void LauncherBuildsAndDestroysTheInteractiveUsersEnvironmentBlock()
+    {
+        var source = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "windows-agent", "FieldSceneProducerLauncher.cs")));
+        Assert.Contains("CreateEnvironmentBlock(out var environment, primaryToken, inherit: false)", source, StringComparison.Ordinal);
+        Assert.Contains("DestroyEnvironmentBlock(environment)", source, StringComparison.Ordinal);
+        Assert.Contains("CreateNoWindow | CreateUnicodeEnvironment", source, StringComparison.Ordinal);
+    }
 }

@@ -144,23 +144,28 @@ public static class FieldSceneProducerLauncher
 
             using (primaryToken)
             {
-                var startupInfo = new StartupInfo
+                if (!CreateEnvironmentBlock(out var environment, primaryToken, inherit: false))
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+
+                try
                 {
-                    cb = Marshal.SizeOf<StartupInfo>(),
-                    // The producer belongs on the interactive desktop; naming it explicitly
-                    // stops it from inheriting the service window station.
-                    lpDesktop = @"winsta0\default",
-                };
+                    var startupInfo = new StartupInfo
+                    {
+                        cb = Marshal.SizeOf<StartupInfo>(),
+                        // The producer belongs on the interactive desktop; naming it explicitly
+                        // stops it from inheriting the service window station.
+                        lpDesktop = @"winsta0\default",
+                    };
 
                 // The image must be told to be a producer. Started bare it runs the general agent
                 // host, which never connects to the intake — a launch that looks successful and
                 // produces nothing. The command line's first token is the image path by
                 // convention, and it is quoted because the installed path contains no spaces today
                 // but nothing guarantees that.
-                var commandLine =
-                    $"\"{policy.ProducerExecutablePath}\" --field-scene-producer \"{policy.ProducerConfigurationPath}\"";
+                    var commandLine =
+                        $"\"{policy.ProducerExecutablePath}\" --field-scene-producer \"{policy.ProducerConfigurationPath}\"";
 
-                if (!CreateProcessAsUser(
+                    if (!CreateProcessAsUser(
                         primaryToken,
                         policy.ProducerExecutablePath,
                         commandLine,
@@ -168,20 +173,26 @@ public static class FieldSceneProducerLauncher
                         IntPtr.Zero,
                         bInheritHandles: false,
                         CreateNoWindow | CreateUnicodeEnvironment,
-                        IntPtr.Zero,
+                        environment,
                         Path.GetDirectoryName(policy.ProducerExecutablePath),
                         ref startupInfo,
                         out var processInformation))
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
 
-                try
-                {
-                    return new FieldSceneProducerLaunchResult(processInformation.dwProcessId, sessionId, observedSid!);
+                    try
+                    {
+                        return new FieldSceneProducerLaunchResult(processInformation.dwProcessId, sessionId, observedSid!);
+                    }
+                    finally
+                    {
+                        if (processInformation.hProcess != IntPtr.Zero) CloseHandle(processInformation.hProcess);
+                        if (processInformation.hThread != IntPtr.Zero) CloseHandle(processInformation.hThread);
+                    }
                 }
                 finally
                 {
-                    if (processInformation.hProcess != IntPtr.Zero) CloseHandle(processInformation.hProcess);
-                    if (processInformation.hThread != IntPtr.Zero) CloseHandle(processInformation.hThread);
+                    if (!DestroyEnvironmentBlock(environment))
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
                 }
             }
         }
@@ -234,6 +245,17 @@ public static class FieldSceneProducerLauncher
         string? currentDirectory,
         ref StartupInfo startupInfo,
         out ProcessInformation processInformation);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateEnvironmentBlock(
+        out IntPtr environment,
+        SafeAccessTokenHandle token,
+        [MarshalAs(UnmanagedType.Bool)] bool inherit);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyEnvironmentBlock(IntPtr environment);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
