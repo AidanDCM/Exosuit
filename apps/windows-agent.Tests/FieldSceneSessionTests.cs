@@ -193,19 +193,32 @@ public sealed class FieldSceneSessionRunnerTests
     private sealed class FakePorts : IFieldSceneSessionPorts
     {
         public int Launches { get; private set; }
+        public int Arms { get; private set; }
         public int Accepts { get; private set; }
         public int Publishes { get; private set; }
         public Exception? LaunchThrows { get; set; }
+        public Exception? ArmThrows { get; set; }
         public Exception? AcceptThrows { get; set; }
         public Exception? PublishThrows { get; set; }
         public FieldReference SceneField { get; set; } = Field;
         public List<string> Failures { get; } = [];
+        public List<string> Operations { get; } = [];
+
+        public void ArmSceneIntake(Guid bootId)
+        {
+            Arms++;
+            Operations.Add("arm");
+            if (ArmThrows is not null) throw ArmThrows;
+        }
+
+        public void DisarmSceneIntake() => Operations.Add("disarm");
 
         public void RecordFailure(string reason) => Failures.Add(reason);
 
         public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy)
         {
             Launches++;
+            Operations.Add("launch");
             if (LaunchThrows is not null) throw LaunchThrows;
             return new FieldSceneProducerLaunchResult(ProducerPid, SessionId, ApprovedSid);
         }
@@ -213,6 +226,7 @@ public sealed class FieldSceneSessionRunnerTests
         public Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken)
         {
             Accepts++;
+            Operations.Add("accept");
             if (AcceptThrows is not null) throw AcceptThrows;
             return Task.FromResult(Scene(SceneField));
         }
@@ -250,6 +264,7 @@ public sealed class FieldSceneSessionRunnerTests
         await runner.RunCycleAsync(CancellationToken.None);
 
         Assert.Equal(1, ports.Launches);
+        Assert.Equal(new[] { "arm", "launch", "accept" }, ports.Operations);
         Assert.Equal(1, ports.Accepts);
         Assert.Equal(1, ports.Publishes);
         Assert.True(supervisor.IsActionable);
@@ -264,6 +279,7 @@ public sealed class FieldSceneSessionRunnerTests
 
         Assert.Equal(1, ports.Launches);
         Assert.Equal(2, ports.Accepts);
+        Assert.Equal(2, ports.Arms);
     }
 
     [Fact]
@@ -293,6 +309,22 @@ public sealed class FieldSceneSessionRunnerTests
         Assert.Single(ports.Failures);
         Assert.Contains("digest mismatch", ports.Failures[0], StringComparison.Ordinal);
         Assert.Equal(0, ports.Accepts);
+        Assert.Equal(new[] { "arm", "launch", "disarm" }, ports.Operations);
+    }
+
+    [Fact]
+    public async Task AnIntakeArmFailurePreventsProducerLaunch()
+    {
+        var (runner, supervisor, _, ports) = Build();
+        ports.ArmThrows = new InvalidOperationException("pipe unavailable");
+
+        await runner.RunCycleAsync(CancellationToken.None);
+
+        Assert.Equal(0, ports.Launches);
+        Assert.Equal(0, ports.Accepts);
+        Assert.False(supervisor.IsActionable);
+        Assert.Single(ports.Failures);
+        Assert.Contains("could not be armed", ports.Failures[0], StringComparison.Ordinal);
     }
 
     [Fact]

@@ -105,6 +105,12 @@ public sealed record FieldSceneSessionConfiguration(
 /// </summary>
 public interface IFieldSceneSessionPorts
 {
+    /// <summary>Creates the one-use listener before a producer can attempt its connection.</summary>
+    void ArmSceneIntake(Guid bootId);
+
+    /// <summary>Releases an armed listener when launch fails before acceptance can own it.</summary>
+    void DisarmSceneIntake();
+
     /// <summary>Launches the producer into the approved interactive session.</summary>
     FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy);
 
@@ -131,6 +137,24 @@ public sealed class WindowsFieldSceneSessionPorts(
     Guid bootId) : IFieldSceneSessionPorts
 {
     internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
+    private FieldSceneRelayPipeServer? armedIntake;
+
+    public void ArmSceneIntake(Guid requestedBootId)
+    {
+        if (requestedBootId != bootId)
+            throw new InvalidOperationException("Field scene intake cannot arm for a different boot identity.");
+        if (armedIntake is not null)
+            throw new InvalidOperationException("Field scene intake is already armed.");
+        armedIntake = new FieldSceneRelayPipeServer(
+            channel.Field, bootId, session.InteractiveUserSid, callerSid);
+    }
+
+    public void DisarmSceneIntake()
+    {
+        var intake = armedIntake;
+        armedIntake = null;
+        if (intake is not null) intake.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
 
     public void RecordFailure(string reason)
     {
@@ -168,18 +192,22 @@ public sealed class WindowsFieldSceneSessionPorts(
             session.ProducerExecutablePath,
             session.ProducerExecutableSha256);
 
-        await using var intake = new FieldSceneRelayPipeServer(
-            channel.Field, bootId, session.InteractiveUserSid, callerSid);
+        var intake = armedIntake
+            ?? throw new InvalidOperationException("Field scene intake was not armed before producer launch.");
+        armedIntake = null;
+        await using (intake)
+        {
 
-        return await FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
-            intake,
-            policy,
-            channel,
-            channelSecret,
-            FieldKvpRuntime.ReserveNextGuestSequence(channel),
-            callerSid,
-            now: null,
-            cancellationToken).ConfigureAwait(false);
+            return await FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
+                intake,
+                policy,
+                channel,
+                channelSecret,
+                FieldKvpRuntime.ReserveNextGuestSequence(channel),
+                callerSid,
+                now: null,
+                cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public void PublishScene(FieldChannelEnvelope envelope) =>
@@ -228,6 +256,20 @@ public sealed class FieldSceneSessionRunner(
             return;
         }
 
+        try
+        {
+            // The producer has one connection attempt. Arm the one-use listener first so a
+            // successfully created process cannot race ahead of the server and exit silently.
+            ports.ArmSceneIntake(supervisor.State.BootId);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            var reason = $"scene intake could not be armed: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
+            return;
+        }
+
         if (!supervisor.State.ProducerRunning)
         {
             try
@@ -236,6 +278,7 @@ public sealed class FieldSceneSessionRunner(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                ports.DisarmSceneIntake();
                 var reason = $"producer could not be launched: {exception.Message}";
                 ports.RecordFailure(reason);
                 supervisor.NotifyProducerUnavailable(reason);

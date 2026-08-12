@@ -40,6 +40,9 @@ public sealed class FieldKvpRuntimeSceneHookTests : IDisposable
         public int Accepts { get; private set; }
         public int Publishes { get; private set; }
 
+        public void ArmSceneIntake(Guid bootId) { }
+        public void DisarmSceneIntake() { }
+
         /// <summary>Completes once a cycle has really produced a scene, so tests wait on
         /// progress rather than on the clock.</summary>
         public Task FirstPublish => firstPublish.Task;
