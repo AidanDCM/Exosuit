@@ -82,6 +82,14 @@ public sealed class FieldSceneProducerClientTests
     }
 
     [Fact]
+    public async Task RejectsAnOutOfRangeIdentityResolutionHold()
+    {
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            FieldSceneProducerClient.SendSceneAsync(
+                Field, BootId, Payload(), identityResolutionHoldMilliseconds: 30_001));
+    }
+
+    [Fact]
     [Trait("Category", "LocalWindows")]
     public async Task RoundTripsOneSceneFromProducerToIntake()
     {

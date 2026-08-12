@@ -46,12 +46,15 @@ public static class FieldSceneProducerClient
         Guid bootId,
         StructuralFieldScenePayload payload,
         int connectTimeoutMilliseconds = 5_000,
+        int identityResolutionHoldMilliseconds = 0,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(field);
         field.Validate();
         if (bootId == Guid.Empty)
             throw new InvalidOperationException("Scene producer requires an exact boot identity.");
+        if (identityResolutionHoldMilliseconds is < 0 or > 30_000)
+            throw new ArgumentOutOfRangeException(nameof(identityResolutionHoldMilliseconds));
 
         // Bound first, connect second.
         var body = SerializeFrameBody(payload);
@@ -61,6 +64,9 @@ public static class FieldSceneProducerClient
             body,
             connectTimeoutMilliseconds,
             cancellationToken).ConfigureAwait(false);
+
+        if (identityResolutionHoldMilliseconds > 0)
+            await Task.Delay(identityResolutionHoldMilliseconds, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task SendFrameAsync(

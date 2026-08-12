@@ -161,6 +161,12 @@ public sealed class FieldSceneProducerHostTests
     }
 
     [Fact]
+    public void ProductionKeepsTheSingleShotProcessAliveForWindowsIdentityResolution()
+    {
+        Assert.InRange(FieldSceneProducerHost.ProductionIdentityResolutionHoldMilliseconds, 1, 30_000);
+    }
+
+    [Fact]
     public void ASessionConfigurationProducesAMatchingProducerConfiguration()
     {
         var session = new FieldSceneSessionConfiguration(

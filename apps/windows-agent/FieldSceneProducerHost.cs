@@ -113,6 +113,7 @@ public sealed class FieldSceneProviderObserver(IDesktopProvider provider) : IFie
 /// </summary>
 public static class FieldSceneProducerHost
 {
+    internal const int ProductionIdentityResolutionHoldMilliseconds = 10_000;
     /// <summary>
     /// Runs until cancelled. Each cycle observes, sanitizes through the producer boundary, and
     /// sends one frame.
@@ -192,7 +193,9 @@ public static class FieldSceneProducerHost
             configuration,
             new FieldSceneProviderObserver(new WindowsUiAutomationProvider()),
             (payload, token) => FieldSceneProducerClient.SendSceneAsync(
-                configuration.Field, configuration.BootId, payload, cancellationToken: token),
+                configuration.Field, configuration.BootId, payload,
+                identityResolutionHoldMilliseconds: ProductionIdentityResolutionHoldMilliseconds,
+                cancellationToken: token),
             WindowsIdentity.GetCurrent().User?.Value,
             cancellationToken);
     }
