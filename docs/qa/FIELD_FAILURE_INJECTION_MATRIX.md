@@ -1,5 +1,7 @@
 # Exosuit Field Failure Injection Matrix
 
+> 2026-08-12: live scene launch/intake/publication failures now persist one bounded, content-free latest-reason diagnostic at `C:\Exosuit\Logs\scene-runtime-error.log`; readiness still invalidates and no uncertain publication is retried.
+
 **Status:** source test cases written where possible; live rows pending a disposable Windows/Hyper-V environment  
 **Rule:** a failure is not considered handled merely because an exception exists. The expected stop, fault, quarantine, rollback, audit, and owner-review behavior must be observed.
 

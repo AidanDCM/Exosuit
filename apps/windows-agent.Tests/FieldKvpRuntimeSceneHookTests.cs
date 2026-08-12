@@ -50,6 +50,8 @@ public sealed class FieldKvpRuntimeSceneHookTests : IDisposable
             return new FieldSceneProducerLaunchResult(ProducerPid, SessionId, ApprovedSid);
         }
 
+        public void RecordFailure(string reason) { }
+
         public Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken)
         {
             Accepts++;

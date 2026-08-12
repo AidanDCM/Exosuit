@@ -199,6 +199,9 @@ public sealed class FieldSceneSessionRunnerTests
         public Exception? AcceptThrows { get; set; }
         public Exception? PublishThrows { get; set; }
         public FieldReference SceneField { get; set; } = Field;
+        public List<string> Failures { get; } = [];
+
+        public void RecordFailure(string reason) => Failures.Add(reason);
 
         public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy)
         {
@@ -287,6 +290,8 @@ public sealed class FieldSceneSessionRunnerTests
 
         Assert.False(supervisor.IsActionable);
         Assert.Contains("could not be launched", supervisor.State.InvalidationReason!, StringComparison.Ordinal);
+        Assert.Single(ports.Failures);
+        Assert.Contains("digest mismatch", ports.Failures[0], StringComparison.Ordinal);
         Assert.Equal(0, ports.Accepts);
     }
 
@@ -300,6 +305,7 @@ public sealed class FieldSceneSessionRunnerTests
 
         Assert.False(supervisor.IsActionable);
         Assert.Equal(0, ports.Publishes);
+        Assert.Single(ports.Failures);
     }
 
     [Fact]
@@ -314,6 +320,7 @@ public sealed class FieldSceneSessionRunnerTests
         // forbidden retry of a possibly successful effect.
         Assert.Equal(1, ports.Publishes);
         Assert.False(supervisor.IsActionable);
+        Assert.Single(ports.Failures);
     }
 
     [Fact]

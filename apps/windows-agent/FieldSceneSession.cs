@@ -108,6 +108,9 @@ public interface IFieldSceneSessionPorts
     /// <summary>Launches the producer into the approved interactive session.</summary>
     FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy);
 
+    /// <summary>Writes one bounded, content-free diagnostic for the latest failed scene cycle.</summary>
+    void RecordFailure(string reason);
+
     /// <summary>Accepts one bounded frame and returns the signed scene envelope.</summary>
     Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken);
 
@@ -127,6 +130,17 @@ public sealed class WindowsFieldSceneSessionPorts(
     string? callerSid,
     Guid bootId) : IFieldSceneSessionPorts
 {
+    internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
+
+    public void RecordFailure(string reason)
+    {
+        var bounded = string.IsNullOrWhiteSpace(reason) ? "scene cycle failed" : reason.Trim();
+        if (bounded.Length > 1_000) bounded = bounded[..1_000];
+        var directory = Path.GetDirectoryName(FailureLogPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(FailureLogPath, $"{DateTimeOffset.UtcNow:O} {bounded}{Environment.NewLine}");
+    }
+
     public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy)
     {
         // Written before the launch, because the launcher refuses to start a producer whose
@@ -222,7 +236,9 @@ public sealed class FieldSceneSessionRunner(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                supervisor.NotifyProducerUnavailable($"producer could not be launched: {exception.Message}");
+                var reason = $"producer could not be launched: {exception.Message}";
+                ports.RecordFailure(reason);
+                supervisor.NotifyProducerUnavailable(reason);
                 return;
             }
         }
@@ -235,7 +251,9 @@ public sealed class FieldSceneSessionRunner(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            supervisor.NotifyProducerUnavailable($"scene could not be accepted: {exception.Message}");
+            var reason = $"scene could not be accepted: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
             return;
         }
 
@@ -247,7 +265,9 @@ public sealed class FieldSceneSessionRunner(
         {
             // The scene may or may not have reached the value. Never re-publish blindly;
             // invalidate and let the next cycle produce a fresh scene.
-            supervisor.NotifyProducerUnavailable($"scene could not be published: {exception.Message}");
+            var reason = $"scene could not be published: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
             return;
         }
 
