@@ -4,6 +4,7 @@
 > 2026-08-12: automatic interactive-producer launch now creates and destroys the verified user's Windows environment block; environment creation failure denies launch and requires a fresh-generation live rerun.
 > 2026-08-12: the one-use scene intake is now armed before producer launch; arm failure prevents process creation and launch failure disposes the listener before invalidation.
 > 2026-08-12: arming now creates the actual ACL'd named-pipe server rather than only its wrapper; pipe ownership is established before the producer gets its single connection attempt.
+> 2026-08-12: each producer process now emits at most one structural scene and exits, matching the relay's one-connection/one-frame budget; transport uncertainty is never retried in-process.
 
 **Status:** source test cases written where possible; live rows pending a disposable Windows/Hyper-V environment  
 **Rule:** a failure is not considered handled merely because an exception exists. The expected stop, fault, quarantine, rollback, audit, and owner-review behavior must be observed.

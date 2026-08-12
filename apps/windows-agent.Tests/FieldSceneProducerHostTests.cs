@@ -32,45 +32,35 @@ public sealed class FieldSceneProducerHostTests
         }
     }
 
-    private static async Task<List<StructuralFieldScenePayload>> RunCyclesAsync(
+    private static async Task<List<StructuralFieldScenePayload>> RunOnceAsync(
         FieldSceneProducerConfiguration configuration,
         IFieldSceneObserver observer,
-        int cycles,
         string? callerSid = UserSid)
     {
         var sent = new List<StructuralFieldScenePayload>();
-        using var cancellation = new CancellationTokenSource();
-        try
+        await FieldSceneProducerHost.RunAsync(configuration, observer, (payload, _) =>
         {
-            await FieldSceneProducerHost.RunAsync(configuration, observer, (payload, _) =>
-            {
-                sent.Add(payload);
-                if (sent.Count >= cycles) cancellation.Cancel();
-                return Task.CompletedTask;
-            }, callerSid, cancellation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancellation is how the loop ends.
-        }
+            sent.Add(payload);
+            return Task.CompletedTask;
+        }, callerSid, CancellationToken.None);
         return sent;
     }
 
     [Fact]
-    public async Task ObservesAndSendsOneSanitizedScenePerCycle()
+    public async Task ObservesAndSendsExactlyOneSanitizedSceneThenExits()
     {
         var provider = new StubProvider();
 
-        var sent = await RunCyclesAsync(Configuration(), provider, cycles: 2);
+        var sent = await RunOnceAsync(Configuration(), provider);
 
-        Assert.Equal(2, sent.Count);
-        Assert.True(provider.Observations >= 2);
+        Assert.Single(sent);
+        Assert.Equal(1, provider.Observations);
     }
 
     [Fact]
     public async Task SanitizesBeforeAnythingLeavesTheProcess()
     {
-        var sent = await RunCyclesAsync(Configuration(), new StubProvider(), cycles: 1);
+        var sent = await RunOnceAsync(Configuration(), new StubProvider());
         var payload = Assert.Single(sent);
 
         // The stub observation carried a window title and an element value. A scene that failed
@@ -83,7 +73,7 @@ public sealed class FieldSceneProducerHostTests
     [Fact]
     public async Task BindsEverySceneToTheConfiguredBootAndSession()
     {
-        var sent = await RunCyclesAsync(Configuration(), new StubProvider(), cycles: 1);
+        var sent = await RunOnceAsync(Configuration(), new StubProvider());
         var payload = Assert.Single(sent);
 
         Assert.Equal(BootId, payload.BootId);
@@ -97,28 +87,28 @@ public sealed class FieldSceneProducerHostTests
         // A scene produced by the Field's own SYSTEM runtime would describe the service desktop.
         // Refusing here means the process never starts, rather than failing on first observation.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            RunCyclesAsync(Configuration(), new StubProvider(), 1, FieldGuestServiceHost.SystemSid));
+            RunOnceAsync(Configuration(), new StubProvider(), FieldGuestServiceHost.SystemSid));
     }
 
     [Fact]
     public async Task RefusesToRunWithoutAResolvableIdentity()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            RunCyclesAsync(Configuration(), new StubProvider(), 1, callerSid: null));
+            RunOnceAsync(Configuration(), new StubProvider(), callerSid: null));
     }
 
     [Fact]
     public async Task RefusesSessionZero()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            RunCyclesAsync(Configuration(sessionId: 0), new StubProvider(), 1));
+            RunOnceAsync(Configuration(sessionId: 0), new StubProvider()));
     }
 
     [Fact]
     public async Task RefusesAnEmptyBootIdentity()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            RunCyclesAsync(Configuration(bootId: Guid.Empty), new StubProvider(), 1));
+            RunOnceAsync(Configuration(bootId: Guid.Empty), new StubProvider()));
     }
 
     [Theory]
@@ -127,11 +117,11 @@ public sealed class FieldSceneProducerHostTests
     public async Task RefusesAnIntervalOutsideTheBound(int interval)
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            RunCyclesAsync(Configuration(interval: interval), new StubProvider(), 1));
+            RunOnceAsync(Configuration(interval: interval), new StubProvider()));
     }
 
     [Fact]
-    public async Task ATransportFailureEndsTheLoopRatherThanRetrying()
+    public async Task ATransportFailureEndsTheProcessRatherThanRetrying()
     {
         var attempts = 0;
         using var cancellation = new CancellationTokenSource();

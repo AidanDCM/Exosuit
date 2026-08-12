@@ -147,20 +147,20 @@ public static class FieldSceneProducerHost
         var identity = new FieldSceneProducerIdentity(
             configuration.Field, configuration.BootId, configuration.AgentId,
             configuration.WindowsSessionId, configuration.Display);
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            var observation = await observer.ObserveAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var observation = await observer.ObserveAsync(cancellationToken).ConfigureAwait(false);
 
-            // Sanitization and every identity check happen here, before anything leaves the
-            // process. A scene that fails the boundary is never sent, not sent and then rejected.
-            var payload = FieldSceneProducerBoundary.Create(
-                identity, observation,
-                CursorOf(observation), ModalOf(observation),
-                callerSid, configuration.WindowsSessionId);
+        // Sanitization and every identity check happen here, before anything leaves the
+        // process. A scene that fails the boundary is never sent, not sent and then rejected.
+        var payload = FieldSceneProducerBoundary.Create(
+            identity, observation,
+            CursorOf(observation), ModalOf(observation),
+            callerSid, configuration.WindowsSessionId);
 
-            await send(payload, cancellationToken).ConfigureAwait(false);
-            await Task.Delay(configuration.IntervalMilliseconds, cancellationToken).ConfigureAwait(false);
-        }
+        // The relay intake is deliberately one-use. One producer process therefore observes and
+        // sends exactly one scene, then exits; the SYSTEM supervisor owns subsequent cadence and
+        // launches a fresh producer only after it has armed a fresh intake.
+        await send(payload, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
