@@ -48,6 +48,7 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
 
     private readonly string interactiveUserSid;
     private readonly string? relayCallerSid;
+    private readonly NamedPipeServerStream server;
     private bool connectionSpent;
     private bool disposed;
 
@@ -81,6 +82,16 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
         this.interactiveUserSid = interactiveUserSid;
         this.relayCallerSid = relayCallerSid;
         PipeName = BuildPipeName(field, bootId);
+        server = NamedPipeServerStreamAcl.Create(
+            PipeName,
+            PipeDirection.In,
+            ServerInstances,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous | PipeOptions.WriteThrough,
+            inBufferSize: MaximumFrameBytes + FrameHeaderBytes,
+            outBufferSize: 0,
+            BuildSecurity(),
+            HandleInheritability.None);
     }
 
     public FieldReference Field { get; }
@@ -135,25 +146,11 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
         // retried on the same instance. A second frame requires a new, re-authorised server.
         connectionSpent = true;
 
-        var server = NamedPipeServerStreamAcl.Create(
-            PipeName,
-            PipeDirection.In,
-            ServerInstances,
-            PipeTransmissionMode.Byte,
-            PipeOptions.Asynchronous | PipeOptions.WriteThrough,
-            inBufferSize: MaximumFrameBytes + FrameHeaderBytes,
-            outBufferSize: 0,
-            BuildSecurity(),
-            HandleInheritability.None);
+        await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
 
-        await using (server.ConfigureAwait(false))
-        {
-            await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
-
-            var client = FieldSceneRelayWindowsClientResolver.ResolveConnectedClient(server, relayCallerSid);
-            var payload = await ReadBoundedFrameAsync(server, cancellationToken).ConfigureAwait(false);
-            return new FieldSceneRelayIntakeFrame(client, payload);
-        }
+        var client = FieldSceneRelayWindowsClientResolver.ResolveConnectedClient(server, relayCallerSid);
+        var payload = await ReadBoundedFrameAsync(server, cancellationToken).ConfigureAwait(false);
+        return new FieldSceneRelayIntakeFrame(client, payload);
     }
 
     private static async Task<byte[]> ReadBoundedFrameAsync(
@@ -202,7 +199,7 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
     public ValueTask DisposeAsync()
     {
         disposed = true;
-        return ValueTask.CompletedTask;
+        return server.DisposeAsync();
     }
 }
 
