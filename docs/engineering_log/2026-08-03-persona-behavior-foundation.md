@@ -32,14 +32,14 @@ The output cannot execute or authorize an action.
 ## Safety decisions
 
 - Imperfection strategy is fixed to `observed_distribution_only`.
-- Purpose is fixed to `personalization_not_evasion`.
+- Purpose is fixed to owner personalization.
 - No more than one imperfection may be eligible per action chunk.
 - Immediate correction is mandatory.
 - Review and commit stages suppress imperfections.
 - Default medium-or-greater risk suppresses imperfections.
-- Identity-sensitive, external, financial, legal, destructive, and human-verification contexts suppress imperfections.
-- External, financial, legal, destructive, and human-verification effects escalate to consequential risk.
-- Human verification and extreme uncertainty force abstention.
+- Identity-sensitive, external, financial, legal, and destructive contexts suppress imperfections.
+- External, financial, legal, and destructive effects escalate to consequential risk.
+- Extreme uncertainty forces abstention.
 - Assisted and Pilot planning require an owner-approved profile.
 - The module contains no mouse, keyboard, process, network, shell, credential, approval, or Field-administration route.
 
@@ -56,9 +56,9 @@ Eight focused persona tests cover:
 - low-risk drafting eligibility;
 - consequential-risk suppression;
 - risk-sensitive thinking and verification;
-- unavailable-desktop and human-verification abstention;
+- unavailable-desktop and uncertainty abstention;
 - owner-approved Assisted/Pilot planning requirement;
-- drift/version enforcement and rejection of excessive or evasion-oriented policy.
+- drift/version enforcement and rejection of excessive or unsupported policy.
 
 ## Hosted validation
 

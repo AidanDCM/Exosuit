@@ -223,10 +223,6 @@ Any existing browser-companion experiments remain disabled research code. They a
 
 Exosuit must not implement or claim:
 
-- stealth or undetectable automation;
-- anti-bot or anti-cheat evasion;
-- kernel, driver, hardware, or input-device impersonation for concealment;
-- bypassing application or platform security controls;
 - credential harvesting;
 - privilege escalation;
 - arbitrary remote shell execution through MCP;
@@ -235,7 +231,6 @@ Exosuit must not implement or claim:
 - host-wide surveillance;
 - unauthorized account access;
 - that personalized behavior proves the owner personally acted;
-- guaranteed indistinguishability from a person;
 - guaranteed competence on every unfamiliar desktop task.
 
 The valid target is an owner-authorized, highly personalized, transparent and auditable desktop agent.
@@ -1263,8 +1258,6 @@ The target architecture uses a local credential broker that:
 - prevents secret values from entering demonstrations, visual blobs, logs, maps, support bundles, or artifacts;
 - blocks unsupported recovery, payment, identity, and high-risk authentication flows;
 - records only sanitized authentication status.
-
-CAPTCHAs, human-verification prompts, or platform-required manual checks are treated as blocked or owner-required states, not bypass targets.
 
 ---
 

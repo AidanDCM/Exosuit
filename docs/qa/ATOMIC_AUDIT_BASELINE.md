@@ -144,7 +144,7 @@ Confirmed design strengths:
 - exact approval status stored locally,
 - password values omitted,
 - audit redaction/hashing,
-- explicit product exclusion of stealth and bypass use.
+- explicit exclusion of credential theft, unauthorized access, privilege escalation, and covert recording.
 
 Unconfirmed until tests:
 

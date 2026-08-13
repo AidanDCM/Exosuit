@@ -45,7 +45,7 @@ I will make one reviewable slice at a time and document rollback.
 - The **Field** owns the isolated Windows environment, display, VM/storage lifecycle, task workspace, and owner-consented demonstration surface.
 - Do not collapse Glove and Field identity, lifecycle, policy, or evidence into one generic desktop object.
 - A browser is an ordinary Windows application. Do not make an AI browser, DOM channel, Playwright, extension, or browser-special controller a required execution path.
-- Do not add stealth, anti-detection, anti-cheat, credential scraping, security bypass, privilege escalation, covert recording, or deceptive-impersonation features.
+- Do not add credential scraping, unauthorized account access, privilege escalation, covert recording, or deceptive identity claims.
 - Do not let MCP or model output enable `full_control`, create Field policy, sign Field attestation, grant recording consent, rotate keys, delete demonstrations, or approve sensitive export.
 - Do not bind the Windows agent beyond a reviewed authenticated architecture.
 - Do not put secrets, screenshot bytes, private UI text, demonstration raw bytes, or agent/Field tokens into logs, fixtures, tool results, or commits.

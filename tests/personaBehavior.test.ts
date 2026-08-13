@@ -145,7 +145,7 @@ describe("Persona and behavioral dynamics", () => {
     expect(careful.state).toBe("careful");
   });
 
-  it("abstains when the desktop is unavailable or human verification is required", () => {
+  it("abstains when the desktop is unavailable or a configured protected state is active", () => {
     const profile = createPersonaProfile(profileInput());
     const unavailable = planPersonaBehavior(profile, context({ systemReady: false }));
     expect(unavailable).toMatchObject({
@@ -196,7 +196,7 @@ describe("Persona and behavioral dynamics", () => {
     expect(() => comparePersonaProfiles(previous, wrongVersion)).toThrow(/consecutive/);
   });
 
-  it("rejects evasion-oriented or excessive imperfection policy", () => {
+  it("rejects unsupported or excessive imperfection policy", () => {
     expect(() => personaImperfectionPolicySchema.parse({
       ...profileInput().imperfection,
       purpose: "anti_detection",

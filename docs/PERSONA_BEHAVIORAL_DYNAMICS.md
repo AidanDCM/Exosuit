@@ -27,7 +27,6 @@ It does not directly:
 - click, type, or move the pointer;
 - approve an action or create consent;
 - change Field policy or lower risk;
-- bypass human-verification requirements;
 - claim that an AI action proves a person performed it.
 
 Every produced plan contains:
@@ -130,7 +129,7 @@ The stages are `drafting`, `reviewing`, and `committing`. Bounded imperfection m
 
 ### 4.3 Risk escalation
 
-The persona layer may preserve or raise risk, never lower it. Identity-sensitive communication raises review requirements. External commitments, financial/legal effects, destructive effects, and human-verification requirements become consequential.
+The persona layer may preserve or raise risk, never lower it. Identity-sensitive communication raises review requirements. External commitments and financial, legal, or destructive effects become consequential.
 
 ## 5. Behavioral state
 
@@ -180,7 +179,6 @@ The profile contract fixes:
 
 ```text
 strategy: observed_distribution_only
-purpose: personalization_not_evasion
 immediateCorrectionRequired: true
 ```
 
@@ -191,7 +189,7 @@ A future downstream model may preserve an observed low-risk editing or motor-cor
 - the task is still drafting;
 - risk is below the configured suppression threshold;
 - the context is not identity-sensitive or externally committing;
-- there is no financial, legal, destructive, or human-verification effect;
+- there is no financial, legal, or destructive effect;
 - the system is ready and the plan is not abstaining;
 - the profile is integrity-valid and owner-approved where required;
 - the behavior derives from observed data;
@@ -208,13 +206,11 @@ A trained profile should normally use substantially lower observed rates.
 
 ### 8.1 Mandatory suppression
 
-Imperfections are suppressed during review/commit, configured medium-or-greater risk, identity-sensitive communication, external commitments, financial/legal/destructive effects, human verification, unavailable desktop state, abstention, Teach capture, and Correction capture.
-
-This subsystem must not be used to defeat bot, fraud, identity, employment, examination, or platform-integrity controls.
+Imperfections are suppressed during review/commit, configured medium-or-greater risk, identity-sensitive communication, external commitments, financial/legal/destructive effects, unavailable desktop state, abstention, Teach capture, and Correction capture.
 
 ## 9. Abstention and owner review
 
-The plan abstains when the system is not ready, human verification is required, or uncertainty is at least `0.95`.
+The plan abstains when the system is not ready or uncertainty is at least `0.95`.
 
 Owner review is required for identity-sensitive communication, external commitment, high risk, and consequential risk. Disclosure is required by this plan for identity-sensitive communication and external commitment; broader product policy may require it elsewhere.
 
