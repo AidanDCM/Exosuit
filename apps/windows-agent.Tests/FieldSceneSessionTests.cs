@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace Exosuit.Agent.Tests;
 
@@ -207,6 +209,46 @@ public sealed class WindowsFieldSceneSessionPortsProcessRaceTests
 
         Assert.True(cancellation.IsCancellationRequested);
         Assert.Contains("exit code 23", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("Category", "LocalWindows")]
+    public void ProducerConfigurationAclGrantsTheExactUserReadOnly()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var path = Path.Combine(Path.GetTempPath(), $"exosuit-scene-producer-{Guid.NewGuid():N}.json");
+        var producer = WindowsIdentity.GetCurrent().User!;
+        File.WriteAllText(path, "{}");
+        try
+        {
+            WindowsFieldSceneSessionPorts.SealProducerConfiguration(path, producer.Value);
+            var security = new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+            var rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier))
+                .Cast<FileSystemAccessRule>().ToArray();
+            var producerRules = rules.Where(rule =>
+                ((SecurityIdentifier)rule.IdentityReference).Value == producer.Value).ToArray();
+
+            Assert.True(security.AreAccessRulesProtected);
+            Assert.Equal(3, rules.Length);
+            Assert.Single(producerRules);
+            Assert.Equal(AccessControlType.Allow, producerRules[0].AccessControlType);
+            Assert.True((producerRules[0].FileSystemRights & FileSystemRights.ReadAndExecute)
+                == FileSystemRights.ReadAndExecute);
+            Assert.False((producerRules[0].FileSystemRights &
+                (FileSystemRights.Write | FileSystemRights.Delete | FileSystemRights.ChangePermissions)) != 0);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                var cleanup = new FileSecurity();
+                cleanup.SetAccessRuleProtection(true, false);
+                cleanup.AddAccessRule(new FileSystemAccessRule(
+                    producer, FileSystemRights.FullControl, AccessControlType.Allow));
+                new FileInfo(path).SetAccessControl(cleanup);
+                File.Delete(path);
+            }
+        }
     }
 }
 

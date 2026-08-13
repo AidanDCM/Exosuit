@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Diagnostics;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace Exosuit.Agent;
 
@@ -178,6 +180,9 @@ public sealed class WindowsFieldSceneSessionPorts(
         File.WriteAllText(
             FieldSceneProducerConfiguration.ProductionPath,
             JsonSerializer.Serialize(producer, FieldSceneProducerConfiguration.Json));
+        SealProducerConfiguration(
+            FieldSceneProducerConfiguration.ProductionPath,
+            session.InteractiveUserSid);
 
         var result = FieldSceneProducerLauncher.Launch(policy, callerSid);
         launchedProducerProcessId = result.ProcessId;
@@ -214,6 +219,25 @@ public sealed class WindowsFieldSceneSessionPorts(
             return await AwaitFrameOrProducerExitAsync(
                 accept, exited, () => producer.ExitCode, intakeCancellation).ConfigureAwait(false);
         }
+    }
+
+    internal static void SealProducerConfiguration(string path, string interactiveUserSid)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Field scene producer configuration ACLs require Windows.");
+
+        var producer = new SecurityIdentifier(interactiveUserSid);
+        var localSystem = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+        var administrators = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+        var security = new FileSecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(
+            localSystem, FileSystemRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(
+            administrators, FileSystemRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(
+            producer, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
+        new FileInfo(path).SetAccessControl(security);
     }
 
     internal static async Task<FieldChannelEnvelope> AwaitFrameOrProducerExitAsync(
