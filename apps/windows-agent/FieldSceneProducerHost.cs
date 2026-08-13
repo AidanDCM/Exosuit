@@ -113,7 +113,10 @@ public sealed class FieldSceneProviderObserver(IDesktopProvider provider) : IFie
 /// </summary>
 public static class FieldSceneProducerHost
 {
-    internal const int ProductionIdentityResolutionHoldMilliseconds = 10_000;
+    // Keep the exact producer alive while the privileged relay resolves its Windows pipe-client
+    // PID and verifies the process token/image. Live Hyper-V evidence exceeded ten seconds on a
+    // loaded guest, so use the client's existing hard maximum rather than racing a clean exit.
+    internal const int ProductionIdentityResolutionHoldMilliseconds = 30_000;
     /// <summary>
     /// Runs until cancelled. Each cycle observes, sanitizes through the producer boundary, and
     /// sends one frame.
