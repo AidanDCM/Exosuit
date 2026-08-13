@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
+using System.ComponentModel;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -26,6 +28,11 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
 
     private const int FrameHeaderBytes = 4;
     private const int ServerInstances = 1;
+    private const uint LabelSecurityInformation = 0x00000010;
+    private const int SeKernelObject = 6;
+    private const byte AclRevision = 2;
+    private const byte SystemMandatoryLabelAceType = 0x11;
+    private const uint SystemMandatoryLabelNoWriteUp = 0x1;
 
     /// <summary>
     /// The empirically minimal set that lets one Windows client open a write handle: write
@@ -61,7 +68,8 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
         FieldReference field,
         Guid bootId,
         string interactiveUserSid,
-        string? relayCallerSid)
+        string? relayCallerSid,
+        bool applyMandatoryIntegrityLabel = true)
     {
         ArgumentNullException.ThrowIfNull(field);
         if (!OperatingSystem.IsWindows())
@@ -92,6 +100,7 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
             outBufferSize: 0,
             BuildSecurity(),
             HandleInheritability.None);
+        if (applyMandatoryIntegrityLabel) ApplyMediumIntegrityNoWriteUp(server);
     }
 
     public FieldReference Field { get; }
@@ -127,8 +136,72 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
         // owner explicitly would need SeRestorePrivilege and buys nothing here.
         security.AddAccessRule(new PipeAccessRule(system, PipeAccessRights.FullControl, AccessControlType.Allow));
         security.AddAccessRule(new PipeAccessRule(producer, ProducerRights, AccessControlType.Allow));
+
+        // A pipe created by the LocalSystem service otherwise inherits the service token's
+        // mandatory integrity label. Windows evaluates that label in addition to this DACL,
+        // and a normal medium-integrity interactive process is denied before the relay can
+        // derive and verify its PID/session/SID/image facts. Label this one-way intake medium
+        // with no-write-up: the approved medium producer can connect, low-integrity callers
+        // still cannot write, and the DACL continues to name only the exact approved SID.
         return security;
     }
+
+    /// <summary>
+    /// Applies a mandatory label through LABEL_SECURITY_INFORMATION. The managed PipeSecurity
+    /// SACL surface accepts the SDDL text but drops SYSTEM_MANDATORY_LABEL_ACE, so using it here
+    /// would look correct in source while leaving the live kernel object at SYSTEM integrity.
+    /// </summary>
+    internal static void ApplyMediumIntegrityNoWriteUp(NamedPipeServerStream pipe)
+    {
+        ArgumentNullException.ThrowIfNull(pipe);
+        var acl = BuildMediumIntegrityNoWriteUpAcl();
+        var memory = Marshal.AllocHGlobal(acl.Length);
+        try
+        {
+            Marshal.Copy(acl, 0, memory, acl.Length);
+            var error = SetSecurityInfo(
+                pipe.SafePipeHandle.DangerousGetHandle(),
+                SeKernelObject,
+                LabelSecurityInformation,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                memory);
+            if (error != 0) throw new Win32Exception(checked((int)error));
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(memory);
+        }
+    }
+
+    internal static byte[] BuildMediumIntegrityNoWriteUpAcl()
+    {
+        // SID S-1-16-8192 (medium mandatory level): revision, sub-authority count,
+        // SECURITY_MANDATORY_LABEL_AUTHORITY, then one little-endian sub-authority.
+        var sid = new byte[] { 1, 1, 0, 0, 0, 0, 0, 16, 0, 32, 0, 0 };
+        var aceSize = checked((ushort)(8 + sid.Length));
+        var aclSize = checked((ushort)(8 + aceSize));
+        var acl = new byte[aclSize];
+        acl[0] = AclRevision;
+        BinaryPrimitives.WriteUInt16LittleEndian(acl.AsSpan(2), aclSize);
+        BinaryPrimitives.WriteUInt16LittleEndian(acl.AsSpan(4), 1);
+        acl[8] = SystemMandatoryLabelAceType;
+        BinaryPrimitives.WriteUInt16LittleEndian(acl.AsSpan(10), aceSize);
+        BinaryPrimitives.WriteUInt32LittleEndian(acl.AsSpan(12), SystemMandatoryLabelNoWriteUp);
+        sid.CopyTo(acl, 16);
+        return acl;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = false)]
+    private static extern uint SetSecurityInfo(
+        IntPtr handle,
+        int objectType,
+        uint securityInfo,
+        IntPtr owner,
+        IntPtr group,
+        IntPtr dacl,
+        IntPtr sacl);
 
     /// <summary>
     /// Accepts the one permitted connection, resolves the connected client from Windows

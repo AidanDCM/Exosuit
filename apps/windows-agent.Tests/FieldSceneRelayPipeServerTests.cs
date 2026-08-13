@@ -18,7 +18,11 @@ public sealed class FieldSceneRelayPipeServerTests
     private static string CurrentUserSid() => WindowsIdentity.GetCurrent().User!.Value;
 
     private FieldSceneRelayPipeServer CreateIntake() =>
-        new(Field, BootId, CurrentUserSid(), FieldGuestServiceHost.SystemSid);
+        // The local test process is not LocalSystem and cannot apply a mandatory-label SACL
+        // while creating a kernel object. Production never disables it; this seam tests the
+        // one-way transport independently, while the ACL test below validates the full descriptor.
+        new(Field, BootId, CurrentUserSid(), FieldGuestServiceHost.SystemSid,
+            applyMandatoryIntegrityLabel: false);
 
     [Fact]
     public void RejectsNonSystemCallerBeforeOwningAPipeName()
@@ -97,6 +101,18 @@ public sealed class FieldSceneRelayPipeServerTests
 
         // It may not stand up a rival server instance on this name and squat the intake.
         Assert.False(producer.PipeAccessRights.HasFlag(PipeAccessRights.CreateNewInstance));
+
+        // SYSTEM creates the production listener. Its inherited high/system integrity label
+        // would deny the approved medium-integrity desktop process before relay identity
+        // verification. Pin the native ACL: one mandatory-label ACE, no-write-up, and the
+        // exact medium-level SID S-1-16-8192 (never low integrity).
+        Assert.Equal(
+            new byte[] {
+                2, 0, 28, 0, 1, 0, 0, 0,
+                0x11, 0, 20, 0, 1, 0, 0, 0,
+                1, 1, 0, 0, 0, 0, 0, 16, 0, 32, 0, 0,
+            },
+            FieldSceneRelayPipeServer.BuildMediumIntegrityNoWriteUpAcl());
     }
 
     [Fact]
