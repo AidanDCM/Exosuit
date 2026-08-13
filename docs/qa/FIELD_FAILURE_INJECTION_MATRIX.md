@@ -143,6 +143,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Producer launched into session 0, a wrong session, a wrong user, or from a replaced binary | refuse before `CreateProcessAsUser`; digest recomputed from the file about to run | .NET U | W/H live cross-session launch |
 | Non-scene envelope or wrong generation offered to the KVP scene writer | refuse to publish; the writer never signs | .NET U | W/H |
 | Producer dies, guest reboots, desktop locks, or Secure Desktop appears mid-session | readiness clears with the most fundamental cause recorded; a boot change is terminal for the lifecycle | .NET U | W/H live transitions |
+| Exact launched producer exits before its one frame is accepted | race intake against that PID; cancel/dispose intake, record only its exit code, invalidate readiness, and do not retry | .NET U | W/H unprivileged producer failure |
 | Teardown after the lifecycle has forgotten the producer | the supervisor's own PID tracking still terminates it; no orphan | .NET U | W/H live kill |
 | Scene value absent, missing a chunk, digest mismatch, or holding fragments of two writes | unreadable with a specific reason; never answered with the last good scene | TS U | W/H live KVP |
 | Host offered a scene captured before the desktop stopped being observable | refuse despite valid signature, boot, session, and sequence; observability barrier, ties fail closed | TS U | W/H lock/unlock cycle |

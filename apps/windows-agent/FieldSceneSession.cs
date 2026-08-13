@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics;
 
 namespace Exosuit.Agent;
 
@@ -138,6 +139,7 @@ public sealed class WindowsFieldSceneSessionPorts(
 {
     internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
     private FieldSceneRelayPipeServer? armedIntake;
+    private int? launchedProducerProcessId;
 
     public void ArmSceneIntake(Guid requestedBootId)
     {
@@ -177,7 +179,9 @@ public sealed class WindowsFieldSceneSessionPorts(
             FieldSceneProducerConfiguration.ProductionPath,
             JsonSerializer.Serialize(producer, FieldSceneProducerConfiguration.Json));
 
-        return FieldSceneProducerLauncher.Launch(policy, callerSid);
+        var result = FieldSceneProducerLauncher.Launch(policy, callerSid);
+        launchedProducerProcessId = result.ProcessId;
+        return result;
     }
 
     public async Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken)
@@ -197,16 +201,53 @@ public sealed class WindowsFieldSceneSessionPorts(
         armedIntake = null;
         await using (intake)
         {
+            var processId = launchedProducerProcessId
+                ?? throw new InvalidOperationException("Field scene intake has no exact launched producer PID.");
+            launchedProducerProcessId = null;
+            using var producer = GetProducerProcess(processId);
+            using var intakeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var accept = FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
+                intake, policy, channel, channelSecret,
+                FieldKvpRuntime.ReserveNextGuestSequence(channel), callerSid,
+                now: null, intakeCancellation.Token);
+            var exited = producer.WaitForExitAsync(cancellationToken);
+            return await AwaitFrameOrProducerExitAsync(
+                accept, exited, () => producer.ExitCode, intakeCancellation).ConfigureAwait(false);
+        }
+    }
 
-            return await FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
-                intake,
-                policy,
-                channel,
-                channelSecret,
-                FieldKvpRuntime.ReserveNextGuestSequence(channel),
-                callerSid,
-                now: null,
-                cancellationToken).ConfigureAwait(false);
+    internal static async Task<FieldChannelEnvelope> AwaitFrameOrProducerExitAsync(
+        Task<FieldChannelEnvelope> accept,
+        Task exited,
+        Func<int> exitCode,
+        CancellationTokenSource intakeCancellation)
+    {
+        ArgumentNullException.ThrowIfNull(accept);
+        ArgumentNullException.ThrowIfNull(exited);
+        ArgumentNullException.ThrowIfNull(exitCode);
+        ArgumentNullException.ThrowIfNull(intakeCancellation);
+
+        var completed = await Task.WhenAny(accept, exited).ConfigureAwait(false);
+        if (completed == accept || accept.IsCompletedSuccessfully)
+            return await accept.ConfigureAwait(false);
+
+        await intakeCancellation.CancelAsync().ConfigureAwait(false);
+        try { await accept.ConfigureAwait(false); }
+        catch (OperationCanceledException) when (intakeCancellation.IsCancellationRequested) { }
+        throw new InvalidOperationException(
+            $"Field scene producer exited before delivering a frame (exit code {exitCode()}).");
+    }
+
+    private static Process GetProducerProcess(int processId)
+    {
+        try
+        {
+            return Process.GetProcessById(processId);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidOperationException(
+                "Field scene producer exited before intake could observe its process.", exception);
         }
     }
 

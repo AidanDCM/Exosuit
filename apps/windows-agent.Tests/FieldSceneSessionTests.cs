@@ -169,6 +169,47 @@ public sealed class FieldSceneSessionConfigurationTests : IDisposable
     }
 }
 
+public sealed class WindowsFieldSceneSessionPortsProcessRaceTests
+{
+    private static FieldChannelEnvelope Envelope() => new(
+        1, Guid.NewGuid(), new FieldReference(Guid.NewGuid(), 1),
+        FieldChannelDirection.GuestToHost, 1, FieldChannelMessageType.SceneObservation,
+        DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddSeconds(10), "nonce", "key",
+        new string('a', 64), new Dictionary<string, object?>(), "signature");
+
+    [Fact]
+    public async Task ReturnsAFrameThatArrivesWhileTheExactProducerIsAlive()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var expected = Envelope();
+        var exit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var actual = await WindowsFieldSceneSessionPorts.AwaitFrameOrProducerExitAsync(
+            Task.FromResult(expected), exit.Task, () => 0, cancellation);
+
+        Assert.Same(expected, actual);
+        Assert.False(cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task CancelsIntakeAndReportsAnEarlyProducerExit()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var accept = Task.Delay(Timeout.InfiniteTimeSpan, cancellation.Token)
+            .ContinueWith<FieldChannelEnvelope>(
+                _ => throw new OperationCanceledException(cancellation.Token),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            WindowsFieldSceneSessionPorts.AwaitFrameOrProducerExitAsync(
+                accept, Task.CompletedTask, () => 23, cancellation));
+
+        Assert.True(cancellation.IsCancellationRequested);
+        Assert.Contains("exit code 23", exception.Message, StringComparison.Ordinal);
+    }
+}
+
 public sealed class FieldSceneSessionRunnerTests
 {
     private static readonly FieldReference Field = new(Guid.Parse("4401b702-334f-475e-b867-b7d06798443d"), 3);
