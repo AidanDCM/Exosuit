@@ -208,7 +208,10 @@ public sealed class WindowsFieldSceneSessionPorts(
         {
             var processId = launchedProducerProcessId
                 ?? throw new InvalidOperationException("Field scene intake has no exact launched producer PID.");
-            launchedProducerProcessId = null;
+            // Keep the exact PID bound for as long as the supervisor considers this producer
+            // alive. A failed or completed one-use intake is followed by another cycle; clearing
+            // here made that next intake lose the Windows-derived launch identity while the same
+            // supervised process was still running. A real relaunch replaces this value.
             using var producer = GetProducerProcess(processId);
             using var intakeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var accept = FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
