@@ -1,0 +1,309 @@
+program: exosuit-project-driver
+start_date: 2026-08-07
+operational_target: 2026-09-01
+integration_branch: codex/unify-glove-field
+deadline_branch: codex/project-driver-deadline-mode
+control_issue: 31
+program_pr: 32
+current_baseline:
+  integration_sha: 1ac8488
+  contract: "2.3"
+  tests: 624
+  test_files: 91
+  proven_completion_percent: 18.31
+  implementation_readiness_percent: 59.30
+  live_completion_percent: 0
+  evidence_artifacts_committed: 6
+  secure_boot: disabled
+retired_targets:
+  branches:
+    - codex/m1-handoff
+    - codex/contract-v23-key-custody
+    - codex/publish-evidence-artifacts
+  monitor_ids:
+    - bc89n6uoq
+    - b42foy02q
+wip_limits:
+  implementation_prs: 2
+  validation_prs: 1
+  integration_candidates: 1
+roles:
+  integrator:
+    responsibilities:
+      - own critical path and interface freeze
+      - integrate twice daily
+      - reject off-path work
+      - publish exact-head status
+    self_approval: false
+  codex_implementation:
+    responsibilities:
+      - production code
+      - Windows and Hyper-V integration
+      - visible input actuator
+      - checkpoint and cockpit implementation
+    self_approval: false
+  codex_validation:
+    responsibilities:
+      - replay tests
+      - failure injection
+      - CI and measurements
+      - acceptance artifact capture
+    self_approval: false
+  claude_architecture:
+    responsibilities:
+      - requirements and interfaces
+      - simplification and threat modeling
+      - project-workflow fit review
+    self_approval: false
+  claude_adversarial:
+    responsibilities:
+      - falsify claims
+      - verify rejection reasons
+      - inspect evidence portability
+      - detect stale documentation
+    self_approval: false
+
+work_items:
+  - id: PD-001
+    title: Freeze project workflow and action policy
+    status: open
+    owner: claude_architecture
+    reviewer: integrator
+    priority: P0
+    due: 2026-08-08
+    dependencies: []
+    outputs:
+      - exact target applications and desktop profile
+      - task input/output contract
+      - allowed, approval-required, and forbidden action table
+      - success/failure taxonomy
+    acceptance:
+      - one complete workflow can be described without ambiguous verbs
+      - every consequential action has an approval rule
+
+  - id: PD-002
+    title: Reconcile authoritative status and evidence portability
+    status: complete
+    owner: claude_adversarial
+    reviewer: codex_validation
+    priority: P0
+    completed: 2026-08-07
+    evidence:
+      - PR 30 merged at 1ac8488
+      - six referenced artifacts committed
+      - Linux clean-clone reconciliation passed
+      - evidence secret scan passed
+      - stale M1 handoff replaced on PR 32
+    dependencies: []
+    outputs:
+      - remove stale v2.2/v2.3 contradictions
+      - commit only referenced, reviewed completion artifacts
+      - CI invariant for missing/hash-mismatched/unreferenced artifacts
+    acceptance:
+      - clean clone can verify every committed evidence pointer
+      - documentation contract label and fingerprint match code
+
+  - id: PD-003
+    title: Enable Secure Boot and capture signed preflight
+    status: blocked_operator_action
+    owner: integrator
+    reviewer: claude_adversarial
+    priority: P0
+    due: 2026-08-09
+    dependencies: []
+    operator_action_required: true
+    outputs:
+      - Confirm-SecureBootUEFI true
+      - passing elevated HYP-001 preflight artifact
+    acceptance:
+      - signed artifact, not human observation, reports Secure Boot enabled
+
+  - id: PD-004
+    title: Prove HYP-001 three-cycle Field lifecycle
+    status: blocked
+    owner: codex_implementation
+    reviewer: codex_validation
+    priority: P0
+    due: 2026-08-11
+    dependencies: [PD-002, PD-003]
+    outputs:
+      - three unique Field lifecycle cycles
+      - immutable-base proof
+      - exact-generation cleanup proof
+      - reviewed hyperv_host_guest evidence
+    acceptance:
+      - HYP-001 promoted by non-issuer reviewer
+
+  - id: PD-005
+    title: Prove CHN-001 channel and emergency stop
+    status: blocked
+    owner: codex_implementation
+    reviewer: claude_adversarial
+    priority: P0
+    due: 2026-08-13
+    dependencies: [PD-004]
+    outputs:
+      - replay, identity, generation, and boot mismatch injections
+      - lock and Secure Desktop behavior
+      - heartbeat degradation and recovery
+      - independent emergency-stop evidence
+    acceptance:
+      - every injection fails for the intended reason
+      - emergency stop succeeds in every run
+      - CHN-001 promoted by non-issuer reviewer
+
+  - id: PD-006
+    title: Implement fresh visual scene observation
+    status: planned
+    owner: codex_implementation
+    reviewer: codex_validation
+    priority: P0
+    due: 2026-08-15
+    dependencies: [PD-005]
+    outputs:
+      - screenshot capture
+      - active application and window identity
+      - actionable-region and text representation
+      - modal, cursor, freshness, and confidence fields
+    acceptance:
+      - stale scenes cannot authorize input
+      - wrong active application blocks action
+
+  - id: PD-007
+    title: Implement visible mouse and keyboard actuator
+    status: planned
+    owner: codex_implementation
+    reviewer: codex_validation
+    priority: P0
+    due: 2026-08-17
+    dependencies: [PD-006]
+    outputs:
+      - pointer move, click, drag, scroll, text, and key-combo primitives
+      - target safety margin and focus confirmation
+      - action receipts with before/after scene references
+    acceptance:
+      - 30 consecutive controlled reversible actions with no wrong-target click
+      - all target-application effects use visible input only
+
+  - id: PD-008
+    title: Implement post-action verification and recovery
+    status: planned
+    owner: codex_implementation
+    reviewer: claude_adversarial
+    priority: P0
+    due: 2026-08-18
+    dependencies: [PD-007]
+    outputs:
+      - expected-state verification
+      - ambiguous/no-effect/wrong-effect classification
+      - verified checkpoints
+      - bounded retry and recovery rules
+    acceptance:
+      - uncertain effect never triggers blind retry
+      - system can report last verified checkpoint after restart
+
+  - id: PD-009
+    title: Build first project vertical slice
+    status: planned
+    owner: codex_implementation
+    reviewer: claude_architecture
+    priority: P0
+    due: 2026-08-22
+    dependencies: [PD-001, PD-008]
+    outputs:
+      - one complete project workflow
+      - approval boundary for consequential step
+      - verified final output
+    acceptance:
+      - 20 deterministic replay scenarios pass
+      - 10 supervised real tasks complete
+
+  - id: PD-010
+    title: Add cockpit, pause, approval, stop, and resume
+    status: planned
+    owner: codex_implementation
+    reviewer: codex_validation
+    priority: P0
+    due: 2026-08-24
+    dependencies: [PD-008]
+    outputs:
+      - one-command launch
+      - current task and last verified state
+      - pending approval queue
+      - pause, stop, reset, and resume controls
+    acceptance:
+      - owner can operate without developer tools
+      - emergency stop remains independent of cockpit
+
+  - id: PD-011
+    title: Implement bounded personality controller
+    status: planned
+    owner: claude_architecture
+    reviewer: claude_adversarial
+    implementation_support: codex_implementation
+    priority: P1
+    due: 2026-08-26
+    dependencies: [PD-007, PD-008]
+    outputs:
+      - personality state machine
+      - pacing, narration, hesitation, and frustration behavior
+      - draft-only typo and correction behavior
+      - personality disable switch
+    acceptance:
+      - enabled and disabled runs have equivalent verified outcomes
+      - personality cannot select targets or change safety policy
+
+  - id: PD-012
+    title: Run deadline burn-in matrix
+    status: planned
+    owner: codex_validation
+    reviewer: claude_adversarial
+    priority: P0
+    due: 2026-08-31
+    dependencies: [PD-009, PD-010, PD-011]
+    outputs:
+      - 30-50 deterministic scenarios
+      - 15-25 supervised project tasks
+      - restart, Field restart, network, focus, stale state, modal, duplicate, partial, stop, and resume tests
+    acceptance:
+      - zero unauthorized consequential actions
+      - 100 percent emergency-stop success
+      - zero blind retries
+      - final 30 controlled scenarios contain no severe failure
+
+  - id: PD-013
+    title: Cut Project Driver 0.1 restricted release
+    status: planned
+    owner: integrator
+    reviewer: claude_adversarial
+    priority: P0
+    due: 2026-09-01
+    dependencies: [PD-012]
+    outputs:
+      - exact frozen release candidate
+      - install/start procedure
+      - known limitations and rollback
+      - evidence bundle
+    acceptance:
+      - consequential submissions remain approval-required
+      - release criteria in RELEASE_GATES.md pass
+
+  - id: PD-014
+    title: Convert project operation into daily-driver evidence
+    status: planned
+    owner: codex_validation
+    reviewer: claude_architecture
+    priority: P1
+    due: 2026-11-30
+    dependencies: [PD-013]
+    outputs:
+      - structured task/trial dataset
+      - intervention, recovery, resume, and time-saved metrics
+      - frozen 100-trial benchmark candidate
+      - soak and compatibility results
+    acceptance:
+      - 97 percent completion
+      - 95 percent recovery
+      - 99 percent resume
+      - 100 percent emergency stop
+      - zero unapproved consequential actions
