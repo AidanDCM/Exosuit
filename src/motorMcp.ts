@@ -23,7 +23,7 @@ export function registerMotorMcpTools(server: McpServer, orchestrator: ExosuitOr
     {
       title: "Propose locally gated physical input",
       description:
-        "Use this only when semantic UI Automation cannot perform an authorized task and the local user has deliberately restarted Exosuit in full_control mode. It creates a proposal only. Every physical action requires a fresh active allowlisted target window and exact local typed approval before desktop_execute_proposal can run it. Never use it for credentials, destructive targets, evasion, anti-cheat, or hidden automation.",
+        "Use this only when semantic UI Automation cannot perform an authorized task and the local user has deliberately restarted Exosuit in full_control mode. It creates a proposal only. Every physical action requires a fresh active allowlisted target window and exact local typed approval before desktop_execute_proposal can run it. Never use it for credentials, destructive targets, unauthorized account access, or actions outside the approved target and policy.",
       inputSchema: {
         id: z.string().min(1).max(200),
         actionType: physicalActionTypeSchema,

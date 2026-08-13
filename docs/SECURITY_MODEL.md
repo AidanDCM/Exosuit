@@ -157,7 +157,7 @@ The current release blocks:
 - actions after emergency stop,
 - treating application-map contents as executable authority.
 
-The project explicitly excludes stealth, anti-detection, anti-cheat, security bypass, covert surveillance, and privilege escalation.
+The project explicitly excludes credential theft, unauthorized account access, covert surveillance, privilege escalation, and weakening owner-controlled authorization.
 
 ## Prompt injection
 

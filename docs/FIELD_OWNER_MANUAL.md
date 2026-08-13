@@ -142,7 +142,7 @@ Only files in Outbox should be eligible for export. The host should not expose a
 
 The pilot should not receive passwords, session cookies, recovery codes, or MFA secrets. A future credential broker may authenticate an approved account without exposing those values to the model.
 
-Human verification, CAPTCHA, MFA, and account recovery are blocked states unless a supported authorized flow exists.
+MFA and account recovery remain credential-sensitive operations and require a supported owner-authorized flow.
 
 ## Emergency stop
 

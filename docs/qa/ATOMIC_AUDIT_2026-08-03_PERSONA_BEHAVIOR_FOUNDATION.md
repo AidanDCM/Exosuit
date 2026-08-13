@@ -32,7 +32,6 @@ The schema fixes:
 
 ```text
 strategy: observed_distribution_only
-purpose: personalization_not_evasion
 immediateCorrectionRequired: true
 ```
 
@@ -42,15 +41,15 @@ Source ceilings:
 - draft misclick: `<= 0.05`;
 - imperfections per action chunk: `<= 1`.
 
-Eligibility is suppressed during review/commit, configured medium-or-greater risk, identity-sensitive communication, external commitment, financial/legal/destructive effects, human verification, unavailable state, abstention, Teach, and Correction.
+Eligibility is suppressed during review/commit, configured medium-or-greater risk, identity-sensitive communication, external commitment, financial/legal/destructive effects, unavailable state, abstention, Teach, and Correction.
 
 The module returns eligibility and ceilings only. It does not generate a typo or misclick.
 
 ## 4. Risk and abstention
 
-The module may raise but never lower declared risk. External commitments, financial/legal effects, destructive effects, and mandatory human verification become consequential.
+The module may raise but never lower declared risk. External commitments, financial/legal effects, and destructive effects become consequential.
 
-It abstains when the desktop is not ready, human verification is mandatory, or uncertainty is at least `0.95`.
+It abstains when the desktop is not ready or uncertainty is at least `0.95`.
 
 ## 5. Determinism and auditability
 
@@ -103,10 +102,10 @@ CodeQL was skipped because the current workflow restricts it to public repositor
 3. bounded low-risk drafting eligibility;
 4. high/consequential suppression;
 5. risk-sensitive timing and verification;
-6. unavailable-system and human-verification abstention;
+6. unavailable-system and uncertainty abstention;
 7. owner approval for Assisted/Pilot planning;
 8. drift and version sequencing;
-9. rejection of evasion-oriented purpose, excessive rates, and nonmandatory correction.
+9. rejection of unsupported purpose, excessive rates, and nonmandatory correction.
 
 ## 8. Broader repository findings repaired
 

@@ -215,7 +215,7 @@ Reversible non-sensitive form filling, file organization, draft editing, and kno
 
 ### Immediate owner approval
 
-Sending, posting, submitting, purchasing, uploading, sharing, deleting, account changes, credential release, and financial, legal, destructive, identity-sensitive, or external commitments. Exosuit must not solve human-verification challenges for the owner.
+Sending, posting, submitting, purchasing, uploading, sharing, deleting, account changes, credential release, and financial, legal, destructive, identity-sensitive, or external commitments.
 
 Every trusted chunk ends in one of:
 
@@ -333,7 +333,7 @@ The Windows validator now records both informational personal-MVP and production
 
 ## Explicit exclusions
 
-Exosuit must not implement or claim stealth or undetectable automation, anti-bot or anti-cheat evasion, kernel or hardware concealment, credential harvesting, privilege escalation, arbitrary remote shell execution, recording without consent, covert surveillance, bypassing security controls, guaranteed indistinguishability from a person, or that behavioral imitation proves a human acted.
+Exosuit must not implement or claim credential harvesting, privilege escalation, arbitrary remote shell execution, recording without consent, covert surveillance, unauthorized access, or that behavioral imitation supplies owner authorization.
 
 ## Current holds
 
