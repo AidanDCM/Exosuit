@@ -102,6 +102,7 @@ Durable replay fault cases include restart after acceptance, corrupt or oversize
 | Owner service stops during lifecycle child | cancel and kill exact process tree; preserve terminal result | .NET source test | live cancellation H |
 | Windows PowerShell 5.1 receives a string-valued common `Confirm` switch through the native `-File` boundary | lifecycle command fails before mutation; fixed service uses a LocalSystem-only noninteractive flag after exact typed confirmation | S/U, installed-service pre-effect failure, and successful exact generation-1/generation-2 provision/destroy H | repeated production matrix H |
 | Installed provisioning script's fixed host-capability dependency is absent or changed | fail before Hyper-V mutation; installer and service policy hash-bind and verify the dependency | installed-service pre-effect failure, S/U repair, reviewed reinstall, and successful generation-1/generation-2 provision H | installed-file tamper and production-repeatable H |
+| Successful host capability check inherits a stale nonzero native exit code | capability script exits explicitly with zero on `ready: true`; provisioning cannot misclassify the current contract using an earlier command's status | TS static / local Windows | W/H provisioning retry after an earlier denied check |
 
 ## Teach and visual recording
 

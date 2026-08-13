@@ -87,3 +87,4 @@ $result = [ordered]@{
 
 $result | ConvertTo-Json -Depth 8
 if (-not $result.ready) { exit 2 }
+exit 0

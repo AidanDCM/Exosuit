@@ -321,6 +321,8 @@ describe("Windows Field administration scripts", () => {
     expect(host).toContain("Win32_OptionalFeature");
     expect(host).toContain("HyperVisorPresent");
     expect(host).toContain("root\\virtualization\\v2");
+    expect(host).toContain("if (-not $result.ready) { exit 2 }");
+    expect(host).toContain("exit 0");
     expect(host).not.toMatch(/Enable-WindowsOptionalFeature|Disable-WindowsOptionalFeature|New-VM|Remove-VM/);
     for (const content of [showPlan, apply, destroy, guest]) {
       expect(content).toContain("Parameters.ContainsKey('Depth')");
