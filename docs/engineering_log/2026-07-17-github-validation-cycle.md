@@ -95,7 +95,7 @@ Temporary validation PRs must not be merged and should be closed after current-h
 - state-changing work requires proposal, policy, fresh observation, execution, and verification,
 - credential and destructive targets remain blocked,
 - emergency stop remains local and authoritative,
-- no stealth, anti-detection, anti-cheat, credential scraping, arbitrary shell, or security-bypass feature exists.
+- no credential scraping, unauthorized account access, privilege escalation, arbitrary shell, or covert-recording feature exists.
 
 ## Remaining GitHub-phase work
 

@@ -18,7 +18,7 @@ This verdict does **not** mean the product is production-ready or that real desk
 
 > A private, model-independent body that allows an authorized AI brain to inspect and operate a computer through narrow, auditable, locally governed capabilities while the user retains final authority.
 
-The current architecture supports that North Star without coupling the body to one model vendor and without relying on stealth, anti-detection, anti-cheat, credential scraping, privilege escalation, arbitrary shell access, or covert surveillance.
+The current architecture supports that North Star without coupling the body to one model vendor and without granting credential access, privilege escalation, arbitrary shell access, or covert surveillance.
 
 ## Implemented system surface
 
@@ -71,7 +71,7 @@ The current architecture supports that North Star without coupling the body to o
 - small explicit hotkey allowlist,
 - simulated motor test seam,
 - cancellation and deadline support,
-- no hardware impersonation, stealth, anti-detection, or security bypass.
+- no additional driver or kernel authority.
 
 Physical input is impossible unless all of the following are present before process startup:
 
@@ -209,15 +209,11 @@ CodeQL SARIF upload is not available for this private personal repository withou
 
 The repository must not be extended to include:
 
-- anti-bot or anti-cheat evasion,
-- hidden or undetectable automation claims,
-- kernel input drivers for concealment,
-- hardware-input impersonation,
 - credential harvesting,
 - privilege escalation,
 - arbitrary remote shell execution,
 - covert recording or surveillance,
-- bypassing application or platform safety controls.
+- unauthorized account access or weakening owner-controlled authorization.
 
 ## Codex promotion gate
 

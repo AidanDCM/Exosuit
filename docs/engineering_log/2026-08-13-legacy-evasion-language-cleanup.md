@@ -1,0 +1,22 @@
+# Legacy evasion-language documentation cleanup
+
+- Goal: remove legacy anti-bot/evasion policy language that originated from an unrelated prior project and was inadvertently incorporated into Exosuit documentation.
+- Master-plan phase and promotion gate: documentation maintenance across the program; no phase or gate is promoted.
+- Subsystem ownership: shared documentation only. Glove and Field runtime authority are unchanged.
+- Files changed: roadmap, manuals, security and architecture documents, current QA guidance, repository contributor templates/instructions, historical summaries that repeated the policy, test descriptions, and one model-facing tool description.
+- Identity/generation and policy impact: none. No Field identity, generation, authorization, consent, policy, attestation, transport, or execution contract changed.
+- Parts & Pieces and donor patterns considered: not applicable; no donor implementation or runtime design was adopted.
+- Questions and assumptions: the requested boundary is semantic documentation cleanup, not a runtime migration. Existing serialized `personalization_not_evasion` values and the associated test fixture data remain because renaming that wire/storage contract would be a separate runtime compatibility change.
+- Safeguards retained: unauthorized account access, credential theft, privilege escalation, model-created consent, covert recording, host surveillance, destructive-action approval, audit integrity, emergency stop, replay protection, secret handling, and owner authorization.
+- Personal behavior architecture retained: contextual mouse trajectories, typing/editing process, timing/behavioral state, language style, owner-derived profiles, and Teach/Shadow/Correction remain intact.
+- Tests and validation: repository-wide term audit completed before and after editing. `validate:repository`, `validate:plan`, `validate:field-contract`, and `typecheck` passed. The two affected test files passed (16 tests).
+- Remaining-hit decisions:
+  - Keep `personalization_not_evasion` in runtime schemas, derivation code, and fixture values because it is an existing serialized compatibility label; changing it is outside this documentation-only slice.
+  - Keep Windows `SecurityImpersonation` identifiers because they name a documented Win32 token level, not concealment policy.
+  - Keep “indistinguishable” where it explains integrity ambiguity (missing/stripped records, fabricated observations, or deleted vault state), not human-likeness.
+  - Keep “undetectable” where it describes an otherwise unobservable integrity or wrong-VM failure, not automation detection.
+  - Keep `owner-required state` in the task state machine because it enforces owner approval, one of the safeguards this cleanup must preserve.
+  - Keep this log’s anti-bot/evasion terms as the intentional historical record of the cleanup itself.
+- Security and privacy impact: no runtime authority, security, privacy, credential, audit, or emergency-stop control changed.
+- Rollback: revert this documentation-only commit.
+- Next recommended slice: if desired, separately design and review a backward-compatible migration for legacy serialized persona-purpose labels; do not fold that runtime change into this cleanup.

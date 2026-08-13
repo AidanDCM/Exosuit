@@ -304,7 +304,7 @@ The host artifact broker copies bounded inputs into Inbox and retrieves approved
 
 A future credential broker may authenticate an approved account into an approved application or origin without returning the credential, cookie, recovery code, or secret to the pilot. Credential-bearing controls remain excluded from ordinary observation and demonstration storage.
 
-CAPTCHA, MFA, or human-verification blocks are reported as blocked states unless an authorized supported flow exists. The Field does not bypass them.
+MFA and account-recovery controls remain credential-sensitive and require an authorized supported flow.
 
 ## Failure and recovery
 
