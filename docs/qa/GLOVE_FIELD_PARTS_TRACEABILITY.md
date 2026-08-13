@@ -178,7 +178,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - arbitrary shell provisioning through MCP,
 - calling contract tests Hyper-V validation,
 - calling Teach recordings Pilot validation,
-- optimizing behavioral imitation for covert impersonation or security-evasion claims.
+- treating behavioral similarity as owner authorization or identity proof.
 
 ## Current implemented proof
 

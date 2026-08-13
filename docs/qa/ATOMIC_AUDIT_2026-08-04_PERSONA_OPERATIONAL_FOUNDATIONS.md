@@ -95,7 +95,7 @@ This does not replace .NET inventory, artifact signing, provenance, installer re
 - `tests/safeModeBoundaries.test.ts`
 - `tests/sbomGenerator.test.ts`
 
-Covered negative cases include wrong keys, ciphertext tampering, hash tampering, duplicate evidence, mixed operators, unsupported habits, unstable held-out evidence, protected inputs, impossible motor paths, unrecovered misses, stale scenes, changed policies, replay, cross-Field requests, wrong executable/origin, missing protected-field focus, human verification, model activation attempts, and registry URL leakage.
+Covered negative cases include wrong keys, ciphertext tampering, hash tampering, duplicate evidence, mixed operators, unsupported habits, unstable held-out evidence, protected inputs, impossible motor paths, unrecovered misses, stale scenes, changed policies, replay, cross-Field requests, wrong executable/origin, missing protected-field focus, model activation attempts, and registry URL leakage.
 
 ## 10. Hosted validation evidence
 

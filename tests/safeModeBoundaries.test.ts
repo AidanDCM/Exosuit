@@ -229,7 +229,7 @@ describe("credential authorization broker", () => {
     expect(broker.redeem({ ...base, redemptionId: randomUUID() }).status).toBe("block");
   });
 
-  it("blocks models, remote grants, wrong origin/process/Field, missing focus, and human verification", () => {
+  it("blocks models, remote grants, wrong origin/process/Field, missing focus, and protected interactive state", () => {
     const broker = new CredentialAuthorizationBroker();
     expect(() => broker.issue({
       requestId: randomUUID(), actor: "pilot_model", ownerId: "owner-a", field, process: processIdentity,

@@ -5,7 +5,7 @@ Read `AGENTS.md`, `DEVELOPER_OPERATING_SYSTEM.md`, `OWNER_MANUAL.md`, `docs/SECU
 Exosuit is an execution-sensitive local desktop-control system.
 
 - Preserve dual deterministic policy, local final authority, proposal/execute separation, fresh pre-execution observation, verification, audit logging, and emergency stop.
-- Never add stealth, anti-detection, anti-cheat, credential scraping, privilege escalation, covert recording, or security bypass features.
+- Never add credential scraping, unauthorized account access, privilege escalation, or covert recording features.
 - Never expose a model-facing way to enable full control.
 - Never bind the Windows agent beyond loopback in an ordinary feature change.
 - Use semantic UI Automation actions before considering raw coordinates.

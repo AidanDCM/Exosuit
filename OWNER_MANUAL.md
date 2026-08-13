@@ -6,7 +6,7 @@ Exosuit is a body for an authorized AI pilot. ChatGPT or another MCP host can re
 
 ## What it is not
 
-Exosuit is not an invisible automation layer, anti-detection system, anti-cheat tool, credential collector, background surveillance service, or substitute for application authorization.
+Exosuit is not a credential collector, background surveillance service, privilege-escalation mechanism, or substitute for owner and application authorization.
 
 ## Trust model
 
