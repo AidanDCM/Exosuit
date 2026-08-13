@@ -35,10 +35,10 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
     private const uint SystemMandatoryLabelNoWriteUp = 0x1;
 
     /// <summary>
-    /// The empirically minimal set that lets one Windows client open a write handle: write
+    /// The minimal set that lets one non-owner Windows client open a generic-write handle: write
     /// plus FILE_READ_ATTRIBUTES plus SYNCHRONIZE. Determined by probing, not assumed —
-    /// FILE_WRITE_DATA alone is denied at CreateFile, and FILE_READ_ATTRIBUTES is the only
-    /// read-shaped right the connect actually needs.
+    /// FILE_WRITE_DATA alone is denied at CreateFile. READ_CONTROL is also required by the
+    /// generic-write mapping; creator-owned local tests can mask its absence.
     ///
     /// What stays absent is the point. No <see cref="PipeAccessRights.ReadData"/>, so the
     /// producer cannot read back from the privileged side. No
@@ -51,6 +51,7 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
     private const PipeAccessRights ProducerRights =
         PipeAccessRights.Write
         | PipeAccessRights.ReadAttributes
+        | PipeAccessRights.ReadPermissions
         | PipeAccessRights.Synchronize;
 
     private readonly string interactiveUserSid;

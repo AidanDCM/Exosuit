@@ -93,6 +93,7 @@ public sealed class FieldSceneRelayPipeServerTests
         // The producer writes; it may never read another producer's frames.
         var producer = Assert.Single(rules, rule => rule.IdentityReference.Value == CurrentUserSid());
         Assert.True(producer.PipeAccessRights.HasFlag(PipeAccessRights.Write));
+        Assert.True(producer.PipeAccessRights.HasFlag(PipeAccessRights.ReadPermissions));
         Assert.True(producer.PipeAccessRights.HasFlag(PipeAccessRights.Synchronize));
         Assert.False(producer.PipeAccessRights.HasFlag(PipeAccessRights.ReadData));
         Assert.False(producer.PipeAccessRights.HasFlag(PipeAccessRights.ReadExtendedAttributes));
