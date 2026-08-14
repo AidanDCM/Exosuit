@@ -130,6 +130,13 @@ captured before a lock cannot be promoted after it clears.
 Scene production is opt-in and off unless an explicit session file enables it, so an unconfigured
 guest behaves exactly as the one that produced the CHN-001 live evidence.
 
+The first live producer slice now requests the bounded top-level window registry only and has a
+fixed 30-second observation deadline. This is intentional staging, not completion of L4 element
+coverage: the existing Windows provider used `FindAll(Descendants)` before applying `MaxElements`,
+so a large or stalled accessibility tree could block the one-shot producer before it connected to
+the relay. UI Automation element snapshots remain open until traversal is implemented with a real
+bounded walker and live large-tree/failure evidence.
+
 **None of this is live-validated.** No scene has crossed the path;
 `WindowsFieldSceneSessionPorts` has no coverage at all; no `GuestExchangeReader` exists, so the
 host has never queried Hyper-V; guest writer and host reader agree by construction rather than by

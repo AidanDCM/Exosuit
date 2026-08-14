@@ -32,6 +32,13 @@ public sealed class FieldSceneProducerHostTests
         }
     }
 
+    private sealed class NeverCompletesProvider : IFieldSceneObserver
+    {
+        public Task<DesktopObservation> ObserveAsync(CancellationToken cancellationToken) =>
+            new TaskCompletionSource<DesktopObservation>(
+                TaskCreationOptions.RunContinuationsAsynchronously).Task;
+    }
+
     private static async Task<List<StructuralFieldScenePayload>> RunOnceAsync(
         FieldSceneProducerConfiguration configuration,
         IFieldSceneObserver observer,
@@ -164,6 +171,28 @@ public sealed class FieldSceneProducerHostTests
     public void ProductionKeepsTheSingleShotProcessAliveForWindowsIdentityResolution()
     {
         Assert.InRange(FieldSceneProducerHost.ProductionIdentityResolutionHoldMilliseconds, 1, 30_000);
+    }
+
+    [Fact]
+    public void InitialProductionObservationIsStructuralWindowsOnlyAndBounded()
+    {
+        var request = FieldSceneProviderObserver.InitialProductionRequest;
+
+        Assert.False(request.IncludeElements);
+        Assert.False(request.IncludeScreenshot);
+        Assert.InRange(request.MaxElements, 1, FieldSceneProducerBoundary.MaximumElements);
+    }
+
+    [Fact]
+    public async Task CancellationStillInterruptsBoundedProductionObservation()
+    {
+        Assert.InRange(FieldSceneProducerHost.ProductionObservationTimeoutMilliseconds, 1, 30_000);
+
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            FieldSceneProducerHost.RunAsync(
+                Configuration(), new NeverCompletesProvider(), (_, _) => Task.CompletedTask,
+                UserSid, cancellation.Token));
     }
 
     [Fact]

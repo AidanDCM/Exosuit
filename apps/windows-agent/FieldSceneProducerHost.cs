@@ -85,7 +85,18 @@ public interface IFieldSceneObserver
 /// <summary>Adapts a full desktop provider down to observation alone.</summary>
 public sealed class FieldSceneProviderObserver(IDesktopProvider provider) : IFieldSceneObserver
 {
-    private readonly ObservationRequest request = new(IncludeScreenshot: false);
+    // The first live scene slice deliberately proves the top-level window registry before UIA
+    // element traversal. Windows UI Automation's FindAll(Descendants) materializes an unbounded
+    // accessibility tree before MaxElements can be applied and has blocked live producers before
+    // they could connect to the already-armed relay. Element snapshots remain an L4 deliverable,
+    // but they require a separately bounded walker rather than pretending Take(MaxElements)
+    // bounds the underlying COM call.
+    internal static ObservationRequest InitialProductionRequest { get; } = new(
+        IncludeElements: false,
+        IncludeScreenshot: false,
+        MaxElements: FieldSceneProducerBoundary.MaximumElements);
+
+    private readonly ObservationRequest request = InitialProductionRequest;
     private readonly AgentRuntimeState state = new(
         ControlMode.Observe,
         physicalInputEnabled: false,
@@ -113,6 +124,11 @@ public sealed class FieldSceneProviderObserver(IDesktopProvider provider) : IFie
 /// </summary>
 public static class FieldSceneProducerHost
 {
+    // UI Automation is an external Windows subsystem and can block inside COM. The producer is a
+    // one-shot, unprivileged process, so a missed observation deadline must end that process and
+    // let the SYSTEM supervisor report failure rather than leave the relay waiting indefinitely.
+    internal const int ProductionObservationTimeoutMilliseconds = 30_000;
+
     // Keep the exact producer alive while the privileged relay resolves its Windows pipe-client
     // PID and verifies the process token/image. Live Hyper-V evidence exceeded ten seconds on a
     // loaded guest, so use the client's existing hard maximum rather than racing a clean exit.
@@ -152,7 +168,19 @@ public static class FieldSceneProducerHost
             configuration.Field, configuration.BootId, configuration.AgentId,
             configuration.WindowsSessionId, configuration.Display);
         cancellationToken.ThrowIfCancellationRequested();
-        var observation = await observer.ObserveAsync(cancellationToken).ConfigureAwait(false);
+        DesktopObservation observation;
+        try
+        {
+            observation = await observer.ObserveAsync(cancellationToken).WaitAsync(
+                TimeSpan.FromMilliseconds(ProductionObservationTimeoutMilliseconds),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new InvalidOperationException(
+                "Field scene observation did not complete within the fixed production deadline.",
+                exception);
+        }
 
         // Sanitization and every identity check happen here, before anything leaves the
         // process. A scene that fails the boundary is never sent, not sent and then rejected.
