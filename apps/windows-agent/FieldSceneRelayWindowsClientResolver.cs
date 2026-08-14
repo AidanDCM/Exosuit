@@ -44,9 +44,12 @@ public static class FieldSceneRelayWindowsClientResolver
                 var userSid = identity.User?.Value;
                 if (string.IsNullOrWhiteSpace(userSid))
                     throw new InvalidOperationException("Field scene relay client user SID could not be resolved.");
-                var digest = HashPinnedExecutable(executablePath);
-                if (process.HasExited)
-                    throw new InvalidOperationException("Field scene relay client exited while its identity was being resolved.");
+                // Open without write/delete sharing while the connected process identity is live.
+                // Hashing the large self-contained image may outlast the one-shot sender, but the
+                // pinned handle guarantees the verified bytes cannot change or be replaced.
+                using var executable = new FileStream(
+                    executablePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var digest = HashPinnedExecutable(executable);
                 return new FieldSceneRelayClientFacts(checked((int)processId), sessionId, userSid, executablePath, digest);
             }
         }
@@ -56,11 +59,8 @@ public static class FieldSceneRelayWindowsClientResolver
         }
     }
 
-    private static string HashPinnedExecutable(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
-    }
+    private static string HashPinnedExecutable(Stream pinnedExecutable) =>
+        Convert.ToHexString(SHA256.HashData(pinnedExecutable)).ToLowerInvariant();
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

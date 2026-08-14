@@ -139,6 +139,7 @@ public sealed class WindowsFieldSceneSessionPorts(
     string? callerSid,
     Guid bootId) : IFieldSceneSessionPorts
 {
+    internal const int CleanProducerExitAcceptanceGraceMilliseconds = 60_000;
     internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
     private FieldSceneRelayPipeServer? armedIntake;
     private int? launchedProducerProcessId;
@@ -258,11 +259,31 @@ public sealed class WindowsFieldSceneSessionPorts(
         if (completed == accept || accept.IsCompletedSuccessfully)
             return await accept.ConfigureAwait(false);
 
+        var producerExitCode = exitCode();
+        if (producerExitCode == 0)
+        {
+            // The one-shot producer is expected to close after writing. The relay can still be
+            // hashing the pinned self-contained executable when that clean exit arrives. Let the
+            // already-started accept finish within a fixed bound; no second frame or retry is made.
+            try
+            {
+                return await accept.WaitAsync(
+                    TimeSpan.FromMilliseconds(CleanProducerExitAcceptanceGraceMilliseconds),
+                    intakeCancellation.Token).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                await intakeCancellation.CancelAsync().ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    "Field scene producer exited cleanly but no verified frame completed within the bounded acceptance grace period.");
+            }
+        }
+
         await intakeCancellation.CancelAsync().ConfigureAwait(false);
         try { await accept.ConfigureAwait(false); }
         catch (OperationCanceledException) when (intakeCancellation.IsCancellationRequested) { }
         throw new InvalidOperationException(
-            $"Field scene producer exited before delivering a frame (exit code {exitCode()}).");
+            $"Field scene producer exited before delivering a frame (exit code {producerExitCode}).");
     }
 
     private static Process GetProducerProcess(int processId)

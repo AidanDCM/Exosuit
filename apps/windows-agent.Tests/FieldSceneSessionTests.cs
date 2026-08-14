@@ -212,6 +212,22 @@ public sealed class WindowsFieldSceneSessionPortsProcessRaceTests
     }
 
     [Fact]
+    public async Task CleanProducerExitAllowsTheAlreadyStartedVerifiedFrameToFinish()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var expected = Envelope();
+        var accept = new TaskCompletionSource<FieldChannelEnvelope>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var result = WindowsFieldSceneSessionPorts.AwaitFrameOrProducerExitAsync(
+            accept.Task, Task.CompletedTask, () => 0, cancellation);
+        accept.SetResult(expected);
+
+        Assert.Same(expected, await result);
+        Assert.False(cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
     [Trait("Category", "LocalWindows")]
     public void ProducerConfigurationAclGrantsTheExactUserReadOnly()
     {
