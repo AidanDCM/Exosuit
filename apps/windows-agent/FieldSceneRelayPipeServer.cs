@@ -210,7 +210,9 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
     /// requires the client to close. Returns the raw UTF-8 payload together with the derived
     /// client facts; signing remains the relay boundary's decision, not this transport's.
     /// </summary>
-    public async Task<FieldSceneRelayIntakeFrame> AcceptSingleFrameAsync(CancellationToken cancellationToken = default)
+    public async Task<FieldSceneRelayIntakeFrame> AcceptSingleFrameAsync(
+        CancellationToken cancellationToken = default,
+        Action<string>? recordStage = null)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         if (connectionSpent)
@@ -220,10 +222,15 @@ public sealed class FieldSceneRelayPipeServer : IAsyncDisposable
         // retried on the same instance. A second frame requires a new, re-authorised server.
         connectionSpent = true;
 
+        recordStage?.Invoke("pipe_waiting_for_client");
         await server.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
+        recordStage?.Invoke("pipe_client_connected");
 
-        var client = FieldSceneRelayWindowsClientResolver.ResolveConnectedClient(server, relayCallerSid);
+        var client = FieldSceneRelayWindowsClientResolver.ResolveConnectedClient(
+            server, relayCallerSid, recordStage);
+        recordStage?.Invoke("client_identity_resolved");
         var payload = await ReadBoundedFrameAsync(server, cancellationToken).ConfigureAwait(false);
+        recordStage?.Invoke("frame_read_complete");
         return new FieldSceneRelayIntakeFrame(client, payload);
     }
 

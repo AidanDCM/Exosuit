@@ -24,7 +24,8 @@ public static class FieldSceneRelayIntakeService
         long sequence,
         string? relayCallerSid,
         DateTimeOffset? now = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Action<string>? recordStage = null)
     {
         ArgumentNullException.ThrowIfNull(intake);
         ArgumentNullException.ThrowIfNull(policy);
@@ -36,9 +37,10 @@ public static class FieldSceneRelayIntakeService
             throw new InvalidOperationException(
                 "Field scene relay intake is bound to a different Field generation or boot than the policy.");
 
-        var frame = await intake.AcceptSingleFrameAsync(cancellationToken).ConfigureAwait(false);
+        var frame = await intake.AcceptSingleFrameAsync(cancellationToken, recordStage).ConfigureAwait(false);
+        recordStage?.Invoke("boundary_verification_started");
 
-        return FieldSceneRelayBoundary.AcceptAndSign(
+        var envelope = FieldSceneRelayBoundary.AcceptAndSign(
             policy,
             frame.Client,
             channel,
@@ -47,5 +49,7 @@ public static class FieldSceneRelayIntakeService
             frame.PayloadUtf8,
             relayCallerSid,
             now);
+        recordStage?.Invoke("scene_signed");
+        return envelope;
     }
 }

@@ -141,6 +141,7 @@ public sealed class WindowsFieldSceneSessionPorts(
 {
     internal const int CleanProducerExitAcceptanceGraceMilliseconds = 60_000;
     internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
+    internal const string StageLogPath = @"C:\Exosuit\Logs\scene-runtime-stage.log";
     private FieldSceneRelayPipeServer? armedIntake;
     private int? launchedProducerProcessId;
 
@@ -218,7 +219,9 @@ public sealed class WindowsFieldSceneSessionPorts(
             var accept = FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
                 intake, policy, channel, channelSecret,
                 FieldKvpRuntime.ReserveNextGuestSequence(channel), callerSid,
-                now: null, intakeCancellation.Token);
+                now: null,
+                cancellationToken: intakeCancellation.Token,
+                recordStage: RecordStage);
             var exited = producer.WaitForExitAsync(cancellationToken);
             return await AwaitFrameOrProducerExitAsync(
                 accept, exited, () => producer.ExitCode, intakeCancellation).ConfigureAwait(false);
@@ -300,7 +303,22 @@ public sealed class WindowsFieldSceneSessionPorts(
     }
 
     public void PublishScene(FieldChannelEnvelope envelope) =>
+        PublishSceneWithStage(envelope);
+
+    private void PublishSceneWithStage(FieldChannelEnvelope envelope)
+    {
         FieldKvpRuntime.PublishScene(channel, envelope, callerSid);
+        RecordStage("scene_published");
+    }
+
+    private static void RecordStage(string stage)
+    {
+        // Stage values are fixed source literals: never include UI content, paths, identities,
+        // payload bytes, secrets, or exception text in this diagnostic surface.
+        var directory = Path.GetDirectoryName(StageLogPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(StageLogPath, $"{DateTimeOffset.UtcNow:O} {stage}{Environment.NewLine}");
+    }
 }
 
 /// <summary>

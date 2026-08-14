@@ -17,7 +17,8 @@ public static class FieldSceneRelayWindowsClientResolver
 
     internal static FieldSceneRelayClientFacts ResolveConnectedClient(
         NamedPipeServerStream pipe,
-        string? relayCallerSid)
+        string? relayCallerSid,
+        Action<string>? recordStage = null)
     {
         ArgumentNullException.ThrowIfNull(pipe);
         if (!OperatingSystem.IsWindows())
@@ -27,29 +28,36 @@ public static class FieldSceneRelayWindowsClientResolver
             throw new InvalidOperationException("Field scene relay pipe has no connected client.");
         if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle, out var processId) || processId == 0)
             throw new InvalidOperationException("Field scene relay could not resolve the connected pipe client process.");
+        recordStage?.Invoke("client_pid_resolved");
 
         try
         {
             using var process = Process.GetProcessById(checked((int)processId));
+            recordStage?.Invoke("client_process_opened");
             var sessionId = process.SessionId;
             var executablePath = process.MainModule?.FileName;
             if (sessionId <= 0 || string.IsNullOrWhiteSpace(executablePath))
                 throw new InvalidOperationException("Field scene relay client is not an interactive process with a resolvable image.");
+            recordStage?.Invoke("client_image_resolved");
 
             if (!OpenProcessToken(process.SafeHandle, TokenQuery, out var token))
                 throw new Win32Exception(Marshal.GetLastWin32Error());
+            recordStage?.Invoke("client_token_opened");
             using (token)
             using (var identity = new WindowsIdentity(token.DangerousGetHandle()))
             {
                 var userSid = identity.User?.Value;
                 if (string.IsNullOrWhiteSpace(userSid))
                     throw new InvalidOperationException("Field scene relay client user SID could not be resolved.");
+                recordStage?.Invoke("client_sid_resolved");
                 // Open without write/delete sharing while the connected process identity is live.
                 // Hashing the large self-contained image may outlast the one-shot sender, but the
                 // pinned handle guarantees the verified bytes cannot change or be replaced.
                 using var executable = new FileStream(
                     executablePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                recordStage?.Invoke("client_image_pinned");
                 var digest = HashPinnedExecutable(executable);
+                recordStage?.Invoke("client_image_hashed");
                 return new FieldSceneRelayClientFacts(checked((int)processId), sessionId, userSid, executablePath, digest);
             }
         }
