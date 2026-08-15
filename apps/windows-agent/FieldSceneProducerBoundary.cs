@@ -72,12 +72,12 @@ public static class FieldSceneProducerBoundary
             throw new InvalidOperationException("Scene producer observation is stale or too far in the future.");
 
         RequireText(observation.ObservationId, 300, "Scene observation ID");
-        var windows = observation.Windows.Select(SanitizeWindow).ToArray();
+        var windows = observation.Windows.Select(window => SanitizeWindow(window, identity.Display)).ToArray();
         var windowIds = windows.Select(static window => window.Id).ToHashSet(StringComparer.Ordinal);
         if (windowIds.Count != windows.Length) throw new InvalidOperationException("Structural scene window IDs must be unique.");
         if (observation.ActiveWindow is not null && !windowIds.Contains(observation.ActiveWindow.Id))
             throw new InvalidOperationException("Structural scene active window must be present in the window collection.");
-        var sanitizedActiveWindow = observation.ActiveWindow is null ? null : SanitizeWindow(observation.ActiveWindow);
+        var sanitizedActiveWindow = observation.ActiveWindow is null ? null : SanitizeWindow(observation.ActiveWindow, identity.Display);
         if (sanitizedActiveWindow is not null && !windows.Contains(sanitizedActiveWindow))
             throw new InvalidOperationException("Structural scene active-window facts must match its listed window.");
         var activeCount = windows.Count(static window => window.IsActive);
@@ -85,7 +85,7 @@ public static class FieldSceneProducerBoundary
             (observation.ActiveWindow is not null && !windows.Any(window => window.IsActive && window.Id == observation.ActiveWindow.Id)))
             throw new InvalidOperationException("Structural scene active-window identity is inconsistent.");
 
-        var elements = observation.Elements.Select(element => SanitizeElement(element, windowIds)).ToArray();
+        var elements = observation.Elements.Select(element => SanitizeElement(element, windowIds, identity.Display)).ToArray();
         if (elements.Select(static element => element.Id).Distinct(StringComparer.Ordinal).Count() != elements.Length)
             throw new InvalidOperationException("Structural scene element IDs must be unique.");
         ValidateCursor(cursor, identity.Display);
@@ -117,23 +117,23 @@ public static class FieldSceneProducerBoundary
             StringComparer.Ordinal);
     }
 
-    private static WindowInfo SanitizeWindow(WindowInfo window)
+    private static WindowInfo SanitizeWindow(WindowInfo window, FieldDisplayContract display)
     {
         RequireText(window.Id, 300, "Scene window ID");
         RequireText(window.ProcessName, 200, "Scene process name");
         if (window.ProcessId < 0) throw new InvalidOperationException("Scene process ID cannot be negative.");
-        ValidateBounds(window.Bounds, "window");
+        ValidateBounds(window.Bounds, "window", display);
         return window with { Title = string.Empty };
     }
 
-    private static UiElement SanitizeElement(UiElement element, IReadOnlySet<string> windowIds)
+    private static UiElement SanitizeElement(UiElement element, IReadOnlySet<string> windowIds, FieldDisplayContract display)
     {
         RequireText(element.Id, 300, "Scene element ID");
         RequireText(element.WindowId, 300, "Scene element window ID");
         RequireText(element.ControlType, 200, "Scene control type");
         if (!windowIds.Contains(element.WindowId)) throw new InvalidOperationException("Every structural scene element must belong to a listed window.");
         if (element.AutomationId is { } automationId) RequireText(automationId, 300, "Scene automation ID");
-        ValidateBounds(element.Bounds, "element");
+        ValidateBounds(element.Bounds, "element", display);
         return element.IsSensitive
             ? element with { Name = "[SENSITIVE]", AutomationId = null, Value = null, SupportedActions = Array.Empty<ActionType>() }
             : element with { Name = string.Empty, Value = null };
@@ -155,12 +155,14 @@ public static class FieldSceneProducerBoundary
         if (modal.Kind is { } kind) RequireText(kind, 200, "Scene modal kind");
     }
 
-    private static void ValidateBounds(Bounds? bounds, string kind)
+    private static void ValidateBounds(Bounds? bounds, string kind, FieldDisplayContract display)
     {
         if (bounds is null) return;
         if (!double.IsFinite(bounds.X) || !double.IsFinite(bounds.Y) || !double.IsFinite(bounds.Width) ||
             !double.IsFinite(bounds.Height) || bounds.Width < 0 || bounds.Height < 0)
             throw new InvalidOperationException($"Scene {kind} bounds are invalid.");
+        if (bounds.X < 0 || bounds.Y < 0 || bounds.X + bounds.Width > display.Width || bounds.Y + bounds.Height > display.Height)
+            throw new InvalidOperationException($"Scene {kind} bounds exceed the configured display.");
     }
 
     private static void RequireText(string value, int maximumLength, string name)

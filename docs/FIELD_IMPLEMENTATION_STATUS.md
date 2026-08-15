@@ -141,9 +141,10 @@ Generation 20 crossed the complete guest production/signing/KVP path for the fir
 reassembled the retained KVP value and the compiled verifier authenticated the exact
 Field/generation/boot/key/digest envelope. The structural payload contained four top-level windows
 and no retained UI text, screenshots, or elements. It also revealed that UI Automation reported a
-2048×1152 desktop while the approved display contract remained 1920×1080. The source adapter now
+2048×1152 desktop while the approved display contract remained 1920×1080. The host adapter now
 rejects active-window, window, and element rectangles outside the approved display before replay or
-scene state advances. This is positive live transport evidence and negative display-contract
+scene state advances. The compiled guest producer independently applies the same containment rule
+before a payload can be signed or published. This is positive live transport evidence and negative display-contract
 evidence, not SCN-001 promotion. A fresh-generation live rerun, host receiver artifact, repeated
 scenes, lock, Secure Desktop, heartbeat loss, replay, restart, and stop ceremonies remain open.
 

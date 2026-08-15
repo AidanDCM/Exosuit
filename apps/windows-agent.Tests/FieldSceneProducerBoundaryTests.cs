@@ -72,6 +72,23 @@ public sealed class FieldSceneProducerBoundaryTests
             cursor, new FieldSceneModal(false), UserSid, 2, Now));
     }
 
+    [Fact]
+    public void RejectsWindowAndElementCoordinatesOutsideTheConfiguredDisplay()
+    {
+        var cursor = new FieldSceneCursor(0, 0, false);
+        var oversizedWindow = Observation().Windows[0] with { Bounds = new Bounds(0, 0, 2048, 1152) };
+        var windowError = Assert.Throws<InvalidOperationException>(() => FieldSceneProducerBoundary.Create(
+            Identity, Observation() with { ActiveWindow = oversizedWindow, Windows = [oversizedWindow] },
+            cursor, new FieldSceneModal(false), UserSid, 2, Now));
+        Assert.Contains("window bounds exceed the configured display", windowError.Message, StringComparison.Ordinal);
+
+        var outsideElement = Observation().Elements[0] with { Bounds = new Bounds(1900, 100, 40, 30) };
+        var elementError = Assert.Throws<InvalidOperationException>(() => FieldSceneProducerBoundary.Create(
+            Identity, Observation() with { Elements = [outsideElement] },
+            cursor, new FieldSceneModal(false), UserSid, 2, Now));
+        Assert.Contains("element bounds exceed the configured display", elementError.Message, StringComparison.Ordinal);
+    }
+
     private static DesktopObservation Observation()
     {
         var window = new WindowInfo("window-1", "private title", "notepad", 10, true, false, new Bounds(0, 0, 800, 600));
