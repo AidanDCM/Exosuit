@@ -137,11 +137,15 @@ so a large or stalled accessibility tree could block the one-shot producer befor
 the relay. UI Automation element snapshots remain open until traversal is implemented with a real
 bounded walker and live large-tree/failure evidence.
 
-**None of this is live-validated.** No scene has crossed the path;
-`WindowsFieldSceneSessionPorts` has no coverage at all; no `GuestExchangeReader` exists, so the
-host has never queried Hyper-V; guest writer and host reader agree by construction rather than by
-an end-to-end run; and real lock, Secure Desktop, and PID-reuse behaviour is untested. SCN-001
-remains `source_validated`. See `docs/qa/SCN001_COMPONENT_STATUS.md` for the component-level view.
+Generation 20 crossed the complete guest production/signing/KVP path for the first time. The host
+reassembled the retained KVP value and the compiled verifier authenticated the exact
+Field/generation/boot/key/digest envelope. The structural payload contained four top-level windows
+and no retained UI text, screenshots, or elements. It also revealed that UI Automation reported a
+2048×1152 desktop while the approved display contract remained 1920×1080. The source adapter now
+rejects active-window, window, and element rectangles outside the approved display before replay or
+scene state advances. This is positive live transport evidence and negative display-contract
+evidence, not SCN-001 promotion. A fresh-generation live rerun, host receiver artifact, repeated
+scenes, lock, Secure Desktop, heartbeat loss, replay, restart, and stop ceremonies remain open.
 
 ### Guest action boundary
 

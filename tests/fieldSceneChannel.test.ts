@@ -107,4 +107,22 @@ describe("authenticated structural Field scene receiver", () => {
     const next = payload({ observation: { ...payload().observation, observationId: "observation-2", capturedAt: "2026-08-10T18:00:00.500Z" } });
     expect(target.accept({ envelope: envelope(2, next), heartbeat: heartbeat(), secret, now }).sceneVersion).toBe(2);
   });
+
+  it("rejects an authenticated scene whose coordinates contradict the display contract without consuming replay state", () => {
+    const target = receiver();
+    const mismatchedWindow = {
+      ...payload().observation.windows[0]!,
+      bounds: { x: 0, y: 0, width: 2048, height: 1152 },
+    };
+    const mismatched = payload({
+      observation: {
+        ...payload().observation,
+        activeWindow: mismatchedWindow,
+        windows: [mismatchedWindow],
+      },
+    });
+    expect(() => target.accept({ envelope: envelope(1, mismatched), heartbeat: heartbeat(), secret, now }))
+      .toThrow(/display contract/);
+    expect(target.accept({ envelope: envelope(1), heartbeat: heartbeat(), secret, now }).sceneVersion).toBe(1);
+  });
 });

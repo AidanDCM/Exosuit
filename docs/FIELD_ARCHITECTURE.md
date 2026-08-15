@@ -108,7 +108,7 @@ keyboardLayout: en-US
 dynamicResolutionAllowed: false
 ```
 
-The guest agent validates this contract before Teach, Shadow, or Pilot operation. A changed display contract invalidates coordinate-derived motor plans and requires fresh application mapping and validation.
+The guest agent validates this contract before Teach, Shadow, or Pilot operation. The host scene boundary also rejects any reported active-window, window, or element rectangle that extends outside the attested display. A changed display contract invalidates coordinate-derived motor plans and requires fresh application mapping and validation.
 
 ## Field identity and attestation
 

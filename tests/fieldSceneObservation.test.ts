@@ -72,6 +72,21 @@ describe("read-only Field scene observation adapter", () => {
       cursor: { x: 1, y: 1, visible: true }, now: at })).toThrow(/cross Field generations/);
   });
 
+  it("rejects structural coordinates outside the approved display contract", () => {
+    const adapter = new FieldSceneObservationAdapter({ field, display });
+    const oversizedWindow = { ...observation().windows[0]!, bounds: { x: 0, y: 0, width: 2048, height: 1152 } };
+    expect(() => adapter.adapt({
+      observation: observation({ activeWindow: oversizedWindow, windows: [oversizedWindow] }),
+      heartbeat: heartbeat(), cursor: { x: 0, y: 0, visible: false }, now: at,
+    })).toThrow(/active window bounds exceed the approved display contract/);
+
+    const outsideElement = { ...observation().elements[0]!, bounds: { x: 1900, y: 100, width: 40, height: 30 } };
+    expect(() => adapter.adapt({
+      observation: observation({ elements: [outsideElement] }),
+      heartbeat: heartbeat(), cursor: { x: 0, y: 0, visible: false }, now: at,
+    })).toThrow(/element bounds exceed the approved display contract/);
+  });
+
   it("does not consume a scene version on denial and derives queue safety from heartbeat", () => {
     const adapter = new FieldSceneObservationAdapter({ field, display });
     expect(() => adapter.adapt({ observation: observation({ screenshotBase64: "abc" }), heartbeat: heartbeat(),

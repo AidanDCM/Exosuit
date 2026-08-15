@@ -56,6 +56,14 @@ export function adaptFieldSceneObservation(input: {
     throw new Error("Field scene observation never accepts screenshot bytes.");
   }
 
+  assertBoundsWithinDisplay("active window", observation.activeWindow?.bounds, display);
+  for (const window of observation.windows) {
+    assertBoundsWithinDisplay("window", window.bounds, display);
+  }
+  for (const element of observation.elements) {
+    assertBoundsWithinDisplay("element", element.bounds, display);
+  }
+
   const windows = observation.windows.map((window) => sanitizeWindow(window, textPolicy));
   const elements = observation.elements.map((element) => sanitizeElement(element, textPolicy));
   const activeWindowId = observation.activeWindow?.id;
@@ -155,4 +163,20 @@ function sanitizeElement(element: UiElement, textPolicy: FieldSceneTextPolicy): 
     };
   }
   return structuredClone(element);
+}
+
+function assertBoundsWithinDisplay(
+  kind: "active window" | "window" | "element",
+  bounds: WindowInfo["bounds"] | UiElement["bounds"],
+  display: z.infer<typeof fieldDisplayContractSchema>,
+): void {
+  if (!bounds) return;
+  if (
+    bounds.x < 0 ||
+    bounds.y < 0 ||
+    bounds.x + bounds.width > display.width ||
+    bounds.y + bounds.height > display.height
+  ) {
+    throw new Error(`Field scene ${kind} bounds exceed the approved display contract.`);
+  }
 }
