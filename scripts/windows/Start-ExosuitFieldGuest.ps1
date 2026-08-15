@@ -20,6 +20,21 @@ function ConvertFrom-JsonDocument {
     return $json | ConvertFrom-Json
 }
 
+function Get-Sha256Digest {
+    param([Parameter(Mandatory)][string]$Path)
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+        $algorithm = [Security.Cryptography.SHA256]::Create()
+        try {
+            ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+        } finally {
+            $algorithm.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 # START FIELD PROCESS ADAPTERS
 # These narrow adapters keep process effects separate from receipt validation so
 # the complete startup transaction can be exercised with inert subprocess fakes.
@@ -110,7 +125,7 @@ if (Test-Path -LiteralPath $developmentConfigPath -PathType Leaf) {
     & $developmentScript -ConfigPath $developmentConfigPath
     if (-not $?) { throw 'Development access initialization failed.' }
 }
-$manifestDigest = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$manifestDigest = Get-Sha256Digest -Path $manifestPath
 function Invoke-FieldBootstrapPrecheck {
     & $bootstrapScript -ManifestPath $manifestPath -ManifestDigest $manifestDigest -ReportPath $bootstrapReportPath -Confirm:$false
     if (-not $?) { throw 'Guest bootstrap precheck did not complete successfully.' }

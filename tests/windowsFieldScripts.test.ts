@@ -663,6 +663,10 @@ describe("Windows Field administration scripts", () => {
     const commandTests = await readFile("apps/windows-agent.Tests/FieldChannelSecretProtectionCommandTests.cs", "utf8");
 
     expect(launcher).toContain("ciphertextEnvelopeSha256");
+    expect(launcher).toContain("function Get-Sha256Digest");
+    expect(launcher).toContain("[Security.Cryptography.SHA256]::Create()");
+    expect(launcher).toContain("$manifestDigest = Get-Sha256Digest -Path $manifestPath");
+    expect(launcher).not.toContain("Get-FileHash -LiteralPath $manifestPath");
     expect(converter).toContain("string CiphertextEnvelopeSha256");
     expect(commandTests).toContain(
       '["ciphertextEnvelopeSha256", "completedAt", "contractVersion", "field", "keyId", "status"]',
