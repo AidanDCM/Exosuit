@@ -173,6 +173,56 @@ describe("host scene monitor", () => {
     expect(state.status === "invalidated" && state.reason).toContain("Secure Desktop");
   });
 
+  it("never makes a valid scene actionable while the heartbeat says the desktop is not ready", () => {
+    const target = monitor();
+
+    const state = target.poll({
+      snapshot: snapshotFor(envelope(1)),
+      heartbeat: heartbeat({ desktopReady: false }),
+      now,
+    });
+
+    expect(state.status === "invalidated" && state.reason).toContain("desktop not ready");
+    expect(target.isActionable).toBe(false);
+  });
+
+  it("requires a scene captured after a desktop-not-ready interval before restoring readiness", () => {
+    const target = ready();
+    target.poll({
+      snapshot: snapshotFor(envelope(2)),
+      heartbeat: heartbeat({
+        sequence: 21,
+        desktopReady: false,
+        observedAt: "2026-08-10T18:00:00.500Z",
+      }),
+      now,
+    });
+
+    // This scene still describes the pre-failure desktop. It authenticates, but must not restore
+    // readiness just because desktopReady returned to true.
+    const stale = target.poll({
+      snapshot: snapshotFor(envelope(2)),
+      heartbeat: heartbeat({ sequence: 22, observedAt: "2026-08-10T18:00:00.600Z" }),
+      now,
+    });
+    expect(stale.status).toBe("invalidated");
+    expect(stale.status === "invalidated" && stale.reason).toContain("stopped being observable");
+
+    const fresh = payload({
+      observation: {
+        ...payload().observation,
+        observationId: "observation-after-ready",
+        capturedAt: "2026-08-10T18:00:00.900Z",
+      },
+    });
+    const restored = target.poll({
+      snapshot: snapshotFor(envelope(3, fresh)),
+      heartbeat: heartbeat({ sequence: 23, observedAt: "2026-08-10T18:00:00.900Z" }),
+      now,
+    });
+    expect(restored.status).toBe("ready");
+  });
+
   it("does not restore readiness when the guest merely unlocks", () => {
     const target = ready();
     // The lock is observed after the scene was captured.
