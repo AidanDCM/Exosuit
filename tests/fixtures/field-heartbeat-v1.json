@@ -1,0 +1,128 @@
+ {
+   "note": "Generated from FieldKvpRuntime.BuildHeartbeatPayload, the exact function the guest runtime publishes. FieldHeartbeatWireContractTests (C#) and fieldHeartbeatWireContract.test.ts (TS) are both asserted against this file.",
+   "secret": "heartbeat-wire-contract-secret-at-least-thirty-two-characters",
+   "expectedKeyId": "hb-key-1",
+   "expectedDirection": "guest_to_host",
+   "verifyAt": "2026-08-11T12:00:03.000Z",
+   "field": {
+     "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+     "fieldGeneration": 3
+   },
+   "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+   "cases": [
+     {
+       "description": "ready desktop",
+       "envelope": {
+         "contractVersion": 1,
+         "messageId": "360528bf-d81f-4195-a131-5dfb69ae0e18",
+         "field": {
+           "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+           "fieldGeneration": 3
+         },
+         "direction": "guest_to_host",
+         "sequence": 100,
+         "messageType": "heartbeat",
+         "sentAt": "2026-08-11T12:00:01.000Z",
+         "expiresAt": "2026-08-11T12:00:11.000Z",
+         "nonce": "R74Puj9rPm10YEM1BWdUnA",
+         "keyId": "hb-key-1",
+         "payloadHash": "7fbbfdba0205975beec901a9b45da19e2cd1630ecf452e499adf11c2c04a0c36",
+         "payload": {
+           "contractVersion": 1,
+           "field": {
+             "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+             "fieldGeneration": 3
+           },
+           "agentId": "glove-agent",
+           "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+           "sequence": 0,
+           "observedAt": "2026-08-11T12:00:01.000Z",
+           "lifecycle": "ready",
+           "desktopReady": true,
+           "sessionLocked": false,
+           "secureDesktopActive": false,
+           "inputQueueDepth": 0,
+           "pendingCommandCount": 0,
+           "workingSetBytes": 123456789
+         },
+         "signature": "EYUf8d7LFzIjdFdIZ8IX0pZxuUgx1K3soFTeNZhtgtY"
+       }
+     },
+     {
+       "description": "locked session",
+       "envelope": {
+         "contractVersion": 1,
+         "messageId": "e4f31014-6ba8-4bbb-b05a-4ac359b1ce80",
+         "field": {
+           "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+           "fieldGeneration": 3
+         },
+         "direction": "guest_to_host",
+         "sequence": 101,
+         "messageType": "heartbeat",
+         "sentAt": "2026-08-11T12:00:01.000Z",
+         "expiresAt": "2026-08-11T12:00:11.000Z",
+         "nonce": "GeC2TIgF05TcIgWlACeHTQ",
+         "keyId": "hb-key-1",
+         "payloadHash": "897ec85a38f7e0be2435544143670c345dd4bdddd5bded70f01dfb6f95de3387",
+         "payload": {
+           "contractVersion": 1,
+           "field": {
+             "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+             "fieldGeneration": 3
+           },
+           "agentId": "glove-agent",
+           "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+           "sequence": 1,
+           "observedAt": "2026-08-11T12:00:01.000Z",
+           "lifecycle": "provisioning",
+           "desktopReady": false,
+           "sessionLocked": true,
+           "secureDesktopActive": false,
+           "inputQueueDepth": 0,
+           "pendingCommandCount": 0,
+           "workingSetBytes": 123456789
+         },
+         "signature": "y6SIBHuntDC6xpxiyGZzUlgMuxUw9G7CTy93UserTOc"
+       }
+     },
+     {
+       "description": "secure desktop",
+       "envelope": {
+         "contractVersion": 1,
+         "messageId": "9f1dbede-88db-43e3-9969-91a89a47a2e4",
+         "field": {
+           "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+           "fieldGeneration": 3
+         },
+         "direction": "guest_to_host",
+         "sequence": 102,
+         "messageType": "heartbeat",
+         "sentAt": "2026-08-11T12:00:01.000Z",
+         "expiresAt": "2026-08-11T12:00:11.000Z",
+         "nonce": "S6XvYWGqgR89nJOlsT4O2Q",
+         "keyId": "hb-key-1",
+         "payloadHash": "6fad92760cd53a42a9e279a6b8fc087dfba4b28119d5271e418eaf0348836464",
+         "payload": {
+           "contractVersion": 1,
+           "field": {
+             "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+             "fieldGeneration": 3
+           },
+           "agentId": "glove-agent",
+           "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+           "sequence": 2,
+           "observedAt": "2026-08-11T12:00:01.000Z",
+           "lifecycle": "provisioning",
+           "desktopReady": false,
+           "sessionLocked": false,
+           "secureDesktopActive": true,
+           "inputQueueDepth": 0,
+           "pendingCommandCount": 0,
+           "workingSetBytes": 123456789
+         },
+         "signature": "3czngbbLZC9n7XSuIbdH-4HF-mh8xez7ODk6Ta8B2lM"
+       }
+     }
+   ]
+ }

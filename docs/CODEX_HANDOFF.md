@@ -47,7 +47,7 @@ Record the exact checkout SHA. Do not test an uncommitted or modified tree witho
 ## Phase 1 — Reproduce GitHub gates locally
 
 ```powershell
-npm install --ignore-scripts
+npm ci --ignore-scripts
 npm run typecheck
 npm test -- --reporter=verbose
 npm run build

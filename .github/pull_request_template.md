@@ -31,7 +31,7 @@
 - [ ] State-changing work passes through proposal, policy, approval where required, fresh observation, execution, and verification.
 - [ ] Emergency stop remains local and independent of ChatGPT, MCP, and the active action.
 - [ ] No MCP or web-panel path enables full control.
-- [ ] No stealth, anti-detection, anti-cheat, credential scraping, privilege escalation, covert recording, or security-bypass behavior was introduced.
+- [ ] No credential scraping, unauthorized account access, privilege escalation, or covert recording behavior was introduced.
 - [ ] Tokens, passwords, cookies, private keys, screenshot bytes, and private fixtures are not committed or logged.
 
 ## Testing and evidence

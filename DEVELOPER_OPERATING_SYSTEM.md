@@ -21,6 +21,26 @@ Build a precise, interruptible, model-independent local computer body that gives
 
 Do not skip directly to broad control.
 
+## Build Fabric acceleration loop
+
+Development uses a machine-readable slice contract in `development/current-slice.json`.
+The fast feedback runner may select or parallelize safe source checks, but it does not
+replace the complete exact-head commands, evidence levels, or roadmap promotion gates.
+
+Use:
+
+```text
+npm run build:fast    # working-tree feedback; never promotion evidence
+npm run build:exact   # complete local evidence runner
+```
+
+Elevated Field lifecycle work may be executed by the installed local Field owner
+service only while an owner-installed, expiring policy is valid. The service accepts
+only exact-generation `provision`, authenticated read-only `observe`, and `destroy` jobs, uses fixed hash-bound scripts,
+has no MCP surface, and cannot grant recording, keys, export, policy, consent, modes,
+or full control. Installation or policy replacement requires UAC. A submitted job is
+a proposal to the local service; the service remains the execution authority.
+
 ## Slice rules
 
 Each slice must be independently testable, reviewable, disableable, and documented. A slice should add one new capability or one new risk boundary, not both at once unless the test plan explicitly proves the combination.

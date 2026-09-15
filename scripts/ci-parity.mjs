@@ -150,7 +150,7 @@ run("repository-contract: required files and secret-shape scan", npm, [
 // Job: typescript — "TypeScript contracts, gateway, and pulse"
 // CI installs before it runs anything, and a clean worktree has no node_modules at all.
 // Mirroring that step keeps both modes faithful; in a working tree it is close to a no-op.
-run("typescript: install dependencies", npm, ["install", "--ignore-scripts", "--fund=false", "--silent"]);
+run("typescript: install locked dependencies", npm, ["ci", "--ignore-scripts", "--fund=false", "--silent"]);
 run("typescript: typecheck", npm, ["run", "typecheck", "--silent"]);
 run("typescript: unit and integration tests", npm, ["test", "--silent"], {
   detail: (out) => (out.match(/Tests\s+\d+ passed[^\n]*/) ?? [])[0],
@@ -187,13 +187,14 @@ if (!dotnet) {
 }
 
 // Job: npm-audit — "npm dependency vulnerability audit"
-// CI runs `npm install` on a clean checkout, so it resolves fresh. A developer's stale
-// node_modules can differ, so this resolves into a temp directory to match CI.
+// CI installs the exact committed dependency graph. Audit that same graph in a temporary
+// directory so a developer's stale node_modules cannot change the result.
 const auditDir = mkdtempSync(join(tmpdir(), "exosuit-audit-"));
 try {
   copyFileSync(join(root, "package.json"), join(auditDir, "package.json"));
-  const installed = run("npm-audit: fresh dependency resolution", npm, [
-    "install", "--ignore-scripts", "--fund=false", "--silent",
+  copyFileSync(join(root, "package-lock.json"), join(auditDir, "package-lock.json"));
+  const installed = run("npm-audit: locked dependency installation", npm, [
+    "ci", "--ignore-scripts", "--fund=false", "--silent",
   ], { cwd: auditDir });
   if (installed) {
     run("npm-audit: no high or critical advisories", npm, [

@@ -108,6 +108,52 @@ describe("agent channel authentication", () => {
     ).toThrow(/clock-skew window/);
   });
 
+  it("authenticates before revealing timestamp or contract-range diagnostics", () => {
+    const authenticator = new AgentChannelAuthenticator({
+      secret,
+      maximumClockSkewMs: 5_000,
+      nonceRetentionMs: 10_000,
+    });
+    const stale = authenticator.sign(payload(authenticator));
+    expect(() =>
+      authenticator.verify(
+        { ...stale, signature: "0".repeat(64) },
+        new Date("2026-07-21T15:00:06.000Z"),
+      ),
+    ).toThrow(/signature is invalid/);
+
+    const invalidRange = authenticator.sign(payload(authenticator, {
+      issuedAt: "2026-07-21T15:00:00.000Z",
+      nonce: "7".repeat(48),
+      minimumContractVersion: 2,
+      maximumContractVersion: 1,
+    }));
+    expect(() =>
+      authenticator.verify(
+        { ...invalidRange, signature: "0".repeat(64) },
+        new Date("2026-07-21T15:00:01.000Z"),
+      ),
+    ).toThrow(/signature is invalid/);
+  });
+
+  it("does not consume a nonce when authenticated semantic validation fails", () => {
+    const authenticator = new AgentChannelAuthenticator({ secret });
+    const nonce = "8".repeat(48);
+    const invalid = authenticator.sign(payload(authenticator, {
+      nonce,
+      minimumContractVersion: 2,
+      maximumContractVersion: 1,
+    }));
+    expect(() =>
+      authenticator.verify(invalid, new Date("2026-07-21T15:00:01.000Z")),
+    ).toThrow(/contract range is invalid/);
+
+    const repaired = authenticator.sign(payload(authenticator, { nonce }));
+    expect(authenticator.verify(repaired, new Date("2026-07-21T15:00:02.000Z"))).toMatchObject({
+      agentId: "agent-a",
+    });
+  });
+
   it("rejects nonce replay after a valid verification", () => {
     const authenticator = new AgentChannelAuthenticator({ secret });
     const signed = authenticator.sign(payload(authenticator));

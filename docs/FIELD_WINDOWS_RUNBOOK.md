@@ -1,0 +1,408 @@
+# Exosuit Field Windows and Hyper-V Runbook
+
+**Status:** operational procedure written; commands not executed in this GitHub connector session  
+**Applies to:** `agent/field-foundation` and later branches that preserve the Glove/Field boundary
+
+## Purpose
+
+This runbook is the exact safe order for validating and later creating a local Exosuit Field. A Field is a controlled Windows VM. The Glove is the agent and supervisor that operates inside it. Do not merge the two identities.
+
+## Development auto-login
+
+Disposable synthetic Fields may request the explicit `developmentAccess` plan mode to remove repeated console credential prompts. This mode requires isolated networking, forbids personal-state disks, creates only a standard local user, and requires the separate `-DevelopmentAccess` apply switch. Its generated credential stays under the host-local secret root and is never committed or logged.
+
+Development auto-login is not production-equivalent authentication. Destroy its disposable generation after testing. A production candidate must set `developmentAccessEnabled` to `false`.
+
+The same development plan must explicitly request `windowsSetup.mode: unattended_disposable` with the reviewed `en-US` locale and `Eastern Standard Time` time zone. Provisioning injects a credential-free Windows answer file into the disposable overlay. During the specialize pass it invokes the reviewed development initializer, then suppresses the remaining OOBE pages. The setup-complete hook removes the answer file. This path is forbidden for personal-state or non-isolated Fields, and a production candidate must also set `developmentUnattendedSetupEnabled` to `false`.
+
+## Hard holds
+
+Do not provision a live Field unless all of the following are true:
+
+1. The exact branch head has passed `scripts/windows/Invoke-ExosuitFieldValidation.ps1`.
+2. The host capability report returns `ready: true`.
+3. The base VHDX and any personal-state VHDX are already present locally and their SHA-256 values match the host registry and provisioning plan.
+4. The configured isolated switch is a Hyper-V **Private** switch.
+5. The owner understands that the apply script creates and starts a VM but does not declare the Field ready.
+6. Guest bootstrap, authenticated channel, heartbeat, display, policy, and attestation checks still have to pass after boot.
+7. Real accounts, consequential targets, and normal personal-desktop use remain prohibited during acceptance.
+
+## Required host software
+
+- Windows 11 Pro, Enterprise, or Education, or a supported Windows Server edition
+- Hyper-V enabled
+- Hyper-V PowerShell module
+- Firmware virtualization and SLAT
+- Node.js 22+
+- .NET 8 SDK
+- Git
+- PowerShell 7 is preferred; scripts avoid arbitrary evaluation and downloads
+
+## Repository validation
+
+From an elevated PowerShell session in the repository:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
+```
+
+The script captures:
+
+- environment metadata,
+- exact Git branch and commit,
+- dependency installation result,
+- repository contract result,
+- Field invariant validator result,
+- TypeScript typecheck,
+- focused Field tests,
+- full Field fake-system pulse,
+- full TypeScript tests and build,
+- existing Glove system pulse,
+- .NET restore/build/tests,
+- read-only host capability check,
+- per-step logs and a final JSON summary.
+
+A successful run proves only source contracts, pure/fake behavior, compilation, tests, and host prerequisites on that machine. It does not prove interactive VM behavior.
+
+## Host registry
+
+Copy the example and edit only the approved paths and digests:
+
+```powershell
+Copy-Item ./vm/field-host-config.example.json ./vm/field-host-config.local.json
+```
+
+The local registry must identify:
+
+- the immutable base image,
+- optional encrypted personal-state disk,
+- Field storage root,
+- isolated private switch,
+- later filtered-NAT switch if separately reviewed.
+
+Do not commit the local registry if it contains private paths or machine-specific information.
+
+## Provisioning plan review
+
+Before provisioning against a component-only base update, derive a new immutable image
+from the last accepted generalized base. Review the dry-run first:
+
+```powershell
+./scripts/windows/New-ExosuitDerivedFieldBase.ps1 `
+  -SourceImagePath C:\ProgramData\Exosuit\Images\exosuit-field-base-v25.vhdx `
+  -SourceImageId exosuit-field-base-v25 `
+  -SourceImageSha256 5ec795fe378d256131e4e1c89c597a79a30e8923cafa3df6b793e7c125a2c744 `
+  -TargetImagePath C:\ProgramData\Exosuit\Images\exosuit-field-base-v26.vhdx `
+  -TargetImageId exosuit-field-base-v26 `
+  -SourceCommit <exact-clean-commit> `
+  -AgentPath <exact-standalone-single-file-agent.exe> `
+  -EvidenceDirectory <exact-evidence-directory>
+```
+
+Apply is one elevated, typed transaction. The exact phrase is printed by dry-run. The
+script copies v25, mounts only the temporary copy, updates fixed guest components,
+refuses per-generation configuration, verifies component digests and ACLs, dismounts,
+hashes, marks the copy read-only, and publishes v26 without overwriting. On failure it
+removes only the exact unpublished temporary/target copy. It never creates or starts a
+VM and never mounts v25 writable.
+
+The agent input must be published as a standalone single-file executable. Use
+`--self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true`.
+The derivation refuses a small apphost or an input directory containing required
+`Exosuit.Agent.dll`, `.deps.json`, or `.runtimeconfig.json` companions; copying only an
+apphost would install a service that cannot load its application inside the guest.
+
+The receipt is build evidence, not acceptance. Add v26 to the host registry only after
+reviewing it, then run disposable guest acceptance and immutable-base lifecycle checks.
+Rollback removes the v26 registry entry and, after proving no overlay references it,
+only v26; v25 remains unchanged.
+
+
+Generate the plan through the TypeScript contract, then resolve it without mutation:
+
+```powershell
+./scripts/windows/Show-ExosuitFieldProvisioningPlan.ps1 `
+  -PlanPath ./artifacts/field-plan.json `
+  -HostConfigPath ./vm/field-host-config.local.json
+```
+
+Review the JSON output. It must show:
+
+- Hyper-V Generation 2,
+- immutable parent base image,
+- disposable differencing OS overlay,
+- separate disposable task disk,
+- optional persistent personal-state disk,
+- fixed memory and CPU constraints,
+- Secure Boot,
+- nested virtualization disabled,
+- isolated or disabled network,
+- clipboard, broad drive mapping, and host input injection disabled,
+- artifact broker as the only planned file-transfer route.
+
+## Dry-run apply
+
+For CHN-001, create the private production-isolated plan and exact guest seed first:
+
+```powershell
+npm run chn001:harness -- prepare `
+  --base-image-id exosuit-field-base-v26 `
+  --base-image C:\ProgramData\Exosuit\Images\exosuit-field-base-v26.vhdx `
+  --base-digest 19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf `
+  --guest-agent .\artifacts\base-v26-build\publish\Exosuit.Agent.exe `
+  --host-config .\vm\field-host-config.local.json `
+  --policy C:\ProgramData\Exosuit\FieldOwner\policy.json
+```
+
+The command prints metadata paths but never secret bytes. Its ignored preparation
+directory is restricted to the current owner, SYSTEM, and Administrators. After the
+owner service provisions the exact plan and the VM is running, bind the observed VM GUID
+with `chn001:harness -- bind --preparation <preparation.json> --observer-agent
+<installed-or-published-observer.exe>`. Neither command is evidence or promotion.
+
+The apply script performs no mutation without `-Apply`:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldProvisioning.ps1 `
+  -PlanPath ./artifacts/field-plan.json `
+  -HostConfigPath ./vm/field-host-config.local.json
+```
+
+Review the output and expected typed confirmation.
+
+## Apply
+
+Only after all prior checks:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldProvisioning.ps1 `
+  -PlanPath ./artifacts/field-plan.json `
+  -HostConfigPath ./vm/field-host-config.local.json `
+  -Apply `
+  -TypedConfirmation 'CREATE FIELD <field-id> GENERATION <generation>'
+```
+
+The script:
+
+1. reruns the host check;
+2. verifies base and personal-state SHA-256 values;
+3. confines every generated path below the configured Field storage root;
+4. refuses filtered NAT until a reviewed enforcement provider exists;
+5. requires a Hyper-V Private switch for isolated mode;
+6. creates the per-generation directory;
+7. creates a disposable differencing OS overlay;
+8. creates a disposable task disk;
+9. creates a Generation 2 VM;
+10. applies CPU, memory, Secure Boot, checkpoint, TPM, and network settings;
+11. attaches only the approved disks;
+12. starts the VM;
+13. records evidence;
+14. attempts bounded rollback if provisioning fails.
+
+The resulting state is `started_pending_guest_validation`, not `ready`.
+
+## Guest bootstrap
+
+Inside the guest, with the manifest and its externally calculated digest:
+
+```powershell
+./Initialize-ExosuitFieldGuest.ps1 `
+  -ManifestPath C:\Exosuit\Config\bootstrap-manifest.json `
+  -ManifestDigest '<64-character-sha256>'
+```
+
+Bootstrap checks identity, exact directory layout, display dimensions, agent binary presence, policy-hash shape, session lock state, and channel-key identity. It deliberately leaves Secure Desktop and heartbeat checks failed until the running guest agent confirms them.
+
+## Readiness sequence
+
+A Field becomes ready only after the host validates:
+
+Before the guest can publish item 1, the fixed LocalSystem launcher converts or
+verifies `C:\Exosuit\Config\channel-secret.txt`, validates the metadata receipt
+against the runtime Field generation and key, and starts the protected-only KVP
+emitter. Any protection or receipt failure stops before heartbeat. Do not invoke
+the emitter manually or restore plaintext fallback.
+
+The emitter may publish an authenticated `provisioning` lifecycle after the
+initial bootstrap precheck while the interactive session is still locked. That
+is diagnostic state only, not readiness or action authority. The launcher keeps
+refreshing bootstrap until unlock and stops the exact child on timeout or early
+exit. Host acceptance must still require every readiness item below.
+
+1. bootstrap report identity and manifest digest;
+2. authenticated channel handshake;
+3. replay-resistant sequence state;
+4. fresh heartbeat from the expected agent and boot ID;
+5. unlocked session;
+6. Secure Desktop inactive;
+7. fixed display contract;
+8. policy hash and attestation;
+9. guest agent health;
+10. Field Manager transition to `ready`.
+
+## Teach acceptance
+
+Teach Mode requires:
+
+- local owner administration authority,
+- explicit consent,
+- visible recording indicator,
+- `inputInjectionAllowed: false`,
+- source allowlist,
+- encrypted terminal episode storage,
+- event/timestamp integrity,
+- stop, pause, abort, and fault behavior,
+- deletion test,
+- no credential or inline visual-byte leakage.
+
+## Shadow acceptance
+
+Shadow Mode requires:
+
+- no guest input commands,
+- every prediction marked `executionAllowed: false`,
+- exact observation and Field-generation binding,
+- comparison against the actual owner action,
+- owner-readable accuracy and timing metrics,
+- no promotion to Pilot based solely on aggregate accuracy.
+
+## Pilot acceptance
+
+Pilot Mode remains held until:
+
+- guest command authorizer is integrated into the running Windows agent,
+- exact policy ID/hash and scene-version recheck occurs immediately before action,
+- emergency stop is physically tested,
+- wrong-window and stale-scene cases stop,
+- failure reconciliation prevents blind retry,
+- action and runtime budgets stop execution,
+- artifact transfer uses live reparse-point inspection,
+- owner accepts the exact workflow evidence.
+
+## Destroying one Field generation
+
+Use only the bounded destruction script:
+
+```powershell
+./scripts/windows/Remove-ExosuitFieldGeneration.ps1 `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -HostConfigPath ./vm/field-host-config.local.json `
+  -TypedConfirmation 'DESTROY FIELD <field-id> GENERATION <generation>'
+```
+
+It may remove only:
+
+- the named VM registration,
+- that generation's disposable OS overlay,
+- that generation's disposable task disk,
+- files beneath that exact generation directory.
+
+It must not remove the base image or personal-state registry objects. It refuses deletion through a reparse point.
+
+## Installing the accelerated Field owner service
+
+Run all source gates before installation. The launcher publishes the service and the
+fixed compiled KVP observer, displays the complete expiring owner policy, and opens
+exactly one UAC prompt:
+
+```powershell
+.\scripts\windows\Start-ExosuitFieldOwnerInstall.ps1 `
+  -HostConfigPath .\vm\field-host-config.local.json `
+  -ValidityDays 180 `
+  -MaxActiveFields 2 `
+  -AllowDevelopmentAccess
+```
+
+The installation copies fixed lifecycle scripts, the compiled observer, and a snapshot
+of the host configuration beneath administrator/SYSTEM-owned roots. Only the owner SID
+receives Modify access to `Queue\Pending`. Policy replacement requires another elevated
+installation; do not edit installed policy or binaries in place.
+
+Submit a provision job without elevation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation provision `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -PlanPath '<plan.json>' `
+  -GuestSeedDirectory '<seed-directory>' `
+  -DevelopmentAccess `
+  -Wait
+```
+
+Authenticated KVP observation uses a copied host runtime configuration and host secret.
+The submitter rewrites the copied secret path to the exact protected processing package;
+the service invokes only its hash-bound observer and deletes the consumed exact package
+from the active namespace after a terminal result. Do not claim forensic secure erase.
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation observe `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -RuntimeConfigPath '<host-runtime.json>' `
+  -HostSecretPath '<host-secret.txt>' `
+  -Wait
+```
+
+Destroy remains confined to the exact disposable generation:
+
+```powershell
+.\scripts\windows\Submit-ExosuitFieldOwnerJob.ps1 `
+  -Operation destroy `
+  -FieldId '<field-id>' `
+  -FieldGeneration <generation> `
+  -Wait
+```
+
+Stop `ExosuitFieldOwner` to disable new jobs immediately. To remove the service, use an
+elevated owner console and the exact uninstall phrase documented in the owner manual.
+The installing owner SID must be able to read `Results` and sanitized `Evidence` without
+elevation, but only SYSTEM/Administrators may write them. `Queue\Pending` remains the
+only owner-writable service path.
+
+## Protected-secret startup preflight
+
+Before a live protected-secret guest attempt, run the Windows Field script test
+and confirm its startup-transaction harness passes. That harness must report
+that `converted` and `already_protected` receipts invoke the emitter, while
+nonzero protection exit, malformed receipt, and post-publication/no-receipt
+interruption do not. This is a preflight check only; preserve separate live
+evidence for LocalSystem identity, DPAPI/DACL state, restart, and heartbeat
+absence on denial.
+
+```powershell
+npm test -- --run tests/windowsFieldScripts.test.ts --reporter=verbose
+```
+
+## Emergency handling
+
+If authentication, replay, boot identity, attestation, display contract, or task-disk integrity fails:
+
+1. freeze input;
+2. stop the Field;
+3. preserve diagnostics that do not contain private content;
+4. destroy disposable generation state;
+5. increment `fieldGeneration`;
+6. reprovision;
+7. require owner review where specified by `FieldRecoveryPlanner`.
+
+If emergency stop itself fails, do not automate recovery. Treat it as release-blocking and require owner intervention.
+
+## Evidence closeout
+
+For every local acceptance run, preserve:
+
+- branch and commit SHA,
+- validation summary and logs,
+- host capability report,
+- provisioning plan and hash,
+- apply/destroy evidence,
+- sanitized support bundle,
+- Field and Glove audit-chain verification,
+- exact failed checks,
+- screenshots only when separately consented and stored under visual policy,
+- owner verdict.

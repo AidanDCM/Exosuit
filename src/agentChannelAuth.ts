@@ -118,15 +118,17 @@ export class AgentChannelAuthenticator {
 
   verify(input: SignedAgentRegistration, now = new Date()): AgentRegistrationPayload {
     const registration = signedAgentRegistrationSchema.parse(input);
-    if (registration.payload.minimumContractVersion > registration.payload.maximumContractVersion) {
-      throw new Error("Agent registration contract range is invalid.");
-    }
     this.#verifySigned({
       domain: REGISTRATION_DOMAIN,
       payload: registration.payload,
       signature: registration.signature,
       now,
       subject: "Agent registration",
+      validateAuthenticatedPayload: () => {
+        if (registration.payload.minimumContractVersion > registration.payload.maximumContractVersion) {
+          throw new Error("Agent registration contract range is invalid.");
+        }
+      },
     });
     return structuredClone(registration.payload);
   }
@@ -171,8 +173,10 @@ export class AgentChannelAuthenticator {
    * Registration and heartbeat go through one path deliberately: a second, parallel
    * implementation is how one of them quietly ends up without replay protection.
    *
-   * Order matters. The nonce is recorded only after the signature verifies, so an
-   * unauthenticated caller cannot burn a nonce or grow the replay cache.
+   * Order matters. Authentication happens before time and message-specific diagnostics,
+   * so an unauthenticated caller cannot probe semantic validity. The nonce is recorded
+   * only after every authenticated validation passes, so invalid packets cannot burn a
+   * nonce or grow the replay cache.
    */
   #verifySigned(input: {
     domain: string;
@@ -180,18 +184,20 @@ export class AgentChannelAuthenticator {
     signature: string;
     now: Date;
     subject: string;
+    validateAuthenticatedPayload?: () => void;
   }): void {
-    this.#pruneNonces(input.now);
-    const issuedAt = Date.parse(input.payload.issuedAt);
-    if (!Number.isFinite(issuedAt)) throw new Error(`${input.subject} timestamp is invalid.`);
-    if (Math.abs(input.now.getTime() - issuedAt) > this.#maximumClockSkewMs) {
-      throw new Error(`${input.subject} is outside the allowed clock-skew window.`);
-    }
     const expected = Buffer.from(this.#signature(input.domain, input.payload), "hex");
     const actual = Buffer.from(input.signature, "hex");
     if (expected.byteLength !== actual.byteLength || !timingSafeEqual(expected, actual)) {
       throw new Error(`${input.subject} signature is invalid.`);
     }
+    const issuedAt = Date.parse(input.payload.issuedAt);
+    if (!Number.isFinite(issuedAt)) throw new Error(`${input.subject} timestamp is invalid.`);
+    if (Math.abs(input.now.getTime() - issuedAt) > this.#maximumClockSkewMs) {
+      throw new Error(`${input.subject} is outside the allowed clock-skew window.`);
+    }
+    input.validateAuthenticatedPayload?.();
+    this.#pruneNonces(input.now);
     const replayKey = `${input.domain}:${input.payload.agentId}:${input.payload.nonce}`;
     if (this.#seenNonces.has(replayKey)) throw new Error(`${input.subject} nonce was already used.`);
     this.#seenNonces.set(replayKey, input.now.getTime() + this.#nonceRetentionMs);

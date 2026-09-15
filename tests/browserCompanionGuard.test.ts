@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  BrowserOriginPermissions,
+  BrowserSemanticGateway,
+  BrowserSnapshotRegistry,
   createMockBrowserSnapshot,
   type BrowserAction,
   type BrowserActionResult,
@@ -11,7 +14,14 @@ import { GuardedBrowserCompanionProvider } from "../src/browserCompanionGuard.js
 
 class FixtureProvider implements BrowserCompanionProvider {
   constructor(
-    readonly mode: "success" | "hang" | "wrong-observation" | "wrong-action" | "wrong-tab" | "unverified" = "success",
+    readonly mode:
+      | "success"
+      | "hang"
+      | "wrong-observation"
+      | "wrong-action"
+      | "wrong-tab"
+      | "navigated"
+      | "unverified" = "success",
   ) {}
 
   async observe(
@@ -31,7 +41,12 @@ class FixtureProvider implements BrowserCompanionProvider {
 
   async execute(action: BrowserAction): Promise<BrowserActionResult> {
     if (this.mode === "hang") return new Promise<BrowserActionResult>(() => undefined);
-    const snapshot = createMockBrowserSnapshot();
+    const base = createMockBrowserSnapshot();
+    const generation = this.mode === "navigated" ? action.tab.generation + 1 : action.tab.generation;
+    const snapshot = {
+      ...base,
+      elements: base.elements.map((element) => ({ ...element, tabGeneration: generation })),
+    };
     return {
       actionId: this.mode === "wrong-action" ? "another-action" : action.actionId,
       status: "succeeded",
@@ -44,7 +59,7 @@ class FixtureProvider implements BrowserCompanionProvider {
           browserInstanceId:
             this.mode === "wrong-tab" ? "other-browser" : action.tab.browserInstanceId,
           tabId: action.tab.tabId,
-          generation: action.tab.generation,
+          generation,
           origin: action.tab.origin,
         },
       },
@@ -95,10 +110,17 @@ describe("guarded browser companion provider", () => {
     ).rejects.toThrow(/result tab identity mismatch/);
   });
 
-  it("rejects unverified success and bounds hung operations", async () => {
+  it("marks unverified success, navigation, and action timeout uncertain", async () => {
     await expect(
       new GuardedBrowserCompanionProvider({ provider: new FixtureProvider("unverified") }).execute(action()),
-    ).rejects.toThrow(/without passed verification/);
+    ).resolves.toMatchObject({ status: "uncertain", verificationStatus: "not_checked" });
+    await expect(
+      new GuardedBrowserCompanionProvider({ provider: new FixtureProvider("navigated") }).execute(action()),
+    ).resolves.toMatchObject({
+      status: "uncertain",
+      verificationStatus: "not_checked",
+      summary: expect.stringMatching(/tab generation changed/),
+    });
     const hung = new GuardedBrowserCompanionProvider({
       provider: new FixtureProvider("hang"),
       timeoutMs: 100,
@@ -106,6 +128,23 @@ describe("guarded browser companion provider", () => {
     await expect(hung.observe({ browserInstanceId: "browser-a", tabId: "tab-a" })).rejects.toThrow(
       /observation timed out/,
     );
-    await expect(hung.execute(action())).rejects.toThrow(/action timed out/);
+    await expect(hung.execute(action())).resolves.toMatchObject({
+      status: "uncertain",
+      verificationStatus: "not_checked",
+      summary: expect.stringMatching(/action timed out/),
+    });
+  });
+
+  it("does not promote an uncertain navigated snapshot into fresh action state", async () => {
+    const registry = new BrowserSnapshotRegistry();
+    const permissions = new BrowserOriginPermissions();
+    permissions.allow("https://example.test");
+    const guarded = new GuardedBrowserCompanionProvider({
+      provider: new FixtureProvider("navigated"),
+    });
+    const gateway = new BrowserSemanticGateway({ provider: guarded, permissions, registry });
+    const observed = await gateway.observe({ browserInstanceId: "browser-a", tabId: "tab-a" });
+    expect(await gateway.execute(action())).toMatchObject({ status: "uncertain" });
+    expect(registry.get(observed.tab)?.tab.generation).toBe(1);
   });
 });

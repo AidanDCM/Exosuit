@@ -1,106 +1,177 @@
 # Exosuit
 
-Exosuit is a private, model-independent computer body for authorized AI pilots such as ChatGPT or Claude. The pilot supplies intent; the local runtime owns sensing, policy, approval, scheduling, execution, verification, audit, deadlines, persistence, and emergency stopping.
+Exosuit is a private, model-independent computer embodiment platform for owner-authorized AI pilots such as ChatGPT or an API model.
 
-The goal is **human flexibility, machine precision, transparent operation, and local user authority**—not hidden automation.
+## Planning authority
 
-## Current status
+- [`docs/MASTER_SYSTEM_ROADMAP.md`](docs/MASTER_SYSTEM_ROADMAP.md) — complete architecture and production authority;
+- [`docs/PRODUCTION_BUILD_PHASES.md`](docs/PRODUCTION_BUILD_PHASES.md) — broad production build waves;
+- [`docs/PRODUCT_PARITY_ROADMAP.md`](docs/PRODUCT_PARITY_ROADMAP.md) — seamless personal-agent direction;
+- [`docs/BUILD_COMPLETION_PLAN.md`](docs/BUILD_COMPLETION_PLAN.md) — exact path from the current source foundation to personal MVP, daily driver, and production;
+- [`docs/qa/BUILD_COMPLETION_TEST_MATRIX.md`](docs/qa/BUILD_COMPLETION_TEST_MATRIX.md) — required live, failure-injection, owner, security, and release tests;
+- [`docs/qa/build-completion-manifest.json`](docs/qa/build-completion-manifest.json) — integrity-bound machine-readable phases, gates, evidence classes, and current status.
 
-**Strong single-agent Windows core with bounded live acceptance; multi-window and later product foundations are in active development. Production use remains denied.**
+> ChatGPT or an API model handles intent, judgment, and conversation. Exosuit handles state, execution, safety, memory, recovery, and evidence.
 
-The current branch includes:
+MCP is the tool protocol, not the AI brain. ChatGPT MCP is the preferred interactive route. A configured API route is a bounded fallback for unattended continuation, recovery, local-cockpit initiation, or temporary MCP unavailability. Both routes use the same local policy, approvals, task state, persona, audit, and execution adapters.
 
-- a tool-only MCP server suitable for a private ChatGPT app,
-- real MCP client/server protocol tests,
-- fake desktop provider for deterministic testing,
-- Windows UI Automation sensing and semantic actions,
-- standard Windows pointer, click, Unicode typing, and bounded hotkey motor code,
-- restart-only and allowlist-only physical-input activation,
-- proposal → deterministic policy → local approval → fresh recheck → execution → verification,
-- immutable approval fingerprints,
-- gateway/provider deadlines and local emergency stop,
-- sanitized versioned application maps,
-- dual tamper-evident audit ledgers,
-- prompt-injection and loop guards,
-- local approval/control panel,
-- multi-window workspace/window generation contracts,
-- workflow dependency graphs, step lifecycle, window locks, focus leases, and session queues,
-- structured cross-window artifacts with provenance and integrity hashes,
-- checkpoints, uncertain-effect recovery, idempotency keys, and coordinator audit timelines,
-- narrow MCP workflow create/read/run/pause/resume/cancel tools,
-- virtual-desktop identity, availability, transition, and local switch-intent foundations,
-- multi-agent health/capability registry and authenticated replay-resistant registration foundations,
-- transparent browser semantic companion contracts and mock provider,
-- disabled-by-default synthetic visual privacy/consent foundation,
-- signed bounded skill-manifest and permission-upgrade foundation,
-- quotas, queue backpressure, and latency percentile foundations.
+## Glove and Field
 
-### Evidence boundary
+| System | Meaning | Responsibility |
+|---|---|---|
+| **Exosuit Glove** | body, hand, and nervous system | sensing, policy, semantic and physical execution, verification, workflow state, recovery, audit, and emergency stop |
+| **Exosuit Field** | controlled computer and teaching environment | isolated Windows session, stable display, applications, VM/storage lifecycle, task workspace, and owner-consented demonstration surface |
 
-The single-agent Windows core has bounded Windows Sandbox evidence for semantic mutation, pointer movement, click, Unicode text input, `CTRL+A`, local approvals, emergency-stop interruption, and independently verified audit chains.
+> **The Glove is not the VM. The Field is not the agent.**
 
-The newer workflow, virtual-desktop, multi-agent, browser, visual-policy, skill, and resource-governance slices are GitHub-source implementations with focused local reconstruction tests. They are **not** yet approved as interactive Windows, connected ChatGPT, multi-window, virtual-desktop, multi-agent, browser-extension, visual-capture, or production evidence.
+They share one repository but retain separate identities, generations, lifecycles, policies, evidence, tests, manuals, failure states, and rollback paths.
 
-### Hosted CI is blocked by account billing, not by this repository
+## Product modes
 
-GitHub-hosted workflow jobs fail before checkout with no steps allocated. **The cause is account billing, not workflow configuration.** Every job in every workflow carries the same GitHub annotation:
+- **Observe:** read and summarize current state with no physical-input authority.
+- **Teach:** record an explicitly consented demonstration with visible recording state, privacy controls, provenance, and immediate stop.
+- **Shadow:** predict likely actions without network, credential, command, administration, or input authority.
+- **Correction:** capture structured differences when the owner corrects a prediction or takes over.
+- **Assisted:** execute only approved low-risk chunks through ordinary policy, fresh observation, verification, checkpointing, and recovery.
+- **Pilot:** denied until synthetic trials, repeated low-risk acceptance, process isolation, emergency-stop evidence, and explicit owner promotion are complete.
 
-> The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings
+## Current implementation
 
-`.github/workflows/runner-smoke.yml` isolates this. Its only steps echo a line, and both its `ubuntu-latest` and `windows-latest` jobs fail identically with that annotation. A workflow that does nothing but request a runner cannot fail for a configuration reason, so YAML, `runs-on` labels, job dependencies, caching, and lockfiles are all excluded.
+### Glove and Field foundations
 
-**Do not attempt to fix this by editing workflows.** Several past commits changed the detection gate, job independence, and npm cache settings while chasing this; none could have worked. The fix is in GitHub account settings under Billing & plans: resolve the failed payment or raise the Actions spending limit. This repository is private, so Actions draws on a monthly free-minutes allowance, and `windows-latest` bills at roughly twice the Linux rate.
+Implemented foundations include MCP protocol tests, fake and guarded Windows providers, UI Automation observation and semantic actions, restart-gated physical-input foundations, local policy and approvals, verification, audit, deadlines, recovery, emergency stop, durable workflow coordination, Field identity and lifecycle, Hyper-V desired state, authenticated channels, readiness, guest service, scene/Teach/storage foundations, demonstration processing, encrypted derived storage, Shadow retrieval, Correction, artifact transfer, recovery, diagnostics, guarded scripts, manuals, tests, and audits.
 
-Until billing is restored, hosted CI is unavailable and no hosted evidence may be claimed. Run the reproducible local validation chain and attach exact evidence instead:
+### Owner-governed persona
 
-```bash
-npm run validate:typescript
-```
+Implemented foundations include integrity-bound profile versions; AES-256-GCM profile, governance, model, bundle, and activation storage; owner-only approval, revocation, rollback, deletion, activation, and deactivation; evidence-bound derivation and held-out evaluation; separate typing, motor, language, attention, timing, habit, and verification models; and fixed advisory-only authority.
 
-Re-run `runner-smoke.yml` from the Actions tab to check whether billing has been restored. It is the cheapest available probe; keep it.
+### Product task and convenience layer
 
-## Architecture
+Implemented repository-side foundations include:
+
+- deterministic ChatGPT MCP/API brain routing with task-level API budget ceilings;
+- integrity-bound resumable task sessions and short-lived chunks;
+- AES-256-GCM durable task state with hashed filenames, atomic writes, wrong-key rejection, and authenticated ciphertext;
+- automatic, grouped, and immediate approval classes;
+- one automatic retry followed by explicit recovery escalation;
+- trusted-local-adapter-only outcome recording;
+- privacy-safe cockpit state and hash-chained events without raw goals, variables, screenshots, credentials, or persona text;
+- deterministic host installation preflight contracts;
+- quantitative personal-MVP and strong daily-driver benchmark gates requiring live evidence;
+- Ed25519 release-manifest verification and non-executing install/update/repair/rollback/uninstall plans;
+- diagnostic redaction;
+- five reviewed initial recipes:
+  - gather approved information;
+  - research, normalize, deduplicate, and organize;
+  - fill a form and stop before submission;
+  - prepare a message and stop before sending;
+  - download and organize approved files.
+
+The product task layer cannot report execution success through MCP. A future trusted local adapter must re-observe, apply ordinary policy, execute, verify, and record a bounded result. Cockpit and release-lifecycle implementations are contracts, not finished graphical interfaces or host-changing executors. Release plans retain `executionAllowed: false`.
+
+### Build-completion control
+
+The repository now contains a machine-validated completion graph:
+
+| Phase | Finish line |
+|---|---|
+| M0 | exact source baseline |
+| M1 | real host and disposable Field |
+| M2 | live scenes and trusted execution |
+| M3 | consented Teach, isolated Shadow, and personal models |
+| M4 | five Assisted recipes |
+| M5 | ChatGPT/API connection, cockpit, and resume |
+| M6 | installable personal MVP |
+| P1 | strong daily-driver reliability |
+| P2 | production security and release engineering |
+| P3 | exact production candidate and operations |
+
+The completion contract distinguishes source, unit, fake integration, Windows guest, Hyper-V, ChatGPT MCP, owner acceptance, security review, and release-operation evidence. Live gates cannot pass with synthetic-only evidence. Dependency cycles, missing gate IDs, missing rollback procedures, tampering, and unsupported promotion claims fail validation.
+
+## Validation posture
+
+Validated source head before the completion-plan addition:
 
 ```text
-ChatGPT / Claude / another MCP host
-                 |
-          narrow MCP tools
-                 v
-       Exosuit Supervisor Gateway
-  - single-action orchestrator
-  - workflow DAG/runtime
-  - workspace and agent registries
-  - structured artifact/checkpoint stores
-  - prompt-injection and loop guards
-  - gateway deadlines and audit
-                 |
-       authenticated agent boundary
-                 v
-           .NET Windows agent
-  - fresh UI Automation state
-  - deterministic policy
-  - local approval fingerprints
-  - bounded provider operations
-  - verification and local audit
-  - emergency stop
-                 |
-      fake provider / Windows UIA
-                 |
-     optional locally gated motor
+d91a9701d8faab4220441de9553eb1647c0164b8
 ```
 
-A single Windows session has one foreground focus and one physical mouse/keyboard stream. Exosuit may observe and plan across many windows, but physical actions are serialized through a focus lease. Genuine physical parallelism requires separate healthy agents inside separate Windows sessions or VMs.
+Hosted evidence for that source head:
+
+- Exosuit CI run `30926779304` passed;
+- Security Audit run `30926782740` passed for supported jobs;
+- repository validator: 71 required artifacts;
+- master-plan validator: all 22 phased sections;
+- Field validator: 84 required artifacts and 26 source modules;
+- 47 focused files and **230 focused tests** passed;
+- 79 full TypeScript files and **406 tests** passed;
+- **48 .NET tests** passed with zero failures;
+- TypeScript typecheck and production build passed;
+- Glove and Field system pulses passed;
+- PowerShell parsing passed;
+- .NET build passed with zero warnings and errors;
+- CycloneDX npm SBOM generated with **149 components**;
+- npm audit reported zero vulnerabilities;
+- NuGet reported no vulnerable direct or transitive packages.
+
+See [`docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md`](docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md) for artifact IDs, hashes, repaired validation defects, and exact promotion boundaries. The completion-plan branch tip must receive its own exact-head CI evidence before these counts are updated.
+
+These are repository and fake-provider results. Live Windows, Hyper-V, Teach, owner-derived calibration, process-level Shadow isolation, credential insertion, Assisted execution, ChatGPT-to-Field acceptance, graphical cockpit, installer execution, MVP, and production remain denied.
+
+Still unproven:
+
+- independent hosted CI attestation of the consolidated Glove/Field commit (local exact-head L0 and clean parity pass);
+- repeatable Hyper-V lifecycle, isolation, destruction, and failure-injection evidence;
+- production-authenticated host/guest transport, key storage, and rotation;
+- production guest bootstrap and heartbeat without development auto-login/unattended setup;
+- live scene production;
+- live consented Teach recording;
+- actual demonstration processing and retrieval;
+- actual Shadow predictor;
+- personal task, motor, typing, timing, language, and correction models;
+- live cross-VM artifact transport;
+- Pilot integration;
+- ChatGPT-to-Field acceptance;
+- real account or consequential website operation;
+- production readiness.
+
+## Current execution gate
+
+The next mandatory phase is L0 in the master plan and GitHub issue #12.
+
+On an authenticated Windows checkout of the exact branch head:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
+```
+
+This runner is intended to preserve exact evidence for repository validation, the master-plan validator, Field validation, TypeScript, tests, builds, PowerShell parsing, .NET, and the read-only Hyper-V host check.
+
+For working-tree feedback, `npm run build:fast` runs the independent contract and
+typecheck lanes concurrently and writes non-promotional evidence beneath
+`artifacts/build-fabric`. The active slice contract is
+`development/current-slice.json`. The fast runner never substitutes for the complete
+exact-head runner.
+
+The optional accelerated Field owner service is installed through one reviewed UAC
+transaction documented in `docs/FIELD_WINDOWS_RUNBOOK.md`. Its expiring standing policy
+allows only exact-generation provisioning, authenticated read-only KVP observation, and
+destruction through fixed hash-bound components. It has no MCP surface and grants no
+desktop, recording, consent, key, export, or policy authority.
+
+Hosted GitHub jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no logs. That is an infrastructure block—not a repository pass or failure.
 
 ## Current MCP surface
 
-The exposed surface is selected by `EXOSUIT_MCP_SURFACE`:
+The exposed tool set is selected by `EXOSUIT_MCP_SURFACE`:
 
 | Value | Tools exposed |
 |---|---|
-| unset or `core` (default) | desktop core only, 13 tools |
-| `full` | desktop core plus coordinator, 27 tools |
+| unset or `core` | reviewed desktop core only, 13 tools |
+| `product` | desktop core plus high-level product tasks, 23 tools |
+| `full` | desktop core, high-level product tasks, and coordinator, 37 tools |
 
-`core` is the default because the coordinator is `in_progress` with no hosted CI and no interactive evidence, and `docs/CODEX_HANDOFF.md` requires that a tunnel session discover only reviewed tools. An unrecognized value fails startup rather than defaulting. The gateway prints its surface on startup.
+`core` remains the default. `product` and `full` are explicit opt-ins. Unknown values fail startup.
 
 ### Desktop core
 
@@ -118,11 +189,26 @@ The exposed surface is selected by `EXOSUIT_MCP_SURFACE`:
 - `desktop_propose_physical_input`
 - `desktop_execute_physical_proposal`
 
-The desktop core is thirteen tools. Both execution tools route through one authoritative execution path and one local policy path; the physical variant cannot supply an approval token.
+### High-level product tools
 
-### Coordinator
+Requires `EXOSUIT_MCP_SURFACE=product` or `full`.
 
-Requires `EXOSUIT_MCP_SURFACE=full`. Not exposed by default and not part of Phase 1 acceptance.
+- `exosuit_route_brain`
+- `exosuit_list_recipes`
+- `exosuit_create_task`
+- `exosuit_list_tasks`
+- `exosuit_get_task`
+- `exosuit_start_task`
+- `exosuit_plan_next_chunk`
+- `exosuit_pause_task`
+- `exosuit_resume_task`
+- `exosuit_cancel_task`
+
+These tools plan and checkpoint work. They do not expose an execution-success tool. Start and resume use a trusted local readiness provider instead of a model-supplied argument.
+
+### Coordinator tools
+
+Requires `EXOSUIT_MCP_SURFACE=full`.
 
 - `desktop_refresh_workspace`
 - `desktop_get_workspace`
@@ -139,7 +225,84 @@ Requires `EXOSUIT_MCP_SURFACE=full`. Not exposed by default and not part of Phas
 - `desktop_get_workflow_audit`
 - `desktop_list_agents`
 
-Workflow tools do not approve their own work. Desktop steps still enter the ordinary proposal, local policy, approval, fresh observation, execution, and verification pipeline.
+## Product-task environment
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `EXOSUIT_MCP_SURFACE` | `core`, `product`, or `full` | `core` |
+| `EXOSUIT_PRODUCT_TASK_DIR` | encrypted persistent task directory; must be paired with a key | memory only |
+| `EXOSUIT_PRODUCT_TASK_KEY` | exact 32-byte task key encoded as hex or base64url; must be paired with a directory | unset |
+| `EXOSUIT_PRODUCT_FIELD_READINESS` | development-only fake readiness switch | not ready |
+| `EXOSUIT_AGENT_MODE` | `fake` or `http` desktop provider | `fake` |
+
+Supplying only the task directory or only the key fails startup. Environment-supplied keys are not the final production key-management path; DPAPI/TPM sealing, rotation, recovery, and secure erasure remain required.
+
+The only current positive task-readiness combination is:
+
+```text
+EXOSUIT_PRODUCT_FIELD_READINESS=development_fake
+EXOSUIT_AGENT_MODE=fake
+```
+
+Real/http mode remains not ready until the authenticated Field-readiness service is connected and tested.
+
+## Approval and recovery
+
+### Automatic
+
+Observing, reading, approved navigation, collecting information, drafting locally, and temporary local artifacts.
+
+### Grouped owner approval
+
+Reversible non-sensitive form filling, file organization, draft editing, and known reversible recipe chunks.
+
+### Immediate owner approval
+
+Sending, posting, submitting, purchasing, uploading, sharing, deleting, account changes, credential release, and financial, legal, destructive, identity-sensitive, or external commitments.
+
+Every trusted chunk ends in one of:
+
+- `verified`;
+- `retryable`;
+- `needs_owner`;
+- `safely_aborted`;
+- `rolled_back`.
+
+Ordinary low-risk recovery is: re-observe, compare, retry once only when safe, try one reviewed alternate, restore a checkpoint when possible, then ask the owner with evidence.
+
+## Readiness contracts
+
+### Host preflight
+
+The source-level evaluator covers supported Windows edition/build, x64, administrator access, firmware virtualization, Hyper-V, CPU, memory, disk, Node.js, .NET, encrypted task state, Field-image integrity, and brain-route configuration. It does not probe or change the real computer. A passing result still retains:
+
+```text
+productionCandidate: false
+requiresLiveValidation: true
+```
+
+### Personal-use MVP benchmark
+
+Promotion requires at least 10 trials across five recipes, 90% completion, zero unapproved consequential actions, 100% successful emergency stops in attempted acceptance trials, 90% session-resume success, no more than 0.3 non-required interventions per trial, and live evidence. Synthetic-only evidence cannot promote the MVP.
+
+The stronger daily-driver gate requires at least 100 trials, 97% completion, 95% recovery where attempted, 99% resumption, and no more than 0.1 non-required interventions per trial. The evaluator cannot approve production.
+
+### Completion assessment
+
+```bash
+npm run validate:mvp-plan
+npm run assess:mvp
+```
+
+`validate:mvp-plan` checks the manifest structure, integrity hash, required phases/gates, dependency graph, evidence classes, rollback procedures, and synthetic/live separation. `assess:mvp` reports weighted source/live completion, blockers, and the next executable phase without claiming readiness.
+
+The stricter command:
+
+```bash
+npm run validate:mvp
+```
+
+is expected to fail until every personal-MVP gate has qualifying live evidence.
 
 ## Safety defaults
 
@@ -148,39 +311,32 @@ Workflow tools do not approve their own work. Desktop steps still enter the ordi
 | desktop provider | fake |
 | fake mode | sandbox |
 | Windows mode | observe |
-| MCP surface | `core`; coordinator tools require explicit `EXOSUIT_MCP_SURFACE=full` |
-| bind address | `127.0.0.1` |
+| MCP surface | `core` |
+| product task readiness | false except explicit fake development mode |
+| durable task state | memory unless encrypted directory and key are paired |
 | physical input | disabled |
-| full control | restart-only; cannot be enabled by MCP or the panel |
-| screenshots | disabled; no Windows capture implementation |
-| visual policy | disabled; synthetic foundation only |
-| browser companion | mock/contracts only; no installed extension |
-| remote agents | registry/auth contracts only; no production transport |
-| skills | signed registry foundation only; execution not enabled |
-| credentials and secret-bearing controls | hard denied |
-| destructive targets | hard denied |
-| real semantic actions | local review |
-| physical actions | critical risk + exact local typed confirmation |
+| Field provisioning | dry-run unless exact local confirmation |
+| host clipboard, broad drive mapping, host input | disabled |
+| recording | disabled until consented live acceptance |
+| Shadow execution | structurally false |
+| Pilot autonomy | denied |
+| model Field administration | blocked |
+| arbitrary shell through MCP | excluded |
+| lifecycle plans | non-executing |
 
-## Validation
-
-Install dependencies with scripts disabled, then run:
+## Validation commands
 
 ```bash
-npm install --ignore-scripts
-npm run validate:typescript
-```
-
-On Windows with .NET 8:
-
-```powershell
-npm run validate
-```
-
-The individual commands remain available:
-
-```bash
+npm ci --ignore-scripts
+npm run validate:repository
+npm run validate:plan
+npm run validate:mvp-plan
+npm run validate:field-contract
 npm run typecheck
+npm run test:mvp-plan -- --reporter=verbose
+npm run test:product -- --reporter=verbose
+npm run test:field -- --reporter=verbose
+npm run test:field-pulse -- --reporter=verbose
 npm test -- --reporter=verbose
 npm run build
 npm run test:pulse -- --reporter=verbose
@@ -188,63 +344,46 @@ npm run test:pulse -- --reporter=verbose
 
 ```powershell
 dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
-dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release -warnaserror
+dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror
 dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build
 ```
 
-### If `dotnet --list-sdks` reports no SDKs
-
-Check for a user-local install before concluding the SDK is missing:
+For live Windows evidence, use the guarded Field validator only on an authenticated disposable acceptance environment:
 
 ```powershell
-& "$env:USERPROFILE\.dotnet\dotnet.exe" --list-sdks
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
 ```
 
-A machine can carry two .NET installs: a user-local one at `%USERPROFILE%\.dotnet` that has the SDK, and a hostfxr-only one at `C:\Program Files\dotnet` that does not. If the Program Files path comes first on `PATH`, `dotnet --list-sdks` returns empty and the SDK looks absent while it is installed and usable.
+The Windows validator now records both informational personal-MVP and production-readiness reports. Neither report is a promotion unless its exact evidence requirements pass.
 
-This cost two development sessions, which recorded ".NET tests: not run because no .NET SDK is installed" when the tests were runnable the whole time. Either put `%USERPROFILE%\.dotnet` ahead on `PATH`, or invoke that binary by full path.
+## Remaining live and production holds
 
-Do not enable the Windows provider or physical input outside the disposable acceptance procedure in `docs/CODEX_HANDOFF.md`.
-
-## Planning and evidence
-
-- [Master system roadmap](docs/MASTER_SYSTEM_ROADMAP.md)
-- [Implemented architecture](docs/ARCHITECTURE.md)
-- [Security model](docs/SECURITY_MODEL.md)
-- [Test plan](docs/TEST_PLAN.md)
-- [Secure MCP Tunnel runbook](docs/SECURE_MCP_TUNNEL_RUNBOOK.md)
-- [Codex/local acceptance handoff](docs/CODEX_HANDOFF.md)
-- [Parts and donor traceability](docs/qa/PARTS_AND_DONOR_TRACEABILITY.md)
-- [GitHub-phase audit](docs/qa/GITHUB_PHASE_FINAL_AUDIT.md)
-- [Issue and solution log](docs/logs/ISSUE_AND_SOLUTION_LOG.md)
-- [Decision log](docs/logs/DECISION_LOG.md)
-
-`docs/MASTER_SYSTEM_ROADMAP.md` controls future sequence and promotion gates. `docs/ARCHITECTURE.md` must describe only what exists.
+- production-authenticated repeated Hyper-V lifecycle/channel/readiness failure injection;
+- real host-preflight collection;
+- live scenes and consented Teach acceptance;
+- real owner demonstrations and held-out similarity evaluation;
+- DPAPI/TPM key handling and secure erasure;
+- process-level Shadow no-input proof;
+- trusted credential insertion;
+- trusted local task-chunk executor;
+- live Assisted execution for all five recipes;
+- normal ChatGPT MCP acceptance;
+- graphical cockpit and human-factors acceptance;
+- signed Windows binaries and installer/service execution;
+- repair, update, rollback, and uninstall execution;
+- daily-driver reliability and compatibility matrix;
+- full release provenance, .NET SBOM, private code scanning or equivalent, penetration testing, privacy review, incident response, and support operations.
 
 ## Explicit exclusions
 
-Exosuit must not implement or claim:
-
-- stealth or undetectable automation,
-- anti-bot or anti-cheat evasion,
-- kernel or hardware impersonation for concealment,
-- credential harvesting,
-- privilege escalation,
-- arbitrary remote shell execution,
-- covert surveillance or recording,
-- bypassing application or platform security controls.
+Exosuit must not implement or claim credential harvesting, privilege escalation, arbitrary remote shell execution, recording without consent, covert surveillance, unauthorized access, or that behavioral imitation supplies owner authorization.
 
 ## Current holds
 
-- **PR state:** draft
-- **Merge to main:** hold
-- **Production use:** denied
-- **Real accounts or consequential targets:** denied
-- **Normal personal desktop use:** denied
-- **Connected ChatGPT acceptance:** pending
-- **Interactive three-window validation:** pending
-- **Native virtual-desktop validation:** pending
-- **Multi-agent/VM transport validation:** pending
-- **Browser extension and real browser execution:** pending
-- **Windows visual capture:** unimplemented and disabled
-- **Packaging, signing, updater, rollback, penetration testing, and release operations:** pending
+- PR #26 remains draft; merge to `main` is denied pending release-candidate reconciliation and live acceptance.
+- Real-account or consequential autonomous use is denied.
+- Real owner-derived persona activation is denied until live evidence and owner approval.
+- Live Assisted, Pilot, and ChatGPT-to-Field promotion are denied.
+- Personal-use MVP is denied until M0–M6 and the live benchmark gate pass.
+- Daily-driver readiness is denied until P1 passes.
+- Production is denied until P2–P3 and every production-readiness gate pass.

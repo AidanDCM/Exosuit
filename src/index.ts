@@ -31,17 +31,19 @@ async function main(): Promise<void> {
   const { server, startup } = await createExosuitMcpServerWithState(orchestrator);
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  const surfaceDescription = startup.mcpSurface === "core"
+    ? "desktop core only; product and coordinator tools are hidden"
+    : startup.mcpSurface === "product"
+      ? "desktop core plus high-level non-executing product tasks; coordinator tools are hidden"
+      : "desktop core, high-level product tasks, and the unvalidated coordinator surface";
   process.stderr.write(
     [
       "Exosuit MCP server connected over stdio.",
-      `MCP surface: ${startup.mcpSurface}${
-        startup.mcpSurface === "core"
-          ? " (desktop core only; coordinator tools are not exposed)."
-          : " (desktop core plus the unvalidated coordinator surface)."
-      }`,
+      `MCP surface: ${startup.mcpSurface} (${surfaceDescription}).`,
       `Loaded ${mapHydration.loaded} application map(s); skipped ${mapHydration.skipped}.`,
       `Workflow persistence: ${startup.workflowPersistenceMode}; hydrated ${startup.hydratedWorkflows}.`,
       `Hydrated ${startup.hydratedAgents} supervisor agent record(s).`,
+      `Hydrated ${startup.hydratedProductTasks} product task record(s).`,
     ].join(" ") + "\n",
   );
 }

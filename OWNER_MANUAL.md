@@ -6,7 +6,7 @@ Exosuit is a body for an authorized AI pilot. ChatGPT or another MCP host can re
 
 ## What it is not
 
-Exosuit is not an invisible automation layer, anti-detection system, anti-cheat tool, credential collector, background surveillance service, or substitute for application authorization.
+Exosuit is not a credential collector, background surveillance service, privilege-escalation mechanism, or substitute for owner and application authorization.
 
 ## Trust model
 
@@ -103,6 +103,18 @@ Fastest disable paths:
 5. unset `EXOSUIT_PROVIDER=windows`,
 6. unset `EXOSUIT_ENABLE_PHYSICAL_INPUT`,
 7. rotate `EXOSUIT_AGENT_TOKEN`.
+
+If the accelerated Field owner service is installed, stop `ExosuitFieldOwner` to block
+new lifecycle jobs. Full removal requires an elevated owner console:
+
+```powershell
+.\scripts\windows\Uninstall-ExosuitFieldOwnerService.ps1 `
+  -TypedConfirmation 'UNINSTALL EXOSUIT FIELD OWNER SERVICE'
+```
+
+This preserves sanitized service evidence and removes the service registration,
+installed executable, policy, host-configuration copy, and queue. It does not delete
+Field generations, base images, personal-state disks, or their evidence.
 
 ## Known limitations before local validation
 

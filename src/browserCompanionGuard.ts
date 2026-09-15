@@ -27,7 +27,7 @@ export class GuardedBrowserCompanionProvider implements BrowserCompanionProvider
       await withTimeout(
         this.#inner.observe(tab),
         this.#timeoutMs,
-        "Browser companion observation timed out.",
+        new Error("Browser companion observation timed out."),
       ),
     );
     if (
@@ -40,13 +40,19 @@ export class GuardedBrowserCompanionProvider implements BrowserCompanionProvider
   }
 
   async execute(action: BrowserAction): Promise<BrowserActionResult> {
-    const result = browserActionResultSchema.parse(
-      await withTimeout(
+    let result: BrowserActionResult;
+    try {
+      result = browserActionResultSchema.parse(await withTimeout(
         this.#inner.execute(action),
         this.#timeoutMs,
-        "Browser companion action timed out.",
-      ),
-    );
+        new BrowserCompanionTimeoutError("Browser companion action timed out."),
+      ));
+    } catch (error) {
+      if (error instanceof BrowserCompanionTimeoutError) {
+        return uncertain(action.actionId, error.message);
+      }
+      throw error;
+    }
     if (result.actionId !== action.actionId) {
       throw new Error("Browser companion action identity mismatch.");
     }
@@ -54,26 +60,48 @@ export class GuardedBrowserCompanionProvider implements BrowserCompanionProvider
       if (
         result.snapshot.tab.browserInstanceId !== action.tab.browserInstanceId ||
         result.snapshot.tab.tabId !== action.tab.tabId ||
-        result.snapshot.tab.origin !== action.tab.origin ||
-        result.snapshot.tab.generation < action.tab.generation
+        result.snapshot.tab.origin !== action.tab.origin
       ) {
         throw new Error("Browser companion result tab identity mismatch.");
       }
+      if (result.snapshot.tab.generation !== action.tab.generation) {
+        return uncertain(
+          action.actionId,
+          "Browser action may have taken effect, but the tab generation changed before verification.",
+          result.snapshot,
+        );
+      }
     }
     if (result.status === "succeeded" && result.verificationStatus !== "passed") {
-      throw new Error("Browser companion reported success without passed verification.");
+      return uncertain(
+        action.actionId,
+        "Browser companion may have acted, but success was not independently verified.",
+        result.snapshot,
+      );
     }
     return result;
   }
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+class BrowserCompanionTimeoutError extends Error {}
+
+function uncertain(actionId: string, summary: string, snapshot?: BrowserSnapshot): BrowserActionResult {
+  return browserActionResultSchema.parse({
+    actionId,
+    status: "uncertain",
+    verificationStatus: "not_checked",
+    summary,
+    ...(snapshot ? { snapshot } : {}),
+  });
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, error: Error): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        timer = setTimeout(() => reject(error), timeoutMs);
       }),
     ]);
   } finally {

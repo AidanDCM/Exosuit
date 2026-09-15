@@ -139,7 +139,7 @@ describe("browser semantic companion foundation", () => {
     expect(result.summary).toMatch(/prompt-injection/);
   });
 
-  it("reports provider disconnect and rejects unsupported or unverified actions", async () => {
+  it("blocks unsupported actions and marks unverified or unavailable results uncertain", async () => {
     const { provider, gateway: semantic } = gateway();
     const snapshot = await semantic.observe({ browserInstanceId: "browser-a", tabId: "tab-a" });
     expect(
@@ -156,6 +156,34 @@ describe("browser semantic companion foundation", () => {
         rationale: "Unsupported action test.",
       }),
     ).toMatchObject({ status: "blocked" });
+    const verifiedExecute = provider.execute.bind(provider);
+    provider.execute = async (action) => ({
+      actionId: action.actionId,
+      status: "succeeded",
+      verificationStatus: "not_checked",
+      summary: "Provider acted without independent verification.",
+      snapshot: provider.snapshot,
+    });
+    expect(
+      await semantic.execute({
+        actionId: "unverified",
+        tab: {
+          browserInstanceId: snapshot.tab.browserInstanceId,
+          tabId: snapshot.tab.tabId,
+          generation: snapshot.tab.generation,
+          origin: snapshot.tab.origin,
+        },
+        locatorId: "name-field",
+        actionType: "set_value",
+        value: "Aidan",
+        rationale: "Unverified result test.",
+      }),
+    ).toMatchObject({
+      status: "uncertain",
+      verificationStatus: "not_checked",
+      summary: expect.stringMatching(/not independently verified/),
+    });
+    provider.execute = verifiedExecute;
     provider.connected = false;
     expect(
       await semantic.execute({
@@ -171,6 +199,10 @@ describe("browser semantic companion foundation", () => {
         value: "Aidan",
         rationale: "Disconnect test.",
       }),
-    ).toMatchObject({ status: "disconnected", verificationStatus: "not_checked" });
+    ).toMatchObject({
+      status: "uncertain",
+      verificationStatus: "not_checked",
+      summary: expect.stringMatching(/may have taken effect/),
+    });
   });
 });

@@ -115,7 +115,7 @@ describe("encrypted file workflow checkpoint store", () => {
     const [name] = await readdir(directory);
     const path = join(directory, name!);
     const envelope = JSON.parse(await readFile(path, "utf8")) as { ciphertext: string };
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -2)}AA`;
+    envelope.ciphertext = `${envelope.ciphertext.startsWith("A") ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
     await writeFile(path, JSON.stringify(envelope), "utf8");
     await expect(store.load("workflow-sensitive")).rejects.toThrow(/authentication failed/);
   });

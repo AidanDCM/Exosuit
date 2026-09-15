@@ -30,6 +30,25 @@ permissions:
   contents: read
   security-events: write
 
+# This workflow had no concurrency control, so a fast follow-up push left two
+# audits racing on the same branch. Same key as ci.yml: superseded runs of this
+# workflow on this branch are cancelled, and nothing else is.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+# Serialised for the same reason as ci.yml — see the fuller note there.
+#
+# npm-audit lost the race to nuget-audit repeatedly on 2026-08-06 and was
+# cancelled at ~15 minutes having never been assigned a runner, which read as an
+# npm failure but was queue starvation. It goes first here because it is the one
+# that kept losing.
+#
+# Note for anyone weighing whether to keep this: serialisation did not fix
+# npm-audit. On 2026-08-07 npm-audit passed on an unserialised branch once
+# runner availability recovered. This is insurance against intermittent
+# capacity, not a remedy for a standing limit.
+
 jobs:
   npm-audit:
     name: npm dependency vulnerability audit
@@ -43,7 +62,7 @@ jobs:
       - name: Verify TypeScript project surface
         run: test -f package.json
       - name: Resolve dependency tree without scripts
-        run: npm install --ignore-scripts --fund=false
+        run: npm ci --ignore-scripts --fund=false
       - name: Fail on high or critical advisories
         shell: bash
         run: |
@@ -63,6 +82,8 @@ jobs:
 
   nuget-audit:
     name: NuGet dependency vulnerability audit
+    needs: npm-audit
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -100,7 +121,8 @@ jobs:
 
   codeql-javascript-typescript:
     name: CodeQL JavaScript/TypeScript (public repositories only)
-    if: github.event.repository.private == false
+    needs: nuget-audit
+    if: ${{ !cancelled() && github.event.repository.private == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -113,7 +135,8 @@ jobs:
 
   codeql-csharp:
     name: CodeQL C# (public repositories only)
-    if: github.event.repository.private == false
+    needs: codeql-javascript-typescript
+    if: ${{ !cancelled() && github.event.repository.private == false }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:

@@ -21,6 +21,12 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../windows-agent/Exosuit.Agent.csproj" />
+    <ProjectReference Include="../field-owner-service/Exosuit.FieldOwner.Service.csproj" />
     <None Include="../../tests/fixtures/wire-contract-v1.json" Link="wire-contract-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-contract-v1.json" Link="field-contract-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-channel-v1.json" Link="field-channel-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-scene-v1.json" Link="field-scene-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-heartbeat-v1.json" Link="field-heartbeat-v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../tests/fixtures/field-bootstrap-v1.json" Link="field-bootstrap-v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

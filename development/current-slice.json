@@ -1,0 +1,31 @@
+{
+  "contractVersion": 1,
+  "sliceId": "field-owner-build-fabric-v1",
+  "goal": "Install a narrow local owner/service authority and accelerate repeatable Field lifecycle evidence without expanding pilot authority.",
+  "masterPlanPhases": ["L1", "L2", "L3", "L16"],
+  "promotionGate": "Source and local service installation foundation only; no live Field phase is promoted by this slice.",
+  "subsystem": "field",
+  "riskBoundary": "local_field_service_authority",
+  "allowedOperations": ["provision", "observe", "destroy"],
+  "modelFacing": false,
+  "pilotMayChangePolicy": false,
+  "recordingAuthority": false,
+  "keyAuthority": false,
+  "exportAuthority": false,
+  "fullControlAuthority": false,
+  "tests": [
+    "npm run validate:repository",
+    "npm run validate:plan",
+    "npm run validate:field-contract",
+    "npm run typecheck",
+    "npm run test:field -- --reporter=verbose",
+    "npm run test:field-pulse -- --reporter=verbose",
+    "npm test -- --reporter=verbose",
+    "npm run build",
+    "npm run test:pulse -- --reporter=verbose",
+    "dotnet Release build and tests"
+  ],
+  "evidenceClasses": ["F0", "F1", "F2", "local_installation"],
+  "rollback": "Elevated uninstall removes only the service registration, installed executable, policy, host-config copy, and queue; sanitized results and evidence remain.",
+  "liveValidationRequired": true
+}

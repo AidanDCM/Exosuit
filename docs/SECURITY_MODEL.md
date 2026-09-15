@@ -37,6 +37,26 @@ Only the provider can touch the desktop. Providers expose a small semantic inter
 
 The panel is loopback-only and uses a per-process CSRF token. It can approve or deny proposals, change among limited modes, and emergency-stop. It cannot enable full control or skill autopilot.
 
+### Field owner lifecycle service
+
+The host may run a separate LocalSystem service under an owner-installed, expiring
+standing policy. It has no MCP/network surface and accepts only exact-generation
+provision, authenticated read-only observation, and destruction packages through a local queue. Policy and installed lifecycle
+inputs are writable only by SYSTEM/Administrators and are hash-checked before every
+job. Queue submission does not create policy or consent: the service independently
+enforces the fixed owner policy. Unknown operations, stale/replayed jobs, unexpected
+files, reparse points, and capacity overflow fail closed. The service cannot operate
+the desktop and is not part of the emergency-stop dependency chain.
+The exact owner SID may modify only the Pending queue and may read, but not modify, the
+installed public policy file, terminal Results, and sanitized installation Evidence.
+The owner receives no read grant on the installed host configuration.
+Pending includes the narrow child-delete right required for failed unpublished-package
+cleanup; it does not grant ACL or ownership control.
+Submission publication uses a fixed `.ready` marker written last in the final GUID
+directory. The service ignores unready directories; LocalSystem performs the atomic
+claim rename only after readiness, then executes solely from its exclusive protected
+snapshot.
+
 ### Application-map storage
 
 Application maps are local advisory memory. Their directory is configured locally. A map cannot carry approval, current element IDs, values, screenshots, or a command to execute. Hydrated files must satisfy the current schema before use.
@@ -157,7 +177,7 @@ The current release blocks:
 - actions after emergency stop,
 - treating application-map contents as executable authority.
 
-The project explicitly excludes stealth, anti-detection, anti-cheat, security bypass, covert surveillance, and privilege escalation.
+The project explicitly excludes credential theft, unauthorized account access, covert surveillance, privilege escalation, and weakening owner-controlled authorization.
 
 ## Prompt injection
 
@@ -173,11 +193,13 @@ Controls:
 
 ## Screenshot policy
 
+For the optional semantic browser companion, any timeout, unavailable action result, unverified success, or changed tab generation after dispatch is an uncertain external effect. The workflow must observe and reconcile before retrying; it may not reinterpret those outcomes as ordinary failure.
+
 Screenshots are disabled by default and not implemented in the initial Windows provider. A future implementation must:
 
 - capture only when explicitly requested and locally enabled,
 - be ephemeral by default,
-- support region redaction,
+- require every redaction region to be wholly contained in the captured frame before bytes are copied or counted,
 - never log or persist raw image bytes in application maps,
 - expose a visible capture indicator,
 - prevent password and protected surfaces from leaving the machine,

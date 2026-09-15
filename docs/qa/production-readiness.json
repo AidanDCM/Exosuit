@@ -1,0 +1,243 @@
+{
+  "contractVersion": 1,
+  "candidateCommit": "d91a9701d8faab4220441de9553eb1647c0164b8",
+  "candidateVersion": "0.1.0-development",
+  "generatedAt": "2026-08-04T16:10:00.000Z",
+  "ownerApproved": false,
+  "productionDecision": "denied",
+  "developmentAccessEnabled": true,
+  "developmentUnattendedSetupEnabled": true,
+  "unresolvedBlockers": [
+    "Production-authenticated repeated Hyper-V lifecycle, channel, readiness, restart, and failure-injection evidence is incomplete",
+    "Live Windows scene production, consented Teach recording, owner demonstrations, and held-out owner-similarity evaluation are incomplete",
+    "Process-level Shadow isolation, trusted credential insertion, live Assisted execution, synthetic Pilot, and normal ChatGPT MCP acceptance are incomplete",
+    "The graphical cockpit, Windows service/installer execution, signed update and rollback execution, DPAPI or TPM key management, and secure erasure are incomplete",
+    "Private-repository code scanning or equivalent, penetration testing, privacy review, incident response, support operations, and repeated owner acceptance are incomplete"
+  ],
+  "validatedFoundations": [
+    "Hybrid ChatGPT MCP and bounded API brain routing",
+    "High-level product MCP task surface",
+    "Integrity-bound resumable task sessions and five reviewed recipes",
+    "AES-256-GCM encrypted product task persistence",
+    "Privacy-safe cockpit state and event contracts",
+    "Deterministic host preflight and quantitative MVP benchmark gates",
+    "Ed25519 release manifest and non-executing lifecycle plan contracts",
+    "Owner-governed encrypted persona and behavioral model foundations"
+  ],
+  "validationEvidence": {
+    "sourceHead": "d91a9701d8faab4220441de9553eb1647c0164b8",
+    "ciRun": "30926779304",
+    "securityRun": "30926782740",
+    "focusedTests": 230,
+    "fullTypeScriptTests": 406,
+    "dotnetTests": 48,
+    "npmSbomComponents": 149,
+    "npmVulnerabilities": 0
+  },
+  "gates": [
+    {
+      "gate": "source_validation",
+      "status": "pass",
+      "evidence": [
+        "GitHub Actions Exosuit CI run 30926779304",
+        "GitHub Actions Security Audit run 30926782740",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md"
+      ]
+    },
+    {
+      "gate": "dependency_reproducibility",
+      "status": "pass",
+      "evidence": [
+        "package-lock.json",
+        "GitHub Actions Exosuit CI run 30926779304",
+        "GitHub Actions Security Audit run 30926782740",
+        "artifact 8899466661 CycloneDX npm SBOM"
+      ]
+    },
+    {
+      "gate": "glove_windows_acceptance",
+      "status": "evidence_recorded",
+      "evidence": [
+        "docs/qa/CODEX_WINDOWS_ACCEPTANCE.md",
+        "docs/qa/CODEX_WINDOWS_ACCEPTANCE_2026-07-19.md",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "glove_multiwindow_acceptance",
+      "status": "not_run",
+      "evidence": [
+        "docs/TEST_PLAN.md",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "field_hyperv_lifecycle",
+      "status": "development_evidence_only",
+      "evidence": [
+        "artifacts/field-l4-base-build/v13/base-build-result.json",
+        "artifacts/field-l4-v13-boot/generation-1/provision-attempt.json",
+        "docs/FIELD_WINDOWS_RUNBOOK.md"
+      ]
+    },
+    {
+      "gate": "field_authenticated_channel",
+      "status": "development_evidence_only",
+      "evidence": [
+        "artifacts/field-l4-v13-boot/generation-1/live-readiness.json",
+        "docs/FIELD_ARCHITECTURE.md",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "field_guest_readiness",
+      "status": "development_evidence_only",
+      "evidence": [
+        "artifacts/field-l4-v13-boot/generation-1/live-readiness.json",
+        "artifacts/field-l4-v13-boot/generation-1/readiness-monitor.json",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "field_scene_production",
+      "status": "not_run",
+      "evidence": [
+        "src/fieldScene.ts",
+        "src/fieldSceneObservation.ts",
+        "docs/FIELD_TEST_PLAN.md"
+      ]
+    },
+    {
+      "gate": "teach_privacy_and_recording",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/teachRecorder.ts",
+        "tests/teachRecorder.test.ts",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "artifact_transfer",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/fieldArtifactBroker.ts",
+        "tests/fieldArtifactBroker.test.ts",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "shadow_no_input",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/shadowCapability.ts",
+        "tests/safeModeBoundaries.test.ts",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PERSONA_OPERATIONAL_FOUNDATIONS.md"
+      ]
+    },
+    {
+      "gate": "correction_mode",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/correctionMode.ts",
+        "tests/correctionMode.test.ts",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "personal_models",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/personaBehavior.ts",
+        "src/personaDerivation.ts",
+        "src/personaModelStore.ts",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PERSONA_OPERATIONAL_FOUNDATIONS.md",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "assisted_mode",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/assistedMode.ts",
+        "src/personalTaskControl.ts",
+        "src/productMcp.ts",
+        "tests/personalTaskControl.test.ts",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md"
+      ]
+    },
+    {
+      "gate": "synthetic_pilot",
+      "status": "not_run",
+      "evidence": [
+        "tests/fieldPilotFixture.test.ts",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "chatgpt_mcp_acceptance",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/brainRouting.ts",
+        "src/productMcp.ts",
+        "tests/productMcp.test.ts",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "owner_acceptance",
+      "status": "not_run",
+      "evidence": [
+        "src/productReadiness.ts",
+        "tests/productReadiness.test.ts",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "reliability_and_performance",
+      "status": "foundation_validated",
+      "evidence": [
+        "src/productReadiness.ts",
+        "tests/productReadiness.test.ts",
+        "docs/qa/evidence/2026-07-28-phase10-benchmark-baseline.md",
+        "GitHub Actions Exosuit CI run 30926779304"
+      ]
+    },
+    {
+      "gate": "cockpit_and_human_factors",
+      "status": "contract_validated",
+      "evidence": [
+        "src/cockpitState.ts",
+        "tests/cockpitState.test.ts",
+        "docs/PRODUCT_PARITY_ROADMAP.md"
+      ]
+    },
+    {
+      "gate": "packaging_signing_update_rollback",
+      "status": "contract_validated",
+      "evidence": [
+        "src/productLifecycle.ts",
+        "tests/productLifecycle.test.ts",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md"
+      ]
+    },
+    {
+      "gate": "security_privacy_penetration",
+      "status": "source_and_dependency_evidence_only",
+      "evidence": [
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md",
+        "docs/qa/ATOMIC_AUDIT_2026-08-04_PERSONA_OPERATIONAL_FOUNDATIONS.md",
+        "GitHub Actions Security Audit run 30926782740",
+        "src/encryptedProductTaskStore.ts",
+        "src/productLifecycle.ts"
+      ]
+    },
+    {
+      "gate": "operations_incident_response",
+      "status": "not_run",
+      "evidence": [
+        "docs/PRODUCT_PARITY_ROADMAP.md",
+        "docs/PRODUCTION_BUILD_PHASES.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "contractVersion": 2,
+  "records": [
+    {
+      "evidenceId": "m05b-field-attestation",
+      "boundTestId": "HYP-001",
+      "evidenceClass": "hyperv_host_guest",
+      "artifactSha256": "b23287f6720261f4ab07e8ccbff62b5d2f0254e249215d5904be68f768c99b90",
+      "artifactBytes": 1614,
+      "mediaType": "application/json",
+      "exactCommit": "94b2610610a2ad43e98caa6c28a4604720c2e504",
+      "runId": "m05-1785945320398",
+      "environment": {
+        "machineId": "machine-9c62d678dd970f15",
+        "osEdition": "Windows_NT win32",
+        "osBuild": "10.0.26200",
+        "fieldId": "6fe7bf2b-7c62-4115-9a03-4f08f83bdc01",
+        "fieldGeneration": 1,
+        "fieldBootId": "boot-7dfb720f84a05ff2"
+      },
+      "testDefinitionVersion": "2026.08.04",
+      "issuer": "m05b-field-collector",
+      "observedAt": "2026-08-05T15:55:20.398Z",
+      "nonce": "f044c7f440ceab8656c81253fb2f3cd6",
+      "designation": "live",
+      "signingKeyId": "live-host-1",
+      "signature": "RZMDcwCZpSSZOnYvoP9j9Sgaw7zJwq7X0YbIJmASZh2k4Ej0Rtwmp2Qs13kxzE_3F0tFliv9t1vaCRJTPRhQAQ"
+    }
+  ]
+}

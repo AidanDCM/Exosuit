@@ -1,15 +1,7 @@
 name: Exosuit CI
 
-# Triggers are deliberately non-overlapping. `push` covered `build/**` as well as `main`,
-# so every push to the canonical branch fired a push run AND a pull_request run for the
-# same commit through PR #1 — identical work, billed twice, on a private repo where
-# Windows minutes count double against the allowance.
-#
-# `push` now validates post-merge on main only; `pull_request` validates pre-merge. A
-# commit is therefore checked exactly once.
-#
-# Trade-off: a `build/**` branch with no open PR gets no automatic run. Open the PR (the
-# documented workflow here) or use workflow_dispatch.
+# Triggers are deliberately non-overlapping. Pull requests validate pre-merge;
+# pushes validate main after merge. Branch work without an open PR may use workflow_dispatch.
 on:
   push:
     branches: [main]
@@ -18,7 +10,10 @@ on:
       - "tests/**"
       - "apps/**"
       - "docs/**"
+      - "scripts/**"
+      - "vm/**"
       - "package.json"
+      - "package-lock.json"
       - "tsconfig.json"
       - "vitest.config.ts"
       - "README.md"
@@ -35,7 +30,10 @@ on:
       - "tests/**"
       - "apps/**"
       - "docs/**"
+      - "scripts/**"
+      - "vm/**"
       - "package.json"
+      - "package-lock.json"
       - "tsconfig.json"
       - "vitest.config.ts"
       - "README.md"
@@ -50,64 +48,249 @@ on:
 permissions:
   contents: read
 
+# Keyed on the workflow plus the branch under test, so a superseded run of *this*
+# workflow on *this* branch is cancelled and nothing else is. Keying on
+# `github.ref` alone grouped every event for a PR under refs/pull/N/merge, which
+# is how runs on an exact head ended up cancelled and recorded as failures,
+# leaving no green hosted validation for that commit.
 concurrency:
-  group: exosuit-ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
+# Jobs are serialised rather than run in parallel.
+#
+# Hosted runner availability for this account has proven INTERMITTENT, and that
+# is the actual reason, not a fixed capacity limit.
+#
+# 2026-08-06: repeated runs where one job was assigned a runner and finished in
+# under a minute while every sibling sat with runner_name="" and zero steps and
+# was killed at a uniform ~15 minutes. That ceiling was not the jobs' own
+# configuration — timeout-minutes of 30, 25 and 10 all died at 15:00 — and the
+# run was reported as a failure even though the job that ran had succeeded.
+#
+# 2026-08-07: the same unserialised configuration ran all three jobs
+# concurrently on three distinct runners and passed.
+#
+# An earlier version of this comment claimed the account schedules "roughly one
+# hosted job at a time". That was wrong — it generalised a standing limit from a
+# few hours of a transient throttle. Recorded here because the mistaken version
+# was committed and reviewed.
+#
+# Serialising is therefore insurance, not a fix for a known cap: it costs
+# wall-clock when capacity is plentiful (jobs run in sequence rather than
+# parallel) and it keeps runs correct when capacity is not, instead of
+# reporting false failures for jobs that never executed.
+#
+# `!cancelled()` is worth keeping on its own merits, independent of capacity:
+# plain `needs` skips a job when its predecessor fails, so one real failure
+# would hide every downstream result. This keeps the chain running through a
+# failure while still honouring a genuine cancellation of the run.
 jobs:
   typescript:
-    name: TypeScript contracts, gateway, and pulse
+    name: TypeScript Glove and Field validation
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Verify TypeScript project surface
-        shell: bash
-        run: test -f package.json && test -f tsconfig.json
-      - name: Install dependencies
-        run: npm install --ignore-scripts --fund=false
-      - name: Typecheck
+      - name: Verify required project surface
         shell: bash
         run: |
-          set +e
-          npm run typecheck > typecheck.log 2>&1
-          exit_code=$?
-          cat typecheck.log
-          exit "$exit_code"
-      - name: Upload TypeScript diagnostics
+          set -euo pipefail
+          required=(
+            package.json
+            package-lock.json
+            tsconfig.json
+            scripts/validate-repository.mjs
+            scripts/validate-master-plan.mjs
+            scripts/validate-build-completion-plan.mjs
+            scripts/validate-field.mjs
+            scripts/generate-sbom.mjs
+            src/fieldContracts.ts
+            src/buildCompletionPlan.ts
+            src/fieldChannel.ts
+            src/fieldHeartbeat.ts
+            src/fieldBootstrap.ts
+            src/fieldCommand.ts
+            src/teachRecorder.ts
+            src/visualRetention.ts
+            src/fieldRecovery.ts
+            src/fieldAdminAuthority.ts
+            src/fieldSupportBundle.ts
+            src/personaBehavior.ts
+            src/personaProfileVault.ts
+            src/personaGovernanceStore.ts
+            src/personaDerivation.ts
+            src/personalBehaviorModels.ts
+            src/languageAttentionModels.ts
+            src/personaModelBundle.ts
+            src/personaModelStore.ts
+            src/shadowIsolation.ts
+            src/assistedMode.ts
+            src/credentialBroker.ts
+            tests/buildCompletionPlan.test.ts
+            tests/personaBehavior.test.ts
+            tests/personaProfileVault.test.ts
+            tests/personaGovernanceStore.test.ts
+            tests/personaDerivation.test.ts
+            tests/personalBehaviorModels.test.ts
+            tests/languageAttentionModels.test.ts
+            tests/personaModelBundle.test.ts
+            tests/personaModelStore.test.ts
+            tests/safeModeBoundaries.test.ts
+            tests/sbomGenerator.test.ts
+            tests/fieldSystemPulse.test.ts
+            tests/windowsFieldScripts.test.ts
+            tests/fixtures/field-contract-v1.json
+            tests/fixtures/field-channel-v1.json
+            docs/BUILD_COMPLETION_PLAN.md
+            docs/qa/BUILD_COMPLETION_TEST_MATRIX.md
+            docs/qa/build-completion-manifest.json
+          )
+          for path in "${required[@]}"; do test -s "$path" || { echo "Missing required artifact: $path"; exit 1; }; done
+      - name: Install exact locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --fund=false
+      # Evidence artifacts are committed so a content-addressed record can be
+      # checked by someone other than the machine that produced it. The
+      # reconciliation invariant itself lives in
+      # tests/completionArtifactReconciliation.test.ts and therefore already runs
+      # in the full suite below; only the secret scan needs its own step.
+      #
+      # Both need no private keys, which is what lets hosted CI enforce them at
+      # all — validate:completion cannot run here, it requires the TPM-sealed
+      # signing keys as well as the artifact store.
+      - name: Secret scan over published evidence artifacts
+        run: npm run scan:evidence-artifacts
+      - name: Generate deterministic npm SBOM
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/generate-sbom.mjs \
+            --output exosuit-npm-sbom.cdx.json \
+            --commit "$(git rev-parse HEAD)" \
+            --timestamp "$(git show -s --format=%cI HEAD)" 2>&1 | tee sbom.log
+      - name: Repository contract
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:repository 2>&1 | tee repository-contract.log
+      - name: Complete master plan contract
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:plan 2>&1 | tee master-plan.log
+      - name: Build completion plan contract
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:mvp-plan 2>&1 | tee completion-plan.log
+      - name: Field contract and script invariants
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run validate:field-contract 2>&1 | tee field-contract.log
+      - name: Strict TypeScript typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
+      - name: Focused Field unit and integration tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:field -- --reporter=verbose 2>&1 | tee field-tests.log
+      - name: Full fake Field system pulse
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:field-pulse -- --reporter=verbose 2>&1 | tee field-pulse.log
+      - name: Full TypeScript test suite
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test -- --reporter=verbose 2>&1 | tee typescript-tests.log
+      - name: Production TypeScript build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee typescript-build.log
+      - name: Existing Glove system pulse
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:pulse -- --reporter=verbose 2>&1 | tee glove-pulse.log
+      - name: Upload TypeScript and Field evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: typescript-diagnostics
-          path: typecheck.log
+          name: typescript-field-validation
+          path: |
+            exosuit-npm-sbom.cdx.json
+            sbom.log
+            repository-contract.log
+            master-plan.log
+            completion-plan.log
+            field-contract.log
+            typecheck.log
+            field-tests.log
+            field-pulse.log
+            typescript-tests.log
+            typescript-build.log
+            glove-pulse.log
           if-no-files-found: warn
           retention-days: 14
-      - name: Unit and integration tests
-        run: npm test -- --reporter=verbose
-      - name: Build
-        run: npm run build
-      - name: Full-chain system pulse
-        run: npm run test:pulse -- --reporter=verbose
 
   windows-agent:
-    name: Windows agent build and pure tests
+    name: Windows agent and Field cross-language validation
+    needs: typescript
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Verify .NET project surface
+      - name: Verify Windows Field source and fixtures
         shell: pwsh
         run: |
-          if (-not (Test-Path 'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj')) {
-            throw 'Windows agent test project is missing.'
+          $required = @(
+            'apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj',
+            'apps/windows-agent/FieldFoundation.cs',
+            'apps/windows-agent/FieldChannelFoundation.cs',
+            'apps/windows-agent.Tests/FieldFoundationTests.cs',
+            'apps/windows-agent.Tests/FieldChannelFoundationTests.cs',
+            'apps/windows-agent.Tests/FieldWireContractTests.cs',
+            'apps/windows-agent.Tests/FieldChannelWireContractTests.cs',
+            'tests/fixtures/field-contract-v1.json',
+            'tests/fixtures/field-channel-v1.json',
+            'scripts/windows/Test-ExosuitFieldHost.ps1',
+            'scripts/windows/Show-ExosuitFieldProvisioningPlan.ps1',
+            'scripts/windows/Invoke-ExosuitFieldProvisioning.ps1',
+            'scripts/windows/Remove-ExosuitFieldGeneration.ps1',
+            'scripts/windows/Initialize-ExosuitFieldGuest.ps1',
+            'scripts/windows/Invoke-ExosuitFieldValidation.ps1'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Required Windows Field artifact is missing: $path" }
           }
-      - name: Restore
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $errors = @()
+          Get-ChildItem scripts/windows/*.ps1 | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors) {
+              $errors += $parseErrors | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber): $($_.Message)" }
+            }
+          }
+          if ($errors.Count -gt 0) { $errors | Tee-Object powershell-parse.log; throw 'PowerShell parse errors found.' }
+          'PowerShell parse validation passed.' | Tee-Object powershell-parse.log
+      - name: Restore .NET tests
         run: dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj
       - name: Build with warnings as errors
         shell: pwsh
@@ -116,73 +299,76 @@ jobs:
           $exitCode = $LASTEXITCODE
           Get-Content windows-build.log
           exit $exitCode
-      - name: Upload Windows build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-build-diagnostics
-          path: windows-build.log
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Test
+      - name: Run .NET tests and coverage
         run: dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=windows-agent.trx" --collect:"XPlat Code Coverage"
-      - name: Upload test evidence
+      - name: Upload Windows evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-agent-test-results
-          path: "**/TestResults/**"
+          name: windows-field-validation
+          path: |
+            powershell-parse.log
+            windows-build.log
+            **/TestResults/**
           if-no-files-found: warn
           retention-days: 14
 
   repository-contract:
-    name: Required manuals and safety files
+    name: Required manuals, audits, and operational controls
+    needs: windows-agent
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Verify serious-repo contract
+      - name: Verify serious-repository manual contract
         shell: bash
         run: |
-          validate_contract() {
-            set -euo pipefail
-            required=(
-              README.md
-              AGENTS.md
-              OWNER_MANUAL.md
-              DEVELOPER_OPERATING_SYSTEM.md
-              docs/MASTER_SYSTEM_ROADMAP.md
-              docs/ARCHITECTURE.md
-              docs/SECURITY_MODEL.md
-              docs/TEST_PLAN.md
-              docs/PARTS_REUSE_ADR.md
-              docs/CODEX_HANDOFF.md
-              docs/qa/ATOMIC_AUDIT_BASELINE.md
-              docs/qa/PARTS_AND_DONOR_TRACEABILITY.md
-              docs/logs/ISSUE_AND_SOLUTION_LOG.md
-              docs/logs/DECISION_LOG.md
-              docs/logs/CHANGELOG_INTERNAL.md
-              .github/copilot-instructions.md
-              .github/pull_request_template.md
-            )
-            for path in "${required[@]}"; do
-              test -s "$path" || { echo "Missing or empty required file: $path"; return 1; }
-            done
-            ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,})' \
-              --exclude-dir=.git --exclude='*.md' . || {
-                echo 'Potential committed secret shape detected outside documentation.'
-                return 1
-              }
-          }
-          set +e
-          validate_contract > repository-contract.log 2>&1
-          exit_code=$?
-          cat repository-contract.log
-          exit "$exit_code"
-      - name: Upload repository-contract diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: repository-contract-diagnostics
-          path: repository-contract.log
-          if-no-files-found: warn
-          retention-days: 14
+          set -euo pipefail
+          required=(
+            README.md
+            AGENTS.md
+            OWNER_MANUAL.md
+            DEVELOPER_OPERATING_SYSTEM.md
+            docs/MASTER_SYSTEM_ROADMAP.md
+            docs/PRODUCTION_BUILD_PHASES.md
+            docs/BUILD_COMPLETION_PLAN.md
+            docs/PRODUCT_PARITY_ROADMAP.md
+            docs/ARCHITECTURE.md
+            docs/SECURITY_MODEL.md
+            docs/TEST_PLAN.md
+            docs/GLOVE_FIELD_BOUNDARY.md
+            docs/FIELD_ARCHITECTURE.md
+            docs/FIELD_IMPLEMENTATION_STATUS.md
+            docs/FIELD_OWNER_MANUAL.md
+            docs/FIELD_DEVELOPER_MANUAL.md
+            docs/FIELD_TEST_PLAN.md
+            docs/FIELD_WINDOWS_RUNBOOK.md
+            docs/PERSONA_BEHAVIORAL_DYNAMICS.md
+            docs/PERSONA_MODEL_LIFECYCLE.md
+            docs/qa/MASTER_PLAN_COVERAGE_MATRIX.md
+            docs/qa/BUILD_COMPLETION_TEST_MATRIX.md
+            docs/qa/build-completion-manifest.json
+            docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md
+            docs/qa/FIELD_THREAT_MODEL.md
+            docs/qa/FIELD_FAILURE_INJECTION_MATRIX.md
+            docs/qa/GLOVE_FIELD_PARTS_TRACEABILITY.md
+            docs/qa/ATOMIC_AUDIT_2026-07-21_GLOVE_FIELD_FOUNDATION.md
+            docs/qa/ATOMIC_AUDIT_2026-07-21_FIELD_FOUNDATION_EXPANSION.md
+            docs/qa/ATOMIC_AUDIT_2026-07-22_COMPLETE_MASTER_PLAN.md
+            docs/qa/ATOMIC_AUDIT_2026-08-03_PERSONA_BEHAVIOR_FOUNDATION.md
+            docs/qa/ATOMIC_AUDIT_2026-08-04_PERSONA_OPERATIONAL_FOUNDATIONS.md
+            docs/engineering_log/2026-08-03-persona-behavior-foundation.md
+            docs/engineering_log/2026-08-04-persona-operational-foundations.md
+            vm/field-host-config.example.json
+          )
+          for path in "${required[@]}"; do test -s "$path" || { echo "Missing or empty required file: $path"; exit 1; }; done
+          # This focused test intentionally contains synthetic secret-shaped strings to
+          # prove that privacy-safe support bundles reject them. The source/config scan
+          # remains active for every other non-Markdown file.
+          ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|Bearer[[:space:]]+[A-Za-z0-9._~+/-]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' \
+            --exclude-dir=.git --exclude='*.md' --exclude='supportBundle.test.ts' . || {
+              echo 'Potential committed secret shape detected outside documentation.'
+              exit 1
+            }
+          echo 'Repository manual and secret-shape contract passed.'

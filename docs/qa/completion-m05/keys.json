@@ -1,0 +1,86 @@
+{
+  "contractVersion": 2,
+  "registryId": "live-2026-08-05-aidans-dell7430",
+  "purpose": "live",
+  "version": 1,
+  "previousRegistryHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "issuedAt": "2026-08-05T13:41:23.284Z",
+  "expiresAt": "2027-08-05T13:41:23.284Z",
+  "keys": [
+    {
+      "keyId": "live-manifest-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEABA5yQvv6HUPWM9f7rhvyVmdCFhucN5Zu23JjQiDBaDA=",
+      "roles": [
+        "manifest"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-ledger-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAs2hGGbFz1HgRkpnyIViE7fMqJaL9woK3Fc7NmqldZeE=",
+      "roles": [
+        "ledger"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-evidence-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAzM7m+dN7vueS9FX3+k3HC8VdSJ6X9kt6CpQFwN6w+Oc=",
+      "roles": [
+        "evidence"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-host-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEA5J5NL+W7HoM5fqL3R1RQX7P+5fqtfPq0lWJ3/aYJfVA=",
+      "roles": [
+        "host"
+      ],
+      "machineId": "machine-9c62d678dd970f15",
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-technical-review-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAGoZpwETS2bcf+yvk/8Sjx3MUpS19EBKsgiNgO3nXruU=",
+      "roles": [
+        "technical_review"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-owner-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAxmrKhC3owmjQJVlOY6O4QRucVKQxS5kBK+J1SqJ2NDw=",
+      "roles": [
+        "owner_acceptance"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    },
+    {
+      "keyId": "live-release-1",
+      "algorithm": "ed25519",
+      "publicKey": "MCowBQYDK2VwAyEAMJw0AYhZ+Ryy7h+8uH8FTSkLxFPC728UbM4LWj0RmaU=",
+      "roles": [
+        "release_approval"
+      ],
+      "notBefore": "2026-08-05T13:41:23.284Z",
+      "notAfter": "2027-08-05T13:41:23.284Z"
+    }
+  ],
+  "revocations": [],
+  "rootKeyId": "live-root-1",
+  "rootPublicKey": "MCowBQYDK2VwAyEA5KWvJOdUcsL6w5PaCH2HiXkUzakhWS/v3dEPleQ7Fno=",
+  "signature": "oHC_zv-LoopF8CQPDt5haf2Pg6-PBftVGlHbNWJ4SEnAIjooCG4FcFZv9K2MPITml94Ns1Hq0Lcv0D2Gz3xJCw"
+}
