@@ -50,6 +50,10 @@ public static class FieldKvpRuntime
     private const int MaximumObservationPayloadBase64Characters = 16 * 1_024;
     private const string ObservationStateAlgorithm = "hmac-sha256";
     private static readonly JsonSerializerOptions WireJson = CreateWireJson();
+    // Heartbeat/control emission and the scene relay reserve from this allocator on separate tasks.
+    // The persisted state provides crash durability, not mutual exclusion, so the complete
+    // read-increment-replace transaction must be serialized inside the guest process.
+    private static readonly object GuestSequenceAllocationLock = new();
 
     public static async Task RunGuestAsync(string configurationPath, CancellationToken cancellationToken)
     {
@@ -229,41 +233,44 @@ public static class FieldKvpRuntime
         DateTimeOffset? now = null)
     {
         ValidateConfiguration(configuration);
-        var directory = Path.GetDirectoryName(Path.GetFullPath(configuration.SecretPath))
-            ?? throw new InvalidOperationException("Field guest secret path has no parent directory.");
-        var path = Path.Combine(directory, "guest-sequence.json");
-        var next = checked((now ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds() * 1_000);
-        if (File.Exists(path))
+        lock (GuestSequenceAllocationLock)
         {
-            var state = JsonSerializer.Deserialize<GuestSequenceState>(File.ReadAllText(path), WireJson)
-                ?? throw new InvalidOperationException("Field guest sequence state is empty.");
-            if (state.ContractVersion != 1 ||
-                state.Field != configuration.Field ||
-                !string.Equals(state.KeyId, configuration.KeyId, StringComparison.Ordinal) ||
-                state.NextSequence < 0 ||
-                state.NextSequence > MaximumSafeWireSequence)
+            var directory = Path.GetDirectoryName(Path.GetFullPath(configuration.SecretPath))
+                ?? throw new InvalidOperationException("Field guest secret path has no parent directory.");
+            var path = Path.Combine(directory, "guest-sequence.json");
+            var next = checked((now ?? DateTimeOffset.UtcNow).ToUnixTimeMilliseconds() * 1_000);
+            if (File.Exists(path))
             {
-                throw new InvalidOperationException("Field guest sequence state is invalid or belongs to another channel.");
+                var state = JsonSerializer.Deserialize<GuestSequenceState>(File.ReadAllText(path), WireJson)
+                    ?? throw new InvalidOperationException("Field guest sequence state is empty.");
+                if (state.ContractVersion != 1 ||
+                    state.Field != configuration.Field ||
+                    !string.Equals(state.KeyId, configuration.KeyId, StringComparison.Ordinal) ||
+                    state.NextSequence < 0 ||
+                    state.NextSequence > MaximumSafeWireSequence)
+                {
+                    throw new InvalidOperationException("Field guest sequence state is invalid or belongs to another channel.");
+                }
+                next = state.NextSequence;
             }
-            next = state.NextSequence;
+            if (next >= MaximumSafeWireSequence)
+            {
+                throw new InvalidOperationException("Field guest sequence space is exhausted.");
+            }
+            Directory.CreateDirectory(directory);
+            var updated = new GuestSequenceState(1, configuration.Field, configuration.KeyId, next + 1);
+            var temporary = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
+            try
+            {
+                WriteDurableState(temporary, JsonSerializer.Serialize(updated, WireJson));
+                File.Move(temporary, path, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
+            return next;
         }
-        if (next >= MaximumSafeWireSequence)
-        {
-            throw new InvalidOperationException("Field guest sequence space is exhausted.");
-        }
-        Directory.CreateDirectory(directory);
-        var updated = new GuestSequenceState(1, configuration.Field, configuration.KeyId, next + 1);
-        var temporary = $"{path}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            WriteDurableState(temporary, JsonSerializer.Serialize(updated, WireJson));
-            File.Move(temporary, path, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporary)) File.Delete(temporary);
-        }
-        return next;
     }
 
     private static void WriteDurableState(string path, string content)
