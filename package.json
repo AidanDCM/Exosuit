@@ -62,6 +62,7 @@
     "test:tch001": "vitest run tests/tch001.test.ts tests/teachRecorder.test.ts tests/visualRetention.test.ts",
     "chn001:harness": "tsx src/completion/chn001Harness.ts",
     "scn001:harness": "tsx src/completion/scn001Harness.ts",
+    "scn001:host-probe": "tsx scripts/scn001-host-probe.ts",
     "validate:evidence-artifacts": "vitest run tests/completionArtifactReconciliation.test.ts",
     "scan:evidence-artifacts": "node scripts/scan-evidence-artifacts.mjs"
   },

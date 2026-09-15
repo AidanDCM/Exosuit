@@ -286,7 +286,8 @@ public sealed class FieldKvpRuntimeTests
         Assert.True(item.GetProperty("payloadHashValid").GetBoolean());
         Assert.Equal("hyperv_kvp", item.GetProperty("transport").GetString());
         Assert.Equal("verified", item.GetProperty("status").GetString());
-        Assert.True(item.GetProperty("verifiedAt").GetDateTimeOffset() >= now);
+        var verifiedAt = item.GetProperty("verifiedAt").GetDateTimeOffset();
+        Assert.InRange(verifiedAt, now.AddSeconds(-5), now.AddSeconds(5));
     }
 
     [Fact]

@@ -24,8 +24,8 @@ export type HostSceneState =
  *
  * The monitor holds no scene bytes of its own beyond the last accepted snapshot, and it never
  * re-promotes that snapshot: only a fresh accepted read can return it to `ready`. Every other
- * outcome — absent, corrupt, rejected, locked desktop, changed boot — invalidates with a
- * specific reason.
+ * outcome — absent, corrupt, rejected, non-ready desktop, locked desktop, changed boot —
+ * invalidates with a specific reason.
  */
 export class FieldSceneHostMonitor {
   readonly #receiver: FieldSceneChannelReceiver;
@@ -36,8 +36,8 @@ export class FieldSceneHostMonitor {
   #bootStale = false;
   /**
    * Set when the guest desktop stopped being observable. A scene captured before this instant
-   * describes a desktop that has since been locked or covered by the Secure Desktop, so it may
-   * not restore readiness however well it authenticates.
+   * describes a desktop that has since been non-ready, locked, or covered by the Secure Desktop,
+   * so it may not restore readiness however well it authenticates.
    */
   #observabilityBarrier?: number;
 
@@ -90,10 +90,10 @@ export class FieldSceneHostMonitor {
       );
     }
 
-    // A locked or Secure Desktop guest cannot produce an actionable scene, and reading one
-    // anyway would only invite promoting content the desktop no longer justifies. The barrier
-    // outlives the lock: unlocking on its own must not restore readiness, because the desktop
-    // may have changed while nothing was observing it.
+    // A non-ready, locked, or Secure Desktop guest cannot produce an actionable scene, and
+    // reading one anyway would only invite promoting content the desktop no longer justifies.
+    // The barrier outlives the condition: recovery on its own must not restore readiness, because
+    // the desktop may have changed while nothing was observing it.
     if (input.heartbeat.sessionLocked) {
       this.#raiseBarrier(input.heartbeat.observedAt);
       return this.#invalidate("guest session locked");
@@ -101,6 +101,10 @@ export class FieldSceneHostMonitor {
     if (input.heartbeat.secureDesktopActive) {
       this.#raiseBarrier(input.heartbeat.observedAt);
       return this.#invalidate("guest Secure Desktop active");
+    }
+    if (!input.heartbeat.desktopReady) {
+      this.#raiseBarrier(input.heartbeat.observedAt);
+      return this.#invalidate("guest desktop not ready");
     }
 
     const read = readSceneFromKvp({
