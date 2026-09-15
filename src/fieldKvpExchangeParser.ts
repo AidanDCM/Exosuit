@@ -70,13 +70,15 @@ export function parseGuestExchangeItem(item: string): KvpItemParse {
 /**
  * Parses a whole exchange.
  *
- * A duplicate name is a hard failure rather than a last-one-wins overwrite: two values for one
- * key means the snapshot is ambiguous, and silently picking one would hand the reader a value it
- * cannot attribute.
+ * A duplicate name is a hard ambiguity for that key. Once a duplicate is observed the key is
+ * removed from the snapshot and remains suppressed even if further copies follow. Retaining the
+ * first or last value would hand downstream authentication an arbitrarily selected value from an
+ * exchange that has already proven it cannot attribute uniquely.
  */
 export function parseGuestExchangeItems(items: readonly string[]): KvpSnapshotParse {
   const snapshot: Record<string, string> = {};
   const failures: string[] = [];
+  const ambiguousNames = new Set<string>();
 
   if (items.length > MAXIMUM_ITEMS) {
     return { snapshot: {}, failures: [`exchange holds ${items.length} items, above the ${MAXIMUM_ITEMS} bound`] };
@@ -89,10 +91,20 @@ export function parseGuestExchangeItems(items: readonly string[]): KvpSnapshotPa
       failures.push(`item ${index}: ${parsed.reason}`);
       continue;
     }
-    if (Object.hasOwn(snapshot, parsed.name)) {
+
+    if (ambiguousNames.has(parsed.name)) {
       failures.push(`item ${index}: duplicate exchange name ${parsed.name}`);
       continue;
     }
+    if (Object.hasOwn(snapshot, parsed.name)) {
+      // The first value is no safer than the second once ambiguity is known. Remove it and mark
+      // the name poisoned for the remainder of this snapshot so a third copy cannot reappear.
+      delete snapshot[parsed.name];
+      ambiguousNames.add(parsed.name);
+      failures.push(`item ${index}: duplicate exchange name ${parsed.name}`);
+      continue;
+    }
+
     snapshot[parsed.name] = parsed.data;
   }
 
