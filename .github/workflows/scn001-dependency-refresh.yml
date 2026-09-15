@@ -1,0 +1,48 @@
+name: SCN-001 dependency lock refresh
+
+on:
+  push:
+    branches:
+      - codex/finish-exosuit-scn001-20260915
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out finish branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/finish-exosuit-scn001-20260915
+          fetch-depth: 0
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Refresh non-breaking audited dependency resolutions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit fix --package-lock-only --ignore-scripts --fund=false || true
+          npm ci --ignore-scripts --fund=false
+          npm audit --audit-level=high
+
+      - name: Commit regenerated lockfile and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/scn001-dependency-refresh.yml
+          git add package-lock.json .github/workflows/scn001-dependency-refresh.yml
+          if git diff --cached --quiet; then
+            echo 'No dependency lock changes were required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(deps): refresh audited transitive dependencies'
+          git push origin HEAD:codex/finish-exosuit-scn001-20260915
