@@ -30,6 +30,19 @@ The probe:
 
 The orchestration is injectable so hosted CI can test the real parser path without pretending to exercise Hyper-V. `tests/scn001HostProbe.test.ts` covers value non-disclosure, parser wiring, host failures, and the non-Windows refusal.
 
+## Review findings closed in the finish slice
+
+The final source audit also surfaced two still-current review findings on PR #37 and fixed both fail closed:
+
+- `FieldSceneHostMonitor` now invalidates before scene intake whenever the authenticated heartbeat says `desktopReady: false`, raises the same observability freshness barrier used for lock/Secure Desktop transitions, and requires a scene captured after that barrier before actionability can return.
+- `parseGuestExchangeItems` no longer retains an arbitrary winner when a Field-owned KVP name is duplicated. The first retained value is removed as soon as ambiguity is detected, the name remains poisoned for the rest of the snapshot, and later copies cannot repopulate it.
+
+Regression tests cover both behaviors, including stale-scene refusal after a desktop-not-ready interval and a third duplicate KVP copy attempting to reappear.
+
+## Dependency audit refresh
+
+During final hosted validation on 2026-09-15, npm's advisory database began rejecting the existing locked `fast-uri` 3.1.5 transitive dependency at high severity. A one-shot, branch-scoped GitHub workflow ran `npm audit fix --package-lock-only`, verified a clean high-severity audit with Node 22, committed the regenerated lockfile, and removed itself. This keeps the repository lock reproducible without retaining a privileged maintenance workflow or hand-editing package integrity data.
+
 ## Evidence boundary
 
 A green host probe is **not** SCN-001 promotion evidence. It proves only that the concrete host adapter can execute against the live Hyper-V exchange. The required L1-L11 ceremonies, exact Field/session/boot/generation/display bindings, invalidation behavior, lifecycle behavior, clean-head evidence, and independent review remain governed by `docs/project-driver/SCN001_SESSION_RUNBOOK.md` and the completion gate.
