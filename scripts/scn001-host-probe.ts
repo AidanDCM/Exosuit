@@ -1,5 +1,7 @@
+import { pathToFileURL } from "node:url";
+
 import { createHyperVGuestExchangeReader } from "../src/fieldKvpHyperVReader.js";
-import { readGuestKvpSnapshot } from "../src/fieldKvpHostQuery.js";
+import { readGuestKvpSnapshot, type GuestExchangeReader } from "../src/fieldKvpHostQuery.js";
 import runPowerShell from "./field-kvp-powershell-runner.mjs";
 
 /**
@@ -16,6 +18,19 @@ import runPowerShell from "./field-kvp-powershell-runner.mjs";
  * ceremony in SCN001_SESSION_RUNBOOK.md.
  */
 
+export type Scn001HostProbeSummary = {
+  readonly status: "ok" | "parsed_with_failures";
+  readonly vmName: string;
+  readonly exchangeItemCount: number;
+  readonly fieldValueNames: readonly string[];
+  readonly scenePublished: boolean;
+  readonly parseFailureCount: number;
+};
+
+export type Scn001HostProbeResult =
+  | Scn001HostProbeSummary
+  | { readonly status: "failed"; readonly vmName: string; readonly reason: string };
+
 function argument(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index < 0 ? undefined : process.argv[index + 1];
@@ -31,40 +46,75 @@ function requestedVmName(): string {
   return value.trim();
 }
 
-async function main(): Promise<void> {
-  if (process.platform !== "win32") {
+/**
+ * Build the only terminal-safe success record. Values are intentionally discarded here so a
+ * caller cannot accidentally serialize a scene payload by printing this object.
+ */
+export function summarizeSnapshot(input: {
+  readonly vmName: string;
+  readonly snapshot: Readonly<Record<string, string>>;
+  readonly parseFailureCount: number;
+}): Scn001HostProbeSummary {
+  const names = Object.keys(input.snapshot).sort();
+  const fieldValueNames = names.filter((name) => name.startsWith("Exosuit.Field."));
+  return {
+    status: input.parseFailureCount === 0 ? "ok" : "parsed_with_failures",
+    vmName: input.vmName,
+    exchangeItemCount: names.length,
+    fieldValueNames,
+    scenePublished: names.includes("Exosuit.Field.Scene"),
+    parseFailureCount: input.parseFailureCount,
+  };
+}
+
+/**
+ * Execute one read-only host query. The reader and platform are injectable so hosted CI can prove
+ * the orchestration without pretending it exercised Hyper-V.
+ */
+export async function runScn001HostProbe(input: {
+  readonly vmName: string;
+  readonly read?: GuestExchangeReader;
+  readonly platform?: NodeJS.Platform;
+}): Promise<Scn001HostProbeResult> {
+  const platform = input.platform ?? process.platform;
+  if (platform !== "win32") {
     throw new Error("SCN-001 host probe requires a Windows Hyper-V host.");
   }
 
+  const read = input.read ?? createHyperVGuestExchangeReader(runPowerShell);
+  const result = await readGuestKvpSnapshot({ vmName: input.vmName, read });
+  if (result.status === "failed") {
+    return { status: "failed", vmName: input.vmName, reason: result.reason };
+  }
+
+  return summarizeSnapshot({
+    vmName: input.vmName,
+    snapshot: result.snapshot,
+    parseFailureCount: result.failures.length,
+  });
+}
+
+async function main(): Promise<void> {
   const vmName = requestedVmName();
-  const read = createHyperVGuestExchangeReader(runPowerShell);
-  const result = await readGuestKvpSnapshot({ vmName, read });
+  const result = await runScn001HostProbe({ vmName });
 
   if (result.status === "failed") {
-    console.error(JSON.stringify({ status: "failed", vmName, reason: result.reason }, null, 2));
+    console.error(JSON.stringify(result, null, 2));
     process.exitCode = 2;
     return;
   }
 
-  const names = Object.keys(result.snapshot).sort();
-  const fieldValueNames = names.filter((name) => name.startsWith("Exosuit.Field."));
-  const summary = {
-    status: result.failures.length === 0 ? "ok" : "parsed_with_failures",
-    vmName,
-    exchangeItemCount: names.length,
-    fieldValueNames,
-    scenePublished: names.includes("Exosuit.Field.Scene"),
-    parseFailureCount: result.failures.length,
-  } as const;
-
-  console.log(JSON.stringify(summary, null, 2));
-  if (result.failures.length > 0) process.exitCode = 3;
+  console.log(JSON.stringify(result, null, 2));
+  if (result.status === "parsed_with_failures") process.exitCode = 3;
 }
 
-main().catch((error: unknown) => {
-  console.error(JSON.stringify({
-    status: "failed",
-    reason: error instanceof Error ? error.message : String(error),
-  }, null, 2));
-  process.exitCode = 1;
-});
+const entrypoint = process.argv[1];
+if (entrypoint !== undefined && import.meta.url === pathToFileURL(entrypoint).href) {
+  main().catch((error: unknown) => {
+    console.error(JSON.stringify({
+      status: "failed",
+      reason: error instanceof Error ? error.message : String(error),
+    }, null, 2));
+    process.exitCode = 1;
+  });
+}
