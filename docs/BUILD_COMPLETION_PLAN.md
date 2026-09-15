@@ -124,7 +124,7 @@ A gate requiring live evidence cannot pass with synthetic-only evidence. A live 
 - Replay after restart, wrong direction/key/nonce/sequence/timestamp.
 - Guest reboot and boot-ID change.
 - Lock, Secure Desktop, display mismatch, heartbeat loss, guest crash.
-- Emergency stop during healthy, degraded, recording, and executing states.
+- Host emergency stop during healthy-channel and degraded-channel Field states.
 
 **Exit**
 
@@ -158,6 +158,7 @@ A gate requiring live evidence cannot pass with synthetic-only evidence. A live 
 - Policy, Field generation, scene generation, target, and action-budget mismatch.
 - Slow application, timeout, partial effect, duplicate effect, and uncertain effect.
 - Crash and restart at every action boundary.
+- Emergency stop during active bounded execution; pending input is invalidated and no possible effect is retried blindly.
 - Path traversal, reparse point, hash mismatch, TOCTOU, and sensitive export.
 
 **Exit**
@@ -186,6 +187,7 @@ A gate requiring live evidence cannot pass with synthetic-only evidence. A live 
 - Recording cannot start without consent.
 - Indicator and independent stop survive model/channel failure.
 - Hook disconnect, event overflow, visual budget exhaustion, retention expiry.
+- Host emergency stop during active consented recording; recording hooks and pending input stop within five seconds independently of model/channel health.
 - Credential-bearing controls and excluded regions.
 - Deletion propagates through encrypted blobs, indexes, models, bundles, and certificates.
 - Shadow process capability denial.

@@ -1,0 +1,265 @@
+{
+  "contractVersion": 2,
+  "testId": "CHN-001",
+  "stage": "run",
+  "runId": "chn001-v26-g3-48b5071-20260810t1546z",
+  "exactCommit": "48b50719559a4849be2c8613153b0ee81cc92470",
+  "machineId": "machine-9c62d678dd970f15",
+  "field": {
+    "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+    "fieldGeneration": 3
+  },
+  "vmGuid": "b538709f-9eda-4696-a40b-ffc14de3dd58",
+  "baseImageId": "exosuit-field-base-v26",
+  "baseDigestBefore": "19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf",
+  "baseDigestAfter": "19a1c58fc1585fbde9a5325746c6ff1442964e471a5dcf6a46bc1a237e8fc1cf",
+  "channelKeyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+  "productionConfiguration": {
+    "developmentAccessEnabled": false,
+    "developmentUnattendedSetupEnabled": false,
+    "networkMode": "isolated",
+    "hostLanAccess": false,
+    "inboundConnections": false,
+    "hostInputInjection": false
+  },
+  "startedAt": "2026-08-10T15:48:41.489Z",
+  "completedAt": "2026-08-10T17:55:07.055Z",
+  "verifiedMessages": [
+    {
+      "messageId": "1131b51e-2e0f-44a3-9dfc-d4e85f1097ba",
+      "nonce": "aW77tcAKkmc2UsX7T8LpjQ",
+      "messageType": "heartbeat",
+      "field": {
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3
+      },
+      "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+      "keyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+      "sequence": 1786377520955818,
+      "replayLastSequence": 1786377520955818,
+      "sentAt": "2026-08-10T16:37:04.358Z",
+      "expiresAt": "2026-08-10T16:37:14.358Z",
+      "verifiedAt": "2026-08-10T16:37:05.755Z",
+      "status": "verified",
+      "payloadHash": "82f94cb0f445119e675f642f6395601b4a8400853f00d5d23ee6976cac19988e",
+      "payloadHashValid": true,
+      "transport": "hyperv_kvp"
+    },
+    {
+      "messageId": "b780f12a-f219-4ea5-8608-6736d4853264",
+      "nonce": "zEpAAG93Zms0ReQeADUH1g",
+      "messageType": "heartbeat",
+      "field": {
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3
+      },
+      "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+      "keyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+      "sequence": 1786377520955932,
+      "replayLastSequence": 1786377520955932,
+      "sentAt": "2026-08-10T16:39:04.865Z",
+      "expiresAt": "2026-08-10T16:39:14.865Z",
+      "verifiedAt": "2026-08-10T16:39:06.310Z",
+      "status": "verified",
+      "payloadHash": "3448c527625279ff6e7b629629704f1a635b5d9f1424bc245ad64863a9575639",
+      "payloadHashValid": true,
+      "transport": "hyperv_kvp"
+    },
+    {
+      "messageId": "571fb384-52ea-428a-871c-f64cec3a96e6",
+      "nonce": "UjgEvAkrDKdkqsPsrRFNxg",
+      "messageType": "handshake",
+      "field": {
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3
+      },
+      "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+      "keyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+      "sequence": 1786377520956005,
+      "replayLastSequence": 1786377520956005,
+      "sentAt": "2026-08-10T16:40:20.858Z",
+      "expiresAt": "2026-08-10T16:45:20.858Z",
+      "verifiedAt": "2026-08-10T16:42:35.818Z",
+      "status": "verified",
+      "payloadHash": "2e101bf7cbdff66249bc677f79ad9d951a7bc619ea0b53f470b5a8ab40831c3a",
+      "payloadHashValid": true,
+      "transport": "hyperv_kvp"
+    },
+    {
+      "messageId": "bfcf1fd3-40c7-4e4d-b29a-73a1e867b210",
+      "nonce": "PvznioMYBqsxvkUpSlxBBw",
+      "messageType": "bootstrap_status",
+      "field": {
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3
+      },
+      "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+      "keyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+      "sequence": 1786377520956006,
+      "replayLastSequence": 1786377520956006,
+      "sentAt": "2026-08-10T16:40:20.888Z",
+      "expiresAt": "2026-08-10T16:45:20.888Z",
+      "verifiedAt": "2026-08-10T16:42:35.818Z",
+      "status": "verified",
+      "payloadHash": "243d30bfbe1d1c7bc119966e63c7c852e780e44b383db9931fa3689771ad25be",
+      "payloadHashValid": true,
+      "transport": "hyperv_kvp"
+    },
+    {
+      "messageId": "00c932c7-ebcd-4966-9d60-7de452d8d743",
+      "nonce": "NaHmT_fCxea2EZV03ZFByg",
+      "messageType": "heartbeat",
+      "field": {
+        "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+        "fieldGeneration": 3
+      },
+      "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+      "keyId": "chn001-4401b702-334f-475e-b867-b7d06798443d-g3",
+      "sequence": 1786377520956136,
+      "replayLastSequence": 1786377520956136,
+      "sentAt": "2026-08-10T16:42:35.130Z",
+      "expiresAt": "2026-08-10T16:42:45.130Z",
+      "verifiedAt": "2026-08-10T16:42:35.818Z",
+      "status": "verified",
+      "payloadHash": "fb3467116d6b1a831880c93dcd438251134a9ae2d7edb61d03dcc19ababbc3ec",
+      "payloadHashValid": true,
+      "transport": "hyperv_kvp"
+    }
+  ],
+  "failureInjections": [
+    {
+      "id": "CHN-001.1",
+      "verdict": "passed",
+      "evidenceMode": "mutated_live_capture",
+      "observedAt": "2026-08-10T16:16:43.840Z",
+      "expectedCode": "all_required_cases_rejected",
+      "actualCode": "all_required_cases_rejected",
+      "artifactSha256": "a23cb5c5258439ed44fbea679a18a269e029796c9796f50d30133e420db149cc"
+    },
+    {
+      "id": "CHN-001.2",
+      "verdict": "passed",
+      "evidenceMode": "mutated_live_capture",
+      "observedAt": "2026-08-10T16:16:43.840Z",
+      "expectedCode": "all_required_cases_rejected",
+      "actualCode": "all_required_cases_rejected",
+      "artifactSha256": "629d74dc9941dabc9aa5f604ac7253dc0770e00f69be91a00e0244ef254244bd"
+    },
+    {
+      "id": "CHN-001.3",
+      "verdict": "passed",
+      "evidenceMode": "mutated_live_capture",
+      "observedAt": "2026-08-10T16:16:43.840Z",
+      "expectedCode": "all_required_cases_rejected",
+      "actualCode": "all_required_cases_rejected",
+      "artifactSha256": "9ff7c3a2c816127229e2a33def7babecf116404124d89b0c7621dc26e1e37a12"
+    },
+    {
+      "id": "CHN-001.4",
+      "verdict": "passed",
+      "evidenceMode": "mutated_live_capture",
+      "observedAt": "2026-08-10T16:16:43.840Z",
+      "expectedCode": "all_required_cases_rejected",
+      "actualCode": "all_required_cases_rejected",
+      "artifactSha256": "70d3d51440326a62138b63eb19532fe6b3e301fb3e4693574dd9f6ce06c44ac0"
+    },
+    {
+      "id": "CHN-001.5",
+      "verdict": "passed",
+      "evidenceMode": "live_reboot",
+      "observedAt": "2026-08-10T16:24:35.843Z",
+      "expectedCode": "boot_id_replaced_prior_run_invalidated",
+      "actualCode": "boot_id_replaced_prior_run_invalidated",
+      "artifactSha256": "72983b210da9511c6bba150c1c8cac5f1761689fdd6109d62442a23018027ccf"
+    },
+    {
+      "id": "CHN-001.6",
+      "verdict": "passed",
+      "evidenceMode": "live_heartbeat_loss",
+      "observedAt": "2026-08-10T16:33:58.265Z",
+      "expectedCode": "heartbeat_expired_guest_running",
+      "actualCode": "heartbeat_expired_guest_running",
+      "artifactSha256": "5fc0eb1385fcde1264fea02b099c48f7868876a0d675aed1a2ab9e6a946328f7"
+    },
+    {
+      "id": "CHN-001.7",
+      "verdict": "passed",
+      "evidenceMode": "live_windows_guest",
+      "observedAt": "2026-08-10T16:39:06.359Z",
+      "expectedCode": "locked_session_denies_desktop_readiness",
+      "actualCode": "locked_session_denies_desktop_readiness",
+      "artifactSha256": "d67b73c37916908615c09a301c72762ab47b29ef5bc8c97edf79b5170c66fac9"
+    },
+    {
+      "id": "CHN-001.8",
+      "verdict": "passed",
+      "evidenceMode": "live_windows_guest",
+      "observedAt": "2026-08-10T16:42:35.874Z",
+      "expectedCode": "secure_desktop_denies_desktop_readiness",
+      "actualCode": "secure_desktop_denies_desktop_readiness",
+      "artifactSha256": "ddbd30d7f1fc6e3adee1464f7fab028f8bcb96cce309aba9f35709009747ab35"
+    },
+    {
+      "id": "CHN-001.9",
+      "verdict": "passed",
+      "evidenceMode": "live_windows_guest",
+      "observedAt": "2026-08-10T16:52:21.809Z",
+      "expectedCode": "display_contract_mismatch_denies_runtime",
+      "actualCode": "display_contract_mismatch_denies_runtime",
+      "artifactSha256": "8b41a9c89fcae9d7198e58c65ae2dc7f2d9799165bbc078c20718d90a8a2668e"
+    },
+    {
+      "id": "CHN-001.10",
+      "verdict": "passed",
+      "evidenceMode": "live_host_stop",
+      "observedAt": "2026-08-10T17:31:11.312Z",
+      "expectedCode": "healthy_channel_exact_field_stops_within_5s",
+      "actualCode": "healthy_channel_exact_field_stops_within_5s",
+      "artifactSha256": "8320a559219ebdd9f2873068e80e1de3b66c160a149c03715b55ea763aac022a"
+    },
+    {
+      "id": "CHN-001.11",
+      "verdict": "passed",
+      "evidenceMode": "live_host_stop",
+      "observedAt": "2026-08-10T17:41:21.153Z",
+      "expectedCode": "degraded_channel_exact_field_stops_within_5s",
+      "actualCode": "degraded_channel_exact_field_stops_within_5s",
+      "artifactSha256": "dd2a240455d9f4dd6f55fe6b83cbd8af7b27ea9cf57ca524334402fe3f82832f"
+    }
+  ],
+  "emergencyStops": [
+    {
+      "scenario": "healthy",
+      "triggeredAt": "2026-08-10T17:31:10.650Z",
+      "stoppedAt": "2026-08-10T17:31:11.312Z",
+      "latencyMs": 662,
+      "channelIndependent": true,
+      "modelIndependent": true,
+      "inputStopped": true,
+      "recordingStopped": false,
+      "fieldState": "Off",
+      "artifactSha256": "49e371285656401af103ab32a217e4c5b7d19552259b28efa472b605757ae9b2"
+    },
+    {
+      "scenario": "degraded",
+      "triggeredAt": "2026-08-10T17:41:18.605Z",
+      "stoppedAt": "2026-08-10T17:41:21.153Z",
+      "latencyMs": 2548,
+      "channelIndependent": true,
+      "modelIndependent": true,
+      "inputStopped": true,
+      "recordingStopped": false,
+      "fieldState": "Off",
+      "artifactSha256": "c5958b76291b1db9e4b97261299bc1f90f9b5118bb5483519777816a2694d22f"
+    }
+  ],
+  "cleanup": {
+    "exactGenerationDestroyed": true,
+    "vmAbsent": true,
+    "generationRootAbsent": true,
+    "baseUnchanged": true
+  },
+  "sourceMutationCountDuringRun": 0,
+  "contractEvaluationCommit": "48b50719559a4849be2c8613153b0ee81cc92470",
+  "contractMigration": null
+}

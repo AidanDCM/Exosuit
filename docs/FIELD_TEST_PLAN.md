@@ -47,6 +47,11 @@ Source and tests exist for identity, policy, attestation, lifecycle, desired sta
 
 Current-head execution, Hyper-V behavior, live recording, live prediction, personal models, and Pilot operation remain unproven.
 
+The base-image matrix must additionally prove that the Field guest service is
+Manual in the sealed base, cannot start during `specialize`, and becomes
+Automatic only through the reviewed SetupComplete path. A boot that configures
+development access before Setup completes is a failed generation.
+
 ## 4. Mandatory source validation
 
 ```bash
@@ -118,6 +123,28 @@ Required scenarios:
 - idempotent cleanup.
 
 The source implementation now includes a bounded, atomic, integrity-protected snapshot for registry records, policy bindings, and the complete hash-linked audit chain. Restart, missing-file, tamper, duplicate-binding, broken-chain, and size-bound cases are covered with a fake provider. Production still requires transactional live-provider checkpoint/reconciliation and crash/failure-injection evidence; a snapshot alone does not prove that a Hyper-V side effect and local state committed together.
+
+### Local owner lifecycle service
+
+Source and installation tests must prove:
+
+- LocalSystem service identity and separate owner/service authority;
+- an expiring owner policy no longer than 180 days;
+- exact installed host-config and lifecycle-script hashes before every job;
+- only `provision`, authenticated read-only `observe`, and `destroy` operations;
+- exact Field ID/generation, policy ID, source head, timestamps, and plan digest;
+- no arbitrary command, executable, script path, policy, consent, recording, key,
+  export, mode, full-control, or MCP field;
+- atomic package publication and duplicate/replay denial;
+- job-package and guest-seed reparse denial;
+- active-Field capacity denial;
+- process-tree cancellation when the service stops;
+- removal of the exact consumed job package without claiming forensic erasure;
+- uninstall confinement and evidence preservation.
+
+Live installation is F4 host evidence only. It does not promote Field lifecycle until
+one exact provision/destroy run proves installed hashes, generation confinement, base
+immutability, evidence, cancellation, and rollback behavior.
 
 ## 7. Storage and disk identity
 
@@ -273,7 +300,15 @@ Failure injection:
 
 ## 11. Scene production
 
-The source adapter now composes the existing Windows UI Automation observation contract with a fresh exact-generation Field heartbeat, display contract, cursor state, and explicit modal state. It rejects screenshot bytes, redacts sensitive element identity/value/actions, defaults to structural-only metadata with all UI text removed, and advances scene versions only after successful validation. A separate `consented_ui_text` policy exists but is not enabled by runtime wiring. Authenticated guest-to-host scene transport and live Windows evidence remain open.
+The source adapter now composes the existing Windows UI Automation observation contract with a fresh exact-generation Field heartbeat, display contract, cursor state, and explicit modal state. It rejects screenshot bytes, redacts sensitive element identity/value/actions, defaults to structural-only metadata with all UI text removed, and advances scene versions only after successful validation. A separate `consented_ui_text` policy exists but is not enabled by runtime wiring.
+
+The authenticated scene receiver contract accepts only `scene_observation` guest-to-host envelopes. Before replay state or scene state advances it verifies the envelope, exact key and Field generation, positive durable sequence, byte/count bounds, structural-only payload, exact boot ID, Glove agent ID, Windows session ID, fresh heartbeat, cursor/modal consistency, active-window/window/element bounds against the approved display, and non-regressing capture time. The durable channel sequence becomes the scene version so a receiver restart cannot silently reuse a prior scene version.
+
+Generation 20 produced and published the first authenticated live structural scene, and the compiled host verifier authenticated its exact Field/generation/boot/key/digest envelope. That payload also exposed a fail-closed promotion issue: the approved display was 1920×1080 while UI Automation reported a 2048×1152 desktop rectangle. The source receiver now rejects that contradiction before replay or scene state advances. A fresh-generation live rerun must reconcile the guest display contract and structural coordinate space; SCN-001 remains unpromoted.
+
+The compiled guest producer boundary is independently source-tested. It requires a non-SYSTEM caller in the exact positive configured interactive session, the Windows UI Automation provider in observe mode, a fresh observation, active-window/window/element rectangles contained by the configured display, valid cursor/modal/graph identity, no screenshots, at most 32 windows/128 elements/20 incoming warnings, and a final serialized payload no larger than 12 KiB. It removes all incoming warning text as well as window titles, element names/values, and sensitive automation IDs/actions. Overflow and post-bootstrap display-coordinate drift reject rather than truncate, clip, or scale.
+
+The compiled relay signing boundary requires LocalSystem for signing while independently matching the interactive client PID/session/user SID/fixed executable path/digest. It rejects duplicate and unknown JSON properties, noncanonical or newly private content, wrong Field/boot/agent/session/channel identity, and payload overflow before calling the existing authenticated envelope signer. Scene envelopes expire after ten seconds. A separate Windows adapter now obtains PID from an already connected named-pipe handle and derives session, token SID, image path, and executable digest from Windows; its local test uses a real pipe connection. A secured production pipe/ACL/framing, launcher, KVP writer, and live SYSTEM acceptance remain mandatory.
 
 Offline guest diagnosis now has a canonical bounded inspector. It refuses a running VM, mounts only the exact disposable overlay read-only, records file names/sizes/digests and scheduled-task metadata without copying configuration or log contents, and always attempts a bounded dismount. A live 2026-07-28 v14 run proved the agent/config files and LocalSystem boot/logon task were present, narrowing that regression to runtime startup before KVP publication.
 
@@ -475,6 +510,8 @@ No personal model may weaken Field isolation, policy, verification, audit, deadl
 - approved process/origin/route/capability;
 - expected result and verification;
 - emergency stop independent of normal channel.
+- L2/CHN proves the exact-Field host stop in healthy and degraded channel states;
+- active-execution stop waits for the live action phase, and active-recording stop waits for consented Teach recording;
 
 ### Synthetic workflow
 
@@ -505,6 +542,7 @@ Using only the local deterministic fixture:
 - VM suspend/resume;
 - supervisor restart;
 - emergency stop during physical input.
+- emergency stop during active consented recording, with visible indicator and capture-hook shutdown proven separately from channel stop.
 
 No blind retry is allowed after a possible external effect.
 
@@ -553,3 +591,275 @@ Production is denied until one exact signed release candidate has:
 See `docs/qa/PRODUCTION_READINESS_ASSESSMENT_2026-07-22.md`.
 
 Current Field production status: **DENIED**.
+
+## 24. v20 development-access canary evidence (2026-07-30)
+
+- Base v20 receipt: service staged `ManualUntilSetupComplete`, SYSTEM identity,
+  network detached, non-built-in accounts absent, one-use authorization and
+  bootstrap unattend consumed.
+- Audit seal: built-in Audit administrator, automatic Audit UI terminated,
+  canonical generalize/OOBE/shutdown Sysprep.
+- Generation: exact Field `7fad0376-68aa-4300-899d-a2ded6e1fb15`, generation 1,
+  isolated networking, read-only base plus disposable OS overlay and task disk.
+- Authenticated readiness: handshake, zero-failure bootstrap, exact identity and
+  digest bindings, display contract, unlocked/non-Secure-Desktop session, and
+  heartbeat `ready`.
+- Repeated observation: unchanged retained handshake/bootstrap records accepted
+  idempotently only after fresh signature/expiry verification; heartbeat advanced
+  strictly from host sequence `1785449589383193` to `1785449589383218`.
+- Destruction: exact Generation 1 VM registration and disposable root removed;
+  post-destruction v20 digest remained `452790e...547d` and read-only.
+- Held: production authentication, negative replay mutation/regression live
+  injection, restart/key rotation, lock/Secure Desktop, heartbeat loss, VM
+  suspend/resume, repeated create/destroy, repeated/faulted base immutability, input,
+  recording, and emergency stop.
+
+## 25. Compiled KVP observation negative contract
+
+The Windows agent owns one atomic `--field-observe-kvp-snapshot` operation. Tests
+must prove:
+
+- handshake, bootstrap, and heartbeat authenticate together with correct types;
+- an exact retained snapshot is idempotent;
+- an advancing heartbeat commits a strictly greater last sequence;
+- a validly signed mutation at an old/equal sequence is denied;
+- reuse of any previously accepted message ID is denied;
+- wrong Field/key identity, malformed state, invalid entry shape, and duplicate
+  identities fail closed;
+- rejected snapshots leave the prior observation ledger byte-for-byte unchanged;
+- the PowerShell reader delegates the complete transition to the compiled agent.
+
+Passing unit/source evidence does not substitute for a fresh published-agent
+live canary or live mutation/restart/key-rotation injection.
+
+## 26. v21 compiled-ledger live evidence (2026-07-31)
+
+- Exact source/publish binding: commit `454fc85`; self-contained agent digest
+  `c9cf91e...ba40`; immutable v21 digest `e74c7fe...7265`.
+- Provisioning: exact preview passed; isolated development generation used one
+  disposable overlay and one disposable task disk.
+- Restart: graceful shutdown only, no force; new boot ID; durable enrollment
+  remained valid after manifest expiry; authenticated readiness passed after
+  bounded retries.
+- Repeated observation: retained handshake/bootstrap message IDs and envelope
+  digests remained exact; heartbeat message ID and ledger sequence advanced.
+- Live-captured negatives: payload tampering, valid equal sequence, and valid
+  accepted-message-ID reuse all failed with byte-identical durable ledger state.
+- Destruction: exact VM registration and generation root removed; base remained
+  read-only and SHA-256-identical.
+- Adapter regression: Windows PowerShell 5.1 requires `[object[]]` normalization
+  of `ConvertFrom-Json` array output before indexing. The script requires exactly
+  three verifier results and the Windows-only test executes that behavior.
+
+Held: protected key rotation, corrupt protected ledger on the live host,
+stale-generation replacement, lock/Secure Desktop, deliberate heartbeat loss,
+pause/resume, production authentication, input, recording, and emergency stop.
+
+## 27. Protected KVP observation-state contract
+
+The durable compiled observation state must be serialized inside an authenticated
+envelope. Tests must prove:
+
+- the envelope binds a domain separator, exact Field ID/generation, channel key
+  ID, algorithm, and payload;
+- authentication is verified before the ledger payload is trusted;
+- state files and encoded payloads are bounded before decoding;
+- a well-formed tag or payload mutation fails closed;
+- changing the channel key or Field generation cannot reuse old state;
+- every rejected read leaves the preexisting state byte-for-byte unchanged;
+- no plaintext fallback, silent migration, automatic rotation, or model-facing
+  administrative path exists.
+
+Current evidence includes focused .NET execution and the bounded v22 live
+copy-based fault canary. A later canary must still prove owner-authorized key
+rotation and rejection of prior state after an actual Field-generation
+replacement rather than a mutated generation field.
+
+## 28. v22 protected-state live evidence (2026-08-01)
+
+- Exact source/publish binding: commit `6de98c9`; self-contained agent digest
+  `520e4861...755`; immutable v22 digest `4c8fbe97...b71`.
+- Provisioning: exact preview passed; isolated development generation used one
+  disposable OS overlay and one disposable task disk.
+- Readiness: the premature probe failed because handshake was absent; a bounded
+  retry authenticated bootstrap `ready` without weakening freshness.
+- Protected envelope: live state reported contract 1, `hmac-sha256`, exact Field
+  ID/generation, and exact key ID.
+- Copy-based negatives: authentication-tag corruption, payload corruption,
+  wrong key ID, stale-generation metadata, plaintext legacy state, and a
+  32-KiB-plus-one state were all rejected. Each rejected file remained
+  byte-identical and the authoritative ledger hash did not change.
+- Recovery/advance: the untouched authoritative ledger later authenticated under
+  the same key and advanced from sequence `1785531727455426` to
+  `1785531727456680` with a new protected-state digest.
+- Destruction: exact VM registration and generation root were removed; the base
+  remained read-only and SHA-256-identical.
+
+Held: owner-authorized key rotation, actual replacement with a new Field
+generation, lock/Secure Desktop, deliberate heartbeat loss, pause/resume,
+production authentication, input, recording, emergency stop, and release.
+
+## 29. Transactional channel-key rotation foundation
+
+Source tests must prove:
+
+- only a fresh, local, interactive `owner_local` request for
+  `rotate_channel_key` can start a transaction;
+- the authorization request ID, rotation ID, exact Field generation, current key
+  ID, and distinct next key ID all match before provider effects;
+- secret bytes never enter result or durable coordinator state; only an opaque
+  provider handle crosses the coordinator boundary, and provider errors are
+  redacted;
+- prepare requires a bound guest acknowledgment before commit;
+- failed commit reconciles to prior-active, next-prepared, next-active, or
+  unknown; prepared rolls back and unknown blocks continuation;
+- malformed, stale, or cross-bound provider receipts fail closed;
+- committed next-key identity causes the existing replay guard to deny old-key
+  traffic;
+- rotation IDs cannot be replayed and hydrated state cannot contradict its last
+  result.
+
+Current evidence is pure/fake TypeScript only. Required next evidence is a
+protected Windows key provider, authenticated guest prepare/commit/rollback,
+crash/restart persistence, mid-flight packet injection, old-key traffic over the
+live transport, and an owner-visible ceremony. No model-facing rotation tool is
+authorized.
+
+## 30. Protected rotation metadata persistence
+
+The rotation coordinator state store must prove:
+
+- a domain-separated HMAC binds exact Field ID/generation, algorithm, and raw
+  serialized state payload;
+- authentication uses fixed-time comparison before authority-state
+  deserialization;
+- the persisted envelope and decoded payload have explicit byte bounds;
+- missing is distinct from malformed, plaintext legacy, oversized, corrupt,
+  wrong-secret, cross-generation, and contradictory state;
+- rejected reads do not rewrite the input;
+- writes use an exclusive private temporary file and atomic replacement, leaving
+  no temporary file after success;
+- the integrity secret is supplied separately and never serialized.
+
+Current evidence is pure file-component execution. It does not prove Windows
+ACL enforcement, DPAPI/vault ownership, crash/power-loss atomicity, backup,
+revocation, or integration with a real rotation provider.
+
+## 31. Protected Windows channel-secret primitive
+
+Source and local-Windows tests must prove:
+
+- secret bytes are encrypted before persistence and are absent from the bounded
+  JSON envelope;
+- DPAPI uses LocalMachine scope with domain-separated entropy bound to exact
+  Field ID, generation, key ID, and algorithm;
+- cross-generation, wrong-key, malformed, legacy plaintext, oversized,
+  non-canonical base64, weak-secret, and ciphertext-authentication failures deny;
+- publication uses an exclusive flushed temporary file, seals and verifies it
+  before atomic rename, preserves a prior envelope on pre-publication failure,
+  and removes the failed temporary file;
+- the Windows DACL disables inheritance and contains exactly LocalSystem and
+  Built-in Administrators with full control;
+- ordinary tests use fake protection and file-policy providers, while explicitly
+  tagged local-Windows checks exercise DPAPI and the DACL implementation.
+
+Current evidence proves the fake-provider matrix and separate local DPAPI/DACL
+checks. It does not prove the combined write/rename/read path under guest
+LocalSystem, directory/reparse resistance, provisioning conversion and plaintext
+seed deletion, concurrent writers, crash/power-loss recovery, rotation-provider
+integration, or a live owner-authorized ceremony.
+
+## 32. Explicit channel-secret seed conversion transaction
+
+Source tests must prove:
+
+- caller identity is exact LocalSystem before any seed read or write;
+- only the direct, case-sensitive `channel-secret.txt` child of the configured
+  non-drive-root Config directory is eligible;
+- Config-root and target reparse points deny;
+- a seed is bounded printable ASCII, with only a trailing CR/LF normalized;
+- protected-looking malformed input denies without a plaintext fallback;
+- conversion uses the protected store in place, reloads the secret, compares it
+  in fixed time, zeros working buffers, and returns metadata plus ciphertext
+  digest only;
+- a repeated invocation verifies the existing protected envelope and exact
+  Field generation/key without rewriting it;
+- pre-publication policy failure preserves the seed and removes temporary files.
+
+Current evidence is a fake-provider transaction suite plus a separately tested
+fixed command, validated runtime-config derivation, and protected guest-reader
+wiring. It does not prove combined LocalSystem DPAPI/DACL execution or live
+runtime protected-secret reads,
+interruption after publication, concurrent writers, forensic secure erasure,
+overlay/snapshot retirement, or live provisioning and restart.
+
+## 33. Fixed channel-secret protection command
+
+Source tests must prove:
+
+- caller identity is exact LocalSystem before configuration existence, reparse,
+  size, or contents are inspected;
+- only the literal direct `Config/guest-runtime.json` path is accepted, without
+  case changes, dot segments, alternate separators, or another filename;
+- Config-root and runtime-config reparse points deny before parsing;
+- configuration is nonempty, bounded, valid UTF-8 JSON with case-sensitive,
+  unique, known properties and a valid Field runtime contract;
+- Field generation, key ID, and exact `Config/channel-secret.txt` are derived
+  solely from that configuration;
+- the converter receives those exact values and the command serializes only its
+  metadata receipt;
+- ordinary KVP startup and provisioning do not invoke conversion.
+
+Current evidence is a five-test source suite with an injected converter and path
+inspector. It does not prove combined guest LocalSystem DPAPI/DACL execution,
+configuration ACL/TOCTOU behavior, live protected-only runtime reads, startup order,
+crash/power-loss recovery, secure retirement, or live restart.
+
+## 34. Protected-only guest KVP secret reader
+
+Source tests must prove:
+
+- exact LocalSystem is checked before reader path or store access;
+- runtime configuration and secret use their literal fixed production paths;
+- Config-root and secret-file reparse points deny before store access;
+- the store receives the exact Field generation and key ID;
+- only bounded printable ASCII plaintext returned by the protected store is
+  accepted, invalid returned buffers are zeroed, and no file-content fallback
+  can occur;
+- the guest emitter uses the shared strict configuration loader, calls the
+  production DPAPI/DACL reader, and zeroes its loaded byte buffer on termination;
+- host-side verification remains a separate secret lifecycle and never attempts
+  to decrypt guest-machine ciphertext.
+
+Current evidence is a five-test reader suite plus compiled emitter wiring. It
+does not prove the combined LocalSystem DPAPI/DACL path inside a guest, managed-
+string retirement, configuration/secret TOCTOU resistance, protection-command
+startup ordering, restart, crash/power loss, or host protected-key storage.
+
+## 35. Guest secret startup transaction and pre-unlock observation
+
+Static and script tests must prove:
+
+- one bootstrap precheck runs before protection, and the protection command plus
+  exact receipt validation run before the guest KVP emitter;
+- nonzero exit or anything other than exactly one JSON receipt stops startup;
+- receipt top-level and nested Field schemas are exact;
+- receipt version, Field ID/generation, key ID, converted/already-protected
+  status, lowercase ciphertext digest, and completion freshness are checked;
+- the receipt is captured, not printed or placed in the runtime error log;
+- any failure prevents emitter launch and therefore prevents heartbeat;
+- a valid already-protected receipt permits idempotent restart;
+- a locked session may start authenticated KVP only as non-ready/provisioning;
+  bootstrap continues refreshing until `session_unlocked` passes;
+- early guest exit, bootstrap failure, and desktop timeout stop the exact guest
+  child before launcher denial.
+
+Current evidence includes PowerShell parser success, static order/validation
+tests, and a Windows PowerShell subprocess harness. The harness executes the
+launcher with inert injected process adapters: converted and already-protected
+receipts reach the emitter, while nonzero protection exit, malformed receipt,
+and post-publication/no-receipt interruption stop before emitter invocation. A
+locked-then-unlocked harness proves the emitter starts after receipt but before
+unlock, and a never-unlocked harness proves explicit child cleanup. Exact v23
+live evidence diagnosed the old ordering delay but does not validate the
+corrected source. A new immutable-base canary remains required.

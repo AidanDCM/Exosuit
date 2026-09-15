@@ -13,6 +13,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Resolve-DotnetSdk {
+    foreach ($candidate in @('dotnet', (Join-Path $env:USERPROFILE '.dotnet\dotnet.exe'))) {
+        if (-not $candidate) { continue }
+        try {
+            $sdks = & $candidate --list-sdks 2>$null
+            if ($LASTEXITCODE -eq 0 -and @($sdks).Count -gt 0) { return $candidate }
+        } catch { }
+    }
+    throw 'A .NET SDK is required for exact Field validation.'
+}
+$dotnet = Resolve-DotnetSdk
+
 $timestamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssZ')
 $runRoot = Join-Path $EvidenceRoot $timestamp
 New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
@@ -85,7 +97,7 @@ try {
         powershellVersion = $PSVersionTable.PSVersion.ToString()
         nodeVersion = (& node --version 2>$null)
         npmVersion = (& npm --version 2>$null)
-        dotnetVersion = (& dotnet --version 2>$null)
+        dotnetVersion = (& $dotnet --version 2>$null)
         gitCommit = (& git rev-parse HEAD 2>$null)
         gitBranch = (& git branch --show-current 2>$null)
         workingTree = (& git status --porcelain 2>$null)
@@ -106,12 +118,15 @@ try {
     Invoke-ValidationStep -Name 'typescript-typecheck' -Action { npm run typecheck }
     Invoke-ValidationStep -Name 'field-tests' -Action { npm run test:field -- --reporter=verbose }
     Invoke-ValidationStep -Name 'field-system-pulse' -Action { npm run test:field-pulse -- --reporter=verbose }
-    Invoke-ValidationStep -Name 'full-typescript-tests' -Action { npm test -- --reporter=verbose }
+    Invoke-ValidationStep -Name 'full-typescript-tests' -Action {
+        $vitest = Join-Path $RepositoryRoot 'node_modules\.bin\vitest.cmd'
+        & $vitest run --reporter=verbose --maxWorkers=1 --minWorkers=1
+    }
     Invoke-ValidationStep -Name 'typescript-build' -Action { npm run build }
     Invoke-ValidationStep -Name 'glove-system-pulse' -Action { npm run test:pulse -- --reporter=verbose }
-    Invoke-ValidationStep -Name 'dotnet-restore' -Action { dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj }
-    Invoke-ValidationStep -Name 'dotnet-build' -Action { dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror }
-    Invoke-ValidationStep -Name 'dotnet-tests' -Action { dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=field-validation.trx" --collect:"XPlat Code Coverage" }
+    Invoke-ValidationStep -Name 'dotnet-restore' -Action { & $dotnet restore apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj }
+    Invoke-ValidationStep -Name 'dotnet-build' -Action { & $dotnet build apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-restore -warnaserror }
+    Invoke-ValidationStep -Name 'dotnet-tests' -Action { & $dotnet test apps/windows-agent.Tests/Exosuit.Agent.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=field-validation.trx" --collect:"XPlat Code Coverage" }
     Invoke-ValidationStep -Name 'host-capability-check' -Action { & "$PSScriptRoot\Test-ExosuitFieldHost.ps1" }
     Invoke-ValidationStep -Name 'personal-mvp-readiness-report' -NonBlocking -Action { npm run assess:mvp }
     Invoke-ValidationStep -Name 'production-readiness-report' -NonBlocking -Action { npm run assess:production }

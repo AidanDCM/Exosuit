@@ -18,6 +18,19 @@ The repository contains Field contracts, lifecycle rules, policy/attestation bin
 
 It does **not** yet record real Teach input, capture the Windows screen, process demonstrations, learn the owner's behavior, run a Shadow predictor, or allow ChatGPT to operate a production Field. The v13 proof used development access and is not owner or production acceptance.
 
+### One-UAC development lifecycle service
+
+The development build can install a local Windows service after displaying its exact
+policy and one UAC prompt. The installed service runs as LocalSystem but is limited to
+creating, authentically observing, and destroying exact disposable Field generations through fixed, hash-checked
+scripts. It is not exposed to ChatGPT or MCP and cannot approve recording, modes, keys,
+exports, policies, personal-state deletion, or full control.
+
+The standing policy expires, can bound concurrent Fields, and can be disabled by
+stopping the `ExosuitFieldOwner` service. Uninstall requires the exact phrase
+`UNINSTALL EXOSUIT FIELD OWNER SERVICE`; uninstall preserves sanitized evidence while
+removing the service, executable, policy, host-config copy, and queue.
+
 ## Planned Field modes
 
 ### Teach Mode
@@ -163,6 +176,11 @@ After emergency stop:
 - the event is written to audit,
 - restart or explicit local recovery is required.
 
+Acceptance is phase-correct: channel validation first proves host stop with a healthy
+and a broken guest channel. A later execution test proves interruption of real input,
+and Teach acceptance separately proves interruption of an explicitly consented,
+visibly active recording. A stopped VM alone is not proof that recording hooks stopped.
+
 ## When to trust a taught task
 
 A task should progress through:
@@ -184,6 +202,11 @@ Do not trust it merely because:
 - one successful run occurred,
 - unit tests pass,
 - the VM started.
+
+An authenticated `provisioning` heartbeat while Windows is locked is also not a
+readiness pass. It is diagnostic evidence only. The owner must still require an
+unlocked session, inactive Secure Desktop, fresh heartbeat, exact policy and
+attestation, and every remaining readiness gate before any action mode.
 
 ## Failure reporting
 

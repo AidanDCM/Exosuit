@@ -71,6 +71,13 @@ Authorized pilot: ChatGPT / Claude / other MCP host
 
 Contains Windows, guest integration, Exosuit agent, approved applications, stable desktop settings, and versioned configuration. The base image is not modified during ordinary tasks.
 
+A component-only base update may derive a new version from an already accepted,
+generalized base. The source must remain read-only and must never be the writable mount;
+the derived copy is mounted offline with no network or VM, changes are confined to the
+fixed agent/launcher/SetupComplete paths, per-generation configuration must be absent,
+and the target is content-addressed and made read-only before publication. Derivation
+does not inherit acceptance: the new digest needs its own guest and lifecycle evidence.
+
 ### Encrypted personal-state disk
 
 Contains approved persistent state such as application settings, browser profile, personal dictionary, sanitized application maps, demonstration indexes, learned behavior profiles, and approved persistent sessions. This disk must be separable from disposable task data and protected at rest.
@@ -101,7 +108,7 @@ keyboardLayout: en-US
 dynamicResolutionAllowed: false
 ```
 
-The guest agent validates this contract before Teach, Shadow, or Pilot operation. A changed display contract invalidates coordinate-derived motor plans and requires fresh application mapping and validation.
+The guest agent validates this contract before Teach, Shadow, or Pilot operation. The host scene boundary also rejects any reported active-window, window, or element rectangle that extends outside the attested display. A changed display contract invalidates coordinate-derived motor plans and requires fresh application mapping and validation.
 
 ## Field identity and attestation
 
@@ -119,6 +126,98 @@ The host Field Manager creates a local attestation binding:
 
 The foundation implementation uses HMAC-SHA256 to prove local binding. This is not yet a complete hardware-rooted or remote attestation system. Future promotion may replace or wrap it with stronger key storage and VM identity evidence without changing the contract purpose.
 
+## Channel-key administration
+
+Channel-key rotation is a separate local-owner administration transaction. The
+request ID equals the rotation ID and binds the exact Field generation, current
+key ID, distinct next key ID, authenticated local transport, interactive owner
+presence, and a five-minute authorization window. Secret bytes remain owned by
+a provider; the coordinator accepts an opaque secret handle and excludes that
+handle and provider error text from exported state and results.
+
+The provider prepares the next key and obtains a guest acknowledgment before
+commit. A failed or malformed effect reconciles as prior-key active,
+next-key prepared, next-key active, or unknown. Prepared state rolls back;
+proven next-active state may commit locally; unknown or failed reconciliation
+blocks all key acceptance until local owner review. The current implementation
+has only a fake provider and is not a live ceremony or protected key store.
+
+Coordinator metadata can be persisted through a separate bounded file store.
+The store authenticates a base64 payload with HMAC-SHA256 over a domain
+separator and exact Field ID/generation, verifies the tag in fixed time before
+deserializing authority state, and replaces the file through an exclusive
+temporary file plus rename. This protects metadata only when the caller protects
+the separate integrity secret; Windows ACL/DPAPI/vault storage remains pending.
+
+The compiled Windows agent also contains a separate protected channel-secret
+file primitive. It encrypts secret bytes with DPAPI LocalMachine using
+domain-separated optional entropy derived from the exact Field ID, generation,
+key ID, and algorithm. The bounded JSON envelope contains ciphertext and public
+binding metadata only. Publication writes and flushes an exclusive temporary
+file, applies and verifies a non-inherited DACL containing only LocalSystem and
+Built-in Administrators, then atomically renames it. Reads verify that DACL and
+the public binding before decryption. LocalMachine DPAPI is not a defense against
+an administrator or SYSTEM; the DACL and Field isolation are required parts of
+the boundary. This primitive is wired only to the explicit conversion command
+and protected guest KVP reader; it is not wired to provisioning, the rotation
+coordinator, or MCP. Because an offline host cannot create guest-
+machine DPAPI ciphertext, conversion/provisioning must eventually execute under
+the authenticated guest LocalSystem service and must not retain plaintext.
+
+`FieldChannelSecretSeedConverter` is the explicit conversion transaction
+foundation. It requires the LocalSystem SID before reading, confines the target
+to exact `Config/channel-secret.txt`, rejects a Config root or target reparse
+point, and distinguishes protected-looking JSON from a printable ASCII seed.
+Only a trailing CR/LF is normalized. It writes through the protected store,
+reloads and compares the secret in fixed time, zeros working bytes, and on a
+later invocation verifies the protected envelope without falling back to seed
+parsing. Its result contains only Field/key binding, status, time, and ciphertext
+envelope digest.
+
+`FieldChannelSecretProtectionCommand` exposes that transaction through one
+fixed, explicit guest command. It accepts only the literal
+`C:\Exosuit\Config\guest-runtime.json` production path, verifies LocalSystem
+before configuration access, rejects Config/config-file reparse points and
+ambiguous JSON, and derives Field generation, key ID, and the exact seed path
+only from the bounded validated configuration. The command emits only the
+converter receipt. The fixed guest launcher invokes it before the KVP emitter;
+MCP and host-side provisioning cannot invoke it. Atomic replacement removes plaintext from the active file
+namespace but does not promise forensic secure erasure of prior filesystem
+blocks or snapshots.
+
+The guest KVP emitter uses `ProtectedFieldKvpSecretReader`. Before configuration
+access the runtime verifies its real process SID is LocalSystem and reuses the
+command's bounded, duplicate-rejecting, reparse-aware strict configuration
+loader. The reader then requires the literal runtime-config and channel-secret
+paths, denies Config or secret reparse points, and loads only through the
+Field/generation/key-bound protected store. Returned bytes must be bounded printable ASCII for cross-
+language channel compatibility and are zeroed when the emitter exits. There is
+no plaintext fallback. The current string-based channel-authentication API still
+creates a managed string that cannot be deterministically zeroed; a future byte-
+key API should remove that residual copy.
+
+Host-side KVP observation is a different authority and machine-protection
+domain. It still uses its separately provisioned host verification secret; it
+must not attempt to decrypt guest-machine DPAPI ciphertext. Host protected-key
+storage and rotation remain an independent required slice.
+
+`Start-ExosuitFieldGuest.ps1` is the guest startup transaction boundary. After
+bootstrap precheck and before any KVP emitter launch, it invokes the fixed
+protection command against the exact runtime configuration. It captures rather
+than prints the receipt, requires exactly one JSON value with the exact metadata
+and nested Field schemas, and checks Field ID/generation, key ID, conversion or
+already-protected status, lowercase ciphertext digest, and a bounded completion
+time. Any command, parsing, schema, binding, status, digest, or freshness failure
+stops startup before heartbeat. Restart is idempotent because the command
+verifies an already-protected envelope without rewriting it.
+
+The process-effect calls are isolated behind two narrow internal launcher
+adapters. A source-derived subprocess harness replaces only those marked
+adapters with inert fakes and runs the remaining launcher transaction under
+Windows PowerShell. This proves branch ordering and fail-before-emitter behavior
+without introducing a production test switch or alternate executable path.
+The adapters are not a policy extension and are not externally configurable.
+
 ## Field policy
 
 A policy is created outside the pilot and bound to one Field generation. It defines:
@@ -133,6 +232,32 @@ A policy is created outside the pilot and bound to one Field generation. It defi
 - explicit false values for host desktop access, host drive write, privilege escalation, and security-control changes.
 
 The pilot may operate within policy but cannot expand it.
+
+## Local Field owner lifecycle service
+
+The acceleration control plane is a separate host-side service authority. The owner
+installs or replaces its policy through one UAC-approved installation transaction.
+The policy expires within 180 days and fixes the owner SID, Field storage root,
+installed host configuration digest, installed lifecycle-script digests, allowed
+operations, development-access allowance, active-Field bound, and job freshness
+window.
+
+The service is not the Glove, guest agent, pilot, MCP gateway, or Field policy issuer.
+It has no network or MCP listener. Its only v1 operations are `provision`, authenticated
+read-only `observe`, and `destroy`, each bound to an exact Field ID and generation. It derives typed lifecycle
+confirmations itself and invokes only fixed installed PowerShell scripts and a fixed
+compiled observer. A
+job cannot name a command, executable, script, host configuration, evidence root, or
+storage root. Installed inputs are hash-verified before every job.
+
+The owner policy is standing pre-authorization for bounded development lifecycle
+execution; it is not consent or operating authority. The service cannot enter Teach,
+Shadow, Assisted, or Pilot mode; create or expand policy; grant recording consent;
+rotate keys; delete demonstrations; approve exports; enable full control; or weaken
+emergency stop. Job replay, expiry, future time, policy mismatch, generation mismatch,
+unexpected files, reparse points, and capacity overflow fail closed. Stopping the
+service cancels and kills its current lifecycle child; Glove and physical emergency
+stop remain independent.
 
 ## Operating modes
 
@@ -250,6 +375,34 @@ The guest maintains a versioned desktop scene graph containing:
 - visual-region references where enabled.
 
 Events update the graph incrementally. Every mutating action still re-resolves its target from fresh state.
+
+The first transport contract is deliberately structural-only. An authenticated
+`scene_observation` binds the exact Field generation, boot, Glove agent, and
+interactive Windows session; its durable channel sequence is the scene version.
+Window titles, element names/values, screenshots, and sensitive automation
+authority are rejected before replay or scene state advances. The LocalSystem
+Field service is a transport/environment authority in session 0, not the UIA
+producer. Live wiring therefore requires a separate session-local Glove agent
+and an authenticated bounded relay. The compiled guest now has a source-tested
+producer boundary that refuses LocalSystem/session 0, wrong sessions, non-UIA
+providers, non-observe modes, stale state, screenshots, inconsistent graphs,
+and collection or 12 KiB payload overflow. It strips titles, element names and
+values, provider warning text, and sensitive automation authority before a
+payload can reach the relay. The session launcher and relay are not implemented
+yet.
+
+The compiled relay signing boundary now distinguishes the two session domains.
+Only LocalSystem may sign a structural payload, but the payload client must bind
+an independently supplied active interactive session, local-user SID, positive
+PID, fixed `C:\Exosuit\Agent\Exosuit.Agent.exe` path, and exact lowercase SHA-256
+digest. The relay reparses with duplicate/unknown-property denial, reruns the
+producer boundary against the approved display, requires exact canonical
+structural representation, and gives scene envelopes a ten-second TTL. This is
+still a boundary component: no production pipe, launcher, or KVP scene writer is
+connected. A compiled Windows resolver can derive the connected pipe client's
+PID, positive session, token user SID, full image path, and executable SHA-256.
+It does not create or secure the pipe; ACL, framing, disconnect, and process-race
+acceptance remain mandatory before wiring.
 
 ## Local reflex engine
 

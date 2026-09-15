@@ -157,6 +157,8 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - artifact broker
 - Field audit
 - Field emergency stop integration
+- phase-correct stop evidence: channel healthy/degraded at L2, active execution after the live adapter, and active recording at L5
+- local Field owner lifecycle service with fixed job vocabulary
 
 ## Rejected shortcuts
 
@@ -176,6 +178,7 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - broad writable host drive mapping,
 - ordinary export of sensitive or untrusted artifacts,
 - arbitrary shell provisioning through MCP,
+- generic privileged broker or user-supplied service command/script path,
 - calling contract tests Hyper-V validation,
 - calling Teach recordings Pilot validation,
 - treating behavioral similarity as owner authorization or identity proof.
@@ -189,6 +192,10 @@ The retrieval-backed Shadow baseline is a separate predict-or-abstain component.
 - `src/demonstration.ts` — consent-bound episode, event bounds, ordering, redaction.
 - `src/encryptedDemonstrationStore.ts` — authenticated encrypted terminal storage and deletion.
 - `src/fieldScene.ts` — versioned scene/readiness foundation.
+- `src/fieldSceneObservation.ts` and `src/fieldSceneChannel.ts` — structural-only scene adaptation plus authenticated exact-Field/boot/agent/session receipt; runtime emission remains disabled.
+- `apps/windows-agent/FieldSceneProducerBoundary.cs` — session-bound, non-SYSTEM, observe-only structural payload sanitizer and KVP-safe byte-budget guard; launcher/relay remains disabled.
+- `apps/windows-agent/FieldSceneRelayBoundary.cs` — SYSTEM-only signing boundary with separate interactive PID/session/SID/fixed-binary binding and strict canonical revalidation; publication remains disabled.
+- `apps/windows-agent/FieldSceneRelayWindowsClientResolver.cs` — connected-pipe Windows PID/session/token-SID/image-path/digest derivation; production pipe ACL/framing and race acceptance remain disabled.
 - `src/shadowLearning.ts` — non-executing prediction comparison and metrics.
 - `src/fieldPathScope.ts` — adapted Windows path-scope guard.
 - `src/fieldArtifactBroker.ts` — bounded in-memory transfer contract.

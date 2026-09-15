@@ -4,6 +4,17 @@ namespace Exosuit.Agent.Tests;
 
 public sealed class FieldChannelFoundationTests
 {
+    [Fact]
+    public void SceneObservationUsesTheSharedAuthenticatedWireName()
+    {
+        var envelope = FieldChannelAuthentication.Create(
+            Field, FieldChannelDirection.GuestToHost, 1, FieldChannelMessageType.SceneObservation,
+            new Dictionary<string, object?> { ["contractVersion"] = 1 }, "field-key-test", Secret,
+            DateTimeOffset.Parse("2026-08-10T18:00:00.000Z"), TimeSpan.FromSeconds(30));
+
+        Assert.Contains("\"messageType\":\"scene_observation\"", FieldKvpRuntime.SerializeEnvelope(envelope));
+    }
+
     private static readonly FieldReference Field = new(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), 1);
     private const string Secret = "field-channel-test-secret-that-is-at-least-thirty-two-characters";
 

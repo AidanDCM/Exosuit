@@ -1,0 +1,153 @@
+ {
+   "note": "Generated from the real C# producer boundary and channel signing path. FieldSceneWireContractTests (C#) and fieldSceneWireContract.test.ts (TS) are both asserted against this file; a drift in either implementation fails one of them.",
+   "secret": "scene-wire-contract-secret-that-is-at-least-thirty-two-characters",
+   "expectedKeyId": "scene-key-1",
+   "expectedDirection": "guest_to_host",
+   "verifyAt": "2026-08-11T12:00:03.000Z",
+   "receiver": {
+     "field": {
+       "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+       "fieldGeneration": 3
+     },
+     "display": {
+       "monitorCount": 1,
+       "width": 1920,
+       "height": 1080,
+       "scalePercent": 100,
+       "browserZoomPercent": 100,
+       "keyboardLayout": "en-US",
+       "dynamicResolutionAllowed": false
+     },
+     "agentId": "glove-agent",
+     "windowsSessionId": "2"
+   },
+   "heartbeat": {
+     "contractVersion": 1,
+     "field": {
+       "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+       "fieldGeneration": 3
+     },
+     "agentId": "glove-agent",
+     "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+     "sequence": 20,
+     "observedAt": "2026-08-11T12:00:01.000Z",
+     "lifecycle": "ready",
+     "desktopReady": true,
+     "sessionLocked": false,
+     "secureDesktopActive": false,
+     "inputQueueDepth": 0,
+     "pendingCommandCount": 0,
+     "workingSetBytes": 1000
+   },
+   "envelope": {
+     "contractVersion": 1,
+     "messageId": "ba9cbb70-dc8d-4cb0-9fb6-8ba8b5ac866b",
+     "field": {
+       "fieldId": "4401b702-334f-475e-b867-b7d06798443d",
+       "fieldGeneration": 3
+     },
+     "direction": "guest_to_host",
+     "sequence": 7,
+     "messageType": "scene_observation",
+     "sentAt": "2026-08-11T12:00:01.000Z",
+     "expiresAt": "2026-08-11T12:00:11.000Z",
+     "nonce": "KjKud_rjqjtv1BBRwCwtXA",
+     "keyId": "scene-key-1",
+     "payloadHash": "9614efb7f65272b56a0dac57a0d3c4c649c5f29e61aadf850e7c31fd3e848001",
+     "payload": {
+       "contractVersion": 1,
+       "bootId": "29a19dbc-5021-4dc3-8979-0026660fad17",
+       "agentId": "glove-agent",
+       "windowsSessionId": "2",
+       "observation": {
+         "observationId": "observation-1",
+         "capturedAt": "2026-08-11T12:00:00.000Z",
+         "mode": "observe",
+         "provider": "windows-ui-automation",
+         "activeWindow": {
+           "id": "window-1",
+           "title": "",
+           "processName": "notepad",
+           "processId": 4321,
+           "isActive": true,
+           "isMinimized": false,
+           "bounds": {
+             "x": 0,
+             "y": 0,
+             "width": 1920,
+             "height": 1080
+           }
+         },
+         "windows": [
+           {
+             "id": "window-1",
+             "title": "",
+             "processName": "notepad",
+             "processId": 4321,
+             "isActive": true,
+             "isMinimized": false,
+             "bounds": {
+               "x": 0,
+               "y": 0,
+               "width": 1920,
+               "height": 1080
+             }
+           }
+         ],
+         "elements": [
+           {
+             "id": "element-1",
+             "windowId": "window-1",
+             "name": "",
+             "controlType": "Button",
+             "automationId": "save-button",
+             "enabled": true,
+             "focused": true,
+             "offscreen": false,
+             "isSensitive": false,
+             "bounds": {
+               "x": 10,
+               "y": 10,
+               "width": 120,
+               "height": 32
+             },
+             "source": "accessibility",
+             "supportedActions": [
+               "invoke_element"
+             ]
+           },
+           {
+             "id": "element-2",
+             "windowId": "window-1",
+             "name": "[SENSITIVE]",
+             "controlType": "Edit",
+             "enabled": true,
+             "focused": false,
+             "offscreen": false,
+             "isSensitive": true,
+             "bounds": {
+               "x": 10,
+               "y": 60,
+               "width": 240,
+               "height": 32
+             },
+             "source": "accessibility",
+             "supportedActions": []
+           }
+         ],
+         "warnings": [
+           "UI text and provider warning text were removed before structural Field scene transport."
+         ]
+       },
+       "cursor": {
+         "x": 640,
+         "y": 480,
+         "visible": true
+       },
+       "modal": {
+         "present": false
+       }
+     },
+     "signature": "UCSi6KoRNrPMd3APXNTjTcTFULGocZUmxpvrL7FOP1o"
+   }
+ }

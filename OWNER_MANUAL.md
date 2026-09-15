@@ -104,6 +104,18 @@ Fastest disable paths:
 6. unset `EXOSUIT_ENABLE_PHYSICAL_INPUT`,
 7. rotate `EXOSUIT_AGENT_TOKEN`.
 
+If the accelerated Field owner service is installed, stop `ExosuitFieldOwner` to block
+new lifecycle jobs. Full removal requires an elevated owner console:
+
+```powershell
+.\scripts\windows\Uninstall-ExosuitFieldOwnerService.ps1 `
+  -TypedConfirmation 'UNINSTALL EXOSUIT FIELD OWNER SERVICE'
+```
+
+This preserves sanitized service evidence and removes the service registration,
+installed executable, policy, host-configuration copy, and queue. It does not delete
+Field generations, base images, personal-state disks, or their evidence.
+
 ## Known limitations before local validation
 
 - Windows UI Automation assembly behavior has only been compile-tested in GitHub until Codex runs it locally.

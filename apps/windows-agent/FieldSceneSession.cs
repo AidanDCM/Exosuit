@@ -1,0 +1,448 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Diagnostics;
+using System.Security.AccessControl;
+using System.Security.Principal;
+
+namespace Exosuit.Agent;
+
+/// <summary>
+/// Opt-in configuration for live scene production.
+///
+/// Scene production is off unless this file exists and says otherwise. That default matters:
+/// the guest runtime as it stands produced the CHN-001 live evidence, and an unconfigured guest
+/// must behave exactly as it did then. Enabling scene production is a deliberate act, not a
+/// side effect of deploying a newer agent.
+/// </summary>
+public sealed record FieldSceneSessionConfiguration(
+    int ContractVersion,
+    bool Enabled,
+    int ExpectedSessionId,
+    string InteractiveUserSid,
+    string ProducerExecutablePath,
+    string ProducerExecutableSha256,
+    FieldDisplayContract Display,
+    int PollIntervalMilliseconds)
+{
+    /// <summary>Where the guest looks. Absent means disabled.</summary>
+    public const string ProductionPath = @"C:\Exosuit\Config\scene-session.json";
+
+    /// <summary>
+    /// Validates the session. <paramref name="expectedProducerPath"/> defaults to the path the
+    /// relay actually demands; it is a parameter only so tests can exercise the rest of the rules
+    /// without installing a binary at the production location. Production callers never pass it.
+    /// </summary>
+    public void Validate(string? expectedProducerPath = null)
+    {
+        if (ContractVersion != 1)
+            throw new InvalidOperationException("Unsupported Field scene session contract version.");
+        Display.Validate();
+        if (ExpectedSessionId <= 0)
+            throw new InvalidOperationException("Field scene session requires an interactive session; session zero cannot observe a desktop.");
+        if (string.IsNullOrWhiteSpace(InteractiveUserSid) ||
+            !InteractiveUserSid.StartsWith("S-1-5-21-", StringComparison.Ordinal))
+            throw new InvalidOperationException("Field scene session requires an exact local interactive-user SID.");
+        if (string.IsNullOrWhiteSpace(ProducerExecutablePath))
+            throw new InvalidOperationException("Field scene session requires a producer executable path.");
+        // The relay accepts scenes only from the fixed compiled agent path. Checking it here means
+        // a wrong path is refused when the session is authored, rather than authoring cleanly,
+        // launching cleanly, and then having every scene silently rejected at the relay.
+        var requiredPath = expectedProducerPath ?? FieldSceneRelayBoundary.ProductionAgentPath;
+        if (!string.Equals(
+                Path.GetFullPath(ProducerExecutablePath),
+                Path.GetFullPath(requiredPath),
+                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Field scene producer must be the fixed compiled agent at {requiredPath}; "
+                + $"the relay rejects scenes from {ProducerExecutablePath}.");
+        if (ProducerExecutableSha256.Length != 64 ||
+            ProducerExecutableSha256.Any(character => character is not (>= '0' and <= '9') and not (>= 'a' and <= 'f')))
+            throw new InvalidOperationException("Field scene session producer digest must be lowercase SHA-256.");
+        if (PollIntervalMilliseconds is < 250 or > 10_000)
+            throw new InvalidOperationException("Field scene poll interval must be from 250 through 10,000 milliseconds.");
+    }
+
+    public FieldSceneProducerLaunchPolicy ToLaunchPolicy() =>
+        new(ExpectedSessionId, InteractiveUserSid, ProducerExecutablePath, ProducerExecutableSha256,
+            FieldSceneProducerConfiguration.ProductionPath);
+
+    /// <summary>
+    /// The configuration the launched producer reads. Built from the session and the current boot,
+    /// so a producer cannot be started for a boot the session does not belong to.
+    /// </summary>
+    public FieldSceneProducerConfiguration ToProducerConfiguration(FieldReference field, Guid bootId, string agentId) =>
+        new(1, field, bootId, agentId, ExpectedSessionId, Display, PollIntervalMilliseconds);
+
+    /// <summary>
+    /// Reads the configuration, or returns null when the file is absent. A malformed or invalid
+    /// file is an error rather than a silent disable: a guest that was meant to produce scenes
+    /// and quietly does not is worse than one that refuses to start.
+    /// </summary>
+    public static FieldSceneSessionConfiguration? ReadOptional(string path, string? expectedProducerPath = null)
+    {
+        if (!File.Exists(path)) return null;
+        var configuration = JsonSerializer.Deserialize<FieldSceneSessionConfiguration>(
+            File.ReadAllText(path), SessionJson)
+            ?? throw new InvalidOperationException("Field scene session configuration is empty.");
+        configuration.Validate(expectedProducerPath);
+        return configuration.Enabled ? configuration : null;
+    }
+
+    private static readonly JsonSerializerOptions SessionJson = CreateSessionJson();
+
+    private static JsonSerializerOptions CreateSessionJson()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            PropertyNameCaseInsensitive = false,
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        };
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
+        return options;
+    }
+}
+
+/// <summary>
+/// The side-effecting operations one scene cycle needs. Abstracted so the cycle's ordering and
+/// failure handling are testable without a guest, a producer, or a registry.
+/// </summary>
+public interface IFieldSceneSessionPorts
+{
+    /// <summary>Creates the one-use listener before a producer can attempt its connection.</summary>
+    void ArmSceneIntake(Guid bootId);
+
+    /// <summary>Releases an armed listener when launch fails before acceptance can own it.</summary>
+    void DisarmSceneIntake();
+
+    /// <summary>Launches the producer into the approved interactive session.</summary>
+    FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy);
+
+    /// <summary>Writes one bounded, content-free diagnostic for the latest failed scene cycle.</summary>
+    void RecordFailure(string reason);
+
+    /// <summary>Accepts one bounded frame and returns the signed scene envelope.</summary>
+    Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken);
+
+    /// <summary>Publishes the signed envelope on the guest KVP scene value.</summary>
+    void PublishScene(FieldChannelEnvelope envelope);
+}
+
+/// <summary>
+/// The production implementation: real launcher, real one-way intake, real relay signing, real
+/// KVP write. Each scene gets a fresh intake because the intake deliberately allows one
+/// connection for its lifetime.
+/// </summary>
+public sealed class WindowsFieldSceneSessionPorts(
+    FieldKvpRuntimeConfiguration channel,
+    FieldSceneSessionConfiguration session,
+    string channelSecret,
+    string? callerSid,
+    Guid bootId) : IFieldSceneSessionPorts
+{
+    internal const int CleanProducerExitAcceptanceGraceMilliseconds = 60_000;
+    internal const string FailureLogPath = @"C:\Exosuit\Logs\scene-runtime-error.log";
+    internal const string StageLogPath = @"C:\Exosuit\Logs\scene-runtime-stage.log";
+    private FieldSceneRelayPipeServer? armedIntake;
+    private int? launchedProducerProcessId;
+
+    public void ArmSceneIntake(Guid requestedBootId)
+    {
+        if (requestedBootId != bootId)
+            throw new InvalidOperationException("Field scene intake cannot arm for a different boot identity.");
+        if (armedIntake is not null)
+            throw new InvalidOperationException("Field scene intake is already armed.");
+        armedIntake = new FieldSceneRelayPipeServer(
+            channel.Field, bootId, session.InteractiveUserSid, callerSid);
+    }
+
+    public void DisarmSceneIntake()
+    {
+        var intake = armedIntake;
+        armedIntake = null;
+        if (intake is not null) intake.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    public void RecordFailure(string reason)
+    {
+        var bounded = string.IsNullOrWhiteSpace(reason) ? "scene cycle failed" : reason.Trim();
+        if (bounded.Length > 1_000) bounded = bounded[..1_000];
+        var directory = Path.GetDirectoryName(FailureLogPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(FailureLogPath, $"{DateTimeOffset.UtcNow:O} {bounded}{Environment.NewLine}");
+    }
+
+    public FieldSceneProducerLaunchResult LaunchProducer(FieldSceneProducerLaunchPolicy policy)
+    {
+        // Written before the launch, because the launcher refuses to start a producer whose
+        // configuration is absent. A producer started without one runs the general agent host and
+        // never connects to the intake — a launch that looks successful and produces nothing.
+        var producer = session.ToProducerConfiguration(channel.Field, bootId, channel.AgentId);
+        var directory = Path.GetDirectoryName(FieldSceneProducerConfiguration.ProductionPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(
+            FieldSceneProducerConfiguration.ProductionPath,
+            JsonSerializer.Serialize(producer, FieldSceneProducerConfiguration.Json));
+        SealProducerConfiguration(
+            FieldSceneProducerConfiguration.ProductionPath,
+            session.InteractiveUserSid);
+
+        var result = FieldSceneProducerLauncher.Launch(policy, callerSid);
+        launchedProducerProcessId = result.ProcessId;
+        return result;
+    }
+
+    public async Task<FieldChannelEnvelope> AcceptAndSignSceneAsync(Guid bootId, CancellationToken cancellationToken)
+    {
+        var policy = new FieldSceneRelayPolicy(
+            channel.Field,
+            bootId,
+            channel.AgentId,
+            session.ExpectedSessionId,
+            session.InteractiveUserSid,
+            session.Display,
+            session.ProducerExecutablePath,
+            session.ProducerExecutableSha256);
+
+        var intake = armedIntake
+            ?? throw new InvalidOperationException("Field scene intake was not armed before producer launch.");
+        armedIntake = null;
+        await using (intake)
+        {
+            var processId = launchedProducerProcessId
+                ?? throw new InvalidOperationException("Field scene intake has no exact launched producer PID.");
+            // Keep the exact PID bound for as long as the supervisor considers this producer
+            // alive. A failed or completed one-use intake is followed by another cycle; clearing
+            // here made that next intake lose the Windows-derived launch identity while the same
+            // supervised process was still running. A real relaunch replaces this value.
+            using var producer = GetProducerProcess(processId);
+            using var intakeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var accept = FieldSceneRelayIntakeService.AcceptAndSignSingleSceneAsync(
+                intake, policy, channel, channelSecret,
+                FieldKvpRuntime.ReserveNextGuestSequence(channel), callerSid,
+                now: null,
+                cancellationToken: intakeCancellation.Token,
+                recordStage: RecordStage);
+            var exited = producer.WaitForExitAsync(cancellationToken);
+            return await AwaitFrameOrProducerExitAsync(
+                accept, exited, () => producer.ExitCode, intakeCancellation).ConfigureAwait(false);
+        }
+    }
+
+    internal static void SealProducerConfiguration(string path, string interactiveUserSid)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Field scene producer configuration ACLs require Windows.");
+
+        var producer = new SecurityIdentifier(interactiveUserSid);
+        var localSystem = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+        var administrators = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+        var security = new FileSecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new FileSystemAccessRule(
+            localSystem, FileSystemRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(
+            administrators, FileSystemRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(
+            producer, FileSystemRights.ReadAndExecute, AccessControlType.Allow));
+        new FileInfo(path).SetAccessControl(security);
+    }
+
+    internal static async Task<FieldChannelEnvelope> AwaitFrameOrProducerExitAsync(
+        Task<FieldChannelEnvelope> accept,
+        Task exited,
+        Func<int> exitCode,
+        CancellationTokenSource intakeCancellation)
+    {
+        ArgumentNullException.ThrowIfNull(accept);
+        ArgumentNullException.ThrowIfNull(exited);
+        ArgumentNullException.ThrowIfNull(exitCode);
+        ArgumentNullException.ThrowIfNull(intakeCancellation);
+
+        var completed = await Task.WhenAny(accept, exited).ConfigureAwait(false);
+        if (completed == accept || accept.IsCompletedSuccessfully)
+            return await accept.ConfigureAwait(false);
+
+        var producerExitCode = exitCode();
+        if (producerExitCode == 0)
+        {
+            // The one-shot producer is expected to close after writing. The relay can still be
+            // hashing the pinned self-contained executable when that clean exit arrives. Let the
+            // already-started accept finish within a fixed bound; no second frame or retry is made.
+            try
+            {
+                return await accept.WaitAsync(
+                    TimeSpan.FromMilliseconds(CleanProducerExitAcceptanceGraceMilliseconds),
+                    intakeCancellation.Token).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                await intakeCancellation.CancelAsync().ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    "Field scene producer exited cleanly but no verified frame completed within the bounded acceptance grace period.");
+            }
+        }
+
+        await intakeCancellation.CancelAsync().ConfigureAwait(false);
+        try { await accept.ConfigureAwait(false); }
+        catch (OperationCanceledException) when (intakeCancellation.IsCancellationRequested) { }
+        throw new InvalidOperationException(
+            $"Field scene producer exited before delivering a frame (exit code {producerExitCode}).");
+    }
+
+    private static Process GetProducerProcess(int processId)
+    {
+        try
+        {
+            return Process.GetProcessById(processId);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidOperationException(
+                "Field scene producer exited before intake could observe its process.", exception);
+        }
+    }
+
+    public void PublishScene(FieldChannelEnvelope envelope) =>
+        PublishSceneWithStage(envelope);
+
+    private void PublishSceneWithStage(FieldChannelEnvelope envelope)
+    {
+        FieldKvpRuntime.PublishScene(channel, envelope, callerSid);
+        RecordStage("scene_published");
+    }
+
+    private static void RecordStage(string stage)
+    {
+        // Stage values are fixed source literals: never include UI content, paths, identities,
+        // payload bytes, secrets, or exception text in this diagnostic surface.
+        var directory = Path.GetDirectoryName(StageLogPath);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(StageLogPath, $"{DateTimeOffset.UtcNow:O} {stage}{Environment.NewLine}");
+    }
+}
+
+/// <summary>
+/// One scene production cycle: supervise, launch if needed, accept, publish, record.
+///
+/// The order is deliberate and fail-closed. Supervision runs first, so a change that happened
+/// since the last cycle invalidates before anything new is accepted — otherwise a scene could be
+/// published into a lifecycle that was already stale. A launch never implies readiness; only a
+/// published scene that the lifecycle accepts does.
+///
+/// A failure anywhere in the cycle invalidates rather than being retried in place. Retrying a
+/// scene acceptance whose effect is unknown is exactly the blind retry the safety rules forbid:
+/// the producer may already have written a frame, and accepting a second one would leave two
+/// scenes with no way to tell which described the desktop.
+/// </summary>
+public sealed class FieldSceneSessionRunner(
+    FieldSceneSessionConfiguration configuration,
+    FieldSceneSupervisor supervisor,
+    IFieldSceneSessionPorts ports)
+{
+    private readonly FieldSceneSessionConfiguration configuration =
+        configuration ?? throw new ArgumentNullException(nameof(configuration));
+    private readonly FieldSceneSupervisor supervisor =
+        supervisor ?? throw new ArgumentNullException(nameof(supervisor));
+    private readonly IFieldSceneSessionPorts ports = ports ?? throw new ArgumentNullException(nameof(ports));
+
+    /// <summary>Runs one cycle. Never throws for an expected failure; it invalidates instead.</summary>
+    public async Task RunCycleAsync(CancellationToken cancellationToken)
+    {
+        if (supervisor.IsStopped) return;
+
+        // Supervision first: act on what changed before accepting anything new.
+        supervisor.Poll();
+        if (supervisor.IsStopped) return;
+
+        // A reboot ends this session outright. Relaunching into the same lifecycle would
+        // re-establish readiness against a boot that no longer exists; the caller must build a
+        // new session for the new boot.
+        if (supervisor.IsBootStale)
+        {
+            supervisor.Stop("boot identity changed; this scene session is bound to a boot that has ended");
+            return;
+        }
+
+        try
+        {
+            // The producer has one connection attempt. Arm the one-use listener first so a
+            // successfully created process cannot race ahead of the server and exit silently.
+            ports.ArmSceneIntake(supervisor.State.BootId);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            var reason = $"scene intake could not be armed: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
+            return;
+        }
+
+        if (!supervisor.State.ProducerRunning)
+        {
+            try
+            {
+                supervisor.RecordLaunch(ports.LaunchProducer(configuration.ToLaunchPolicy()));
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                ports.DisarmSceneIntake();
+                var reason = $"producer could not be launched: {exception.Message}";
+                ports.RecordFailure(reason);
+                supervisor.NotifyProducerUnavailable(reason);
+                return;
+            }
+        }
+
+        FieldChannelEnvelope envelope;
+        try
+        {
+            envelope = await ports.AcceptAndSignSceneAsync(supervisor.State.BootId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            var reason = $"scene could not be accepted: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
+            return;
+        }
+
+        try
+        {
+            ports.PublishScene(envelope);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The scene may or may not have reached the value. Never re-publish blindly;
+            // invalidate and let the next cycle produce a fresh scene.
+            var reason = $"scene could not be published: {exception.Message}";
+            ports.RecordFailure(reason);
+            supervisor.NotifyProducerUnavailable(reason);
+            return;
+        }
+
+        var desktop = supervisor.State;
+        supervisor.RecordScene(envelope, desktop.BootId, desktop.SessionId);
+    }
+
+    /// <summary>Runs cycles at the configured cadence until cancelled, then tears down.</summary>
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && !supervisor.IsStopped)
+            {
+                await RunCycleAsync(cancellationToken).ConfigureAwait(false);
+                await Task.Delay(configuration.PollIntervalMilliseconds, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is a normal stop, not a fault.
+        }
+        finally
+        {
+            if (!supervisor.IsStopped) supervisor.Stop("scene session ended");
+        }
+    }
+}

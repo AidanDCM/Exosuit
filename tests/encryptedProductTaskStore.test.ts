@@ -93,7 +93,7 @@ describe("encrypted product task storage", () => {
     const [name] = await readdir(root);
     const location = path.join(root, name!);
     const envelope = JSON.parse(await readFile(location, "utf8")) as { ciphertext: string };
-    envelope.ciphertext = `${envelope.ciphertext.slice(0, -2)}AA`;
+    envelope.ciphertext = `${envelope.ciphertext.startsWith("A") ? "B" : "A"}${envelope.ciphertext.slice(1)}`;
     await writeFile(location, JSON.stringify(envelope), "utf8");
 
     expect(await store.list()).toEqual([]);

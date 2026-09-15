@@ -42,6 +42,17 @@ export function resolveDotnetSdk(): { readonly path: string; readonly version: s
 export const REQUIRED_CYCLES = 3;
 
 /**
+ * Smallest dynamic-memory profile accepted by the authoritative Field plan.
+ * Keep this in the pure module so tests can prevent the live harness from
+ * drifting below the schema again.
+ */
+export const HYP001_MEMORY = {
+  minimumMemoryMiB: 2_048,
+  startupMemoryMiB: 4_096,
+  maximumMemoryMiB: 4_096,
+} as const;
+
+/**
  * Minimum free physical memory before provisioning.
  *
  * The harness pins a 2 GiB startup allocation because the plan builder's 8 GiB

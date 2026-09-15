@@ -7,7 +7,11 @@ param(
     [string]$LaunchScriptPath = 'C:\Exosuit\Agent\Start-ExosuitFieldGuest.ps1',
 
     [Parameter()]
-    [switch]$Start
+    [switch]$Start,
+
+    [Parameter()]
+    [ValidateSet('Automatic', 'Manual')]
+    [string]$StartupType = 'Automatic'
 )
 
 Set-StrictMode -Version Latest
@@ -43,6 +47,8 @@ $allowedRegisteredBinaryPaths = @(
     $binaryPath,
     "$resolvedAgentPath --field-guest-service"
 )
+$scStartMode = if ($StartupType -ceq 'Automatic') { 'auto' } else { 'demand' }
+$expectedStartMode = if ($StartupType -ceq 'Automatic') { 'Auto' } else { 'Manual' }
 
 function Invoke-ServiceControl {
     param([Parameter(Mandatory)][string[]]$Arguments)
@@ -53,7 +59,11 @@ function Invoke-ServiceControl {
     $output
 }
 
-if ($PSCmdlet.ShouldProcess($serviceName, 'Install the fixed LocalSystem automatic Field guest service and remove the legacy task')) {
+if ($Start -and $StartupType -cne 'Automatic') {
+    throw 'Starting the Field guest service requires Automatic startup.'
+}
+
+if ($PSCmdlet.ShouldProcess($serviceName, "Install the fixed LocalSystem $StartupType Field guest service and remove the legacy task")) {
     $legacyTask = Get-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
     if ($legacyTask) {
         Stop-ScheduledTask -TaskName $legacyTaskName -ErrorAction SilentlyContinue
@@ -71,11 +81,11 @@ if ($PSCmdlet.ShouldProcess($serviceName, 'Install the fixed LocalSystem automat
         }
         Invoke-ServiceControl -Arguments @(
             'config', $serviceName, 'binPath=', $binaryPath,
-            'type=', 'own', 'start=', 'auto', 'obj=', 'LocalSystem') | Out-Null
+            'type=', 'own', 'start=', $scStartMode, 'obj=', 'LocalSystem') | Out-Null
     } else {
         Invoke-ServiceControl -Arguments @(
             'create', $serviceName, 'binPath=', $binaryPath,
-            'type=', 'own', 'start=', 'auto', 'obj=', 'LocalSystem',
+            'type=', 'own', 'start=', $scStartMode, 'obj=', 'LocalSystem',
             'DisplayName=', 'Exosuit Field Guest Runtime') | Out-Null
     }
     Invoke-ServiceControl -Arguments @('description', $serviceName, 'Exosuit fixed local Field guest launcher') | Out-Null
@@ -84,7 +94,7 @@ if ($PSCmdlet.ShouldProcess($serviceName, 'Install the fixed LocalSystem automat
 
     $registered = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" -ErrorAction Stop
     if ([string]$registered.StartName -cne 'LocalSystem' -or
-        [string]$registered.StartMode -cne 'Auto' -or
+        [string]$registered.StartMode -cne $expectedStartMode -or
         $allowedRegisteredBinaryPaths -cnotcontains [string]$registered.PathName) {
         throw 'Installed Field guest service does not match the reviewed LocalSystem execution contract.'
     }

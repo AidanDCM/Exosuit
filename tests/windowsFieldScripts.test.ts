@@ -1,4 +1,7 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { fieldBootstrapCheckNameSchema } from "../src/fieldBootstrap.js";
 
@@ -6,7 +9,255 @@ async function script(name: string): Promise<string> {
   return readFile(`scripts/windows/${name}`, "utf8");
 }
 
+async function runGuestStartupHarness(
+    scenario: "converted" | "already_protected" | "command_failure" | "malformed_receipt" | "post_publication_interruption" | "locked_then_unlocked" | "never_unlocked",
+) {
+  const root = await mkdtemp(join(tmpdir(), "exosuit-field-startup-"));
+  const agentDirectory = join(root, "Agent");
+  const configDirectory = join(root, "Config");
+  const logsDirectory = join(root, "Logs");
+  await Promise.all([
+    mkdir(agentDirectory, { recursive: true }),
+    mkdir(configDirectory, { recursive: true }),
+    mkdir(logsDirectory, { recursive: true }),
+  ]);
+  const source = await script("Start-ExosuitFieldGuest.ps1");
+  const adapterStart = source.indexOf("# START FIELD PROCESS ADAPTERS");
+  const adapterEndMarker = "# END FIELD PROCESS ADAPTERS";
+  const adapterEnd = source.indexOf(adapterEndMarker);
+  if (adapterStart < 0 || adapterEnd < adapterStart) throw new Error("Field process adapter markers are missing.");
+  const injectedAdapters = String.raw`# START FIELD PROCESS ADAPTERS
+function Invoke-FieldSecretProtectionProcess {
+    param([string]$AgentPath, [string]$RuntimeConfigPath, [string]$RuntimeErrorLog)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'protect' -Encoding ascii
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'command_failure') {
+        return [pscustomobject]@{ output = @(); exitCode = 23 }
+    }
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'malformed_receipt') {
+        return [pscustomobject]@{ output = @('{'); exitCode = 0 }
+    }
+    if ($env:EXOSUIT_HARNESS_SCENARIO -ceq 'post_publication_interruption') {
+        return [pscustomobject]@{ output = @(); exitCode = 0 }
+    }
+    $receipt = Get-Content -LiteralPath $env:EXOSUIT_HARNESS_RECEIPT -Raw
+    return [pscustomobject]@{ output = @($receipt); exitCode = 0 }
+}
+function Start-FieldGuestProcess {
+    param([string]$AgentPath, [string]$RuntimeConfigPath, [string]$RuntimeErrorLog)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'guest' -Encoding ascii
+    return [pscustomobject]@{ HasExited = $false; ExitCode = 0 }
+}
+function Test-FieldGuestProcessExited {
+    param($Process)
+    return [bool]$Process.HasExited
+}
+function Wait-FieldGuestProcess {
+    param($Process)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'wait' -Encoding ascii
+    return [int]$Process.ExitCode
+}
+function Stop-FieldGuestProcess {
+    param($Process)
+    Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'stop' -Encoding ascii
+}
+# END FIELD PROCESS ADAPTERS`;
+  const testSource = `${source.slice(0, adapterStart)}${injectedAdapters}${source.slice(adapterEnd + adapterEndMarker.length)}`
+    .replaceAll("C:\\Exosuit", root);
+  const launcherPath = join(root, "Start-ExosuitFieldGuest.Harness.ps1");
+  const bootstrapPath = join(agentDirectory, "Initialize-ExosuitFieldGuest.ps1");
+  const agentPath = join(agentDirectory, "Exosuit.Agent.exe");
+  const manifestPath = join(configDirectory, "manifest.json");
+  const runtimePath = join(configDirectory, "runtime.json");
+  const launchPath = join(configDirectory, "launch.json");
+  const reportPath = join(logsDirectory, "bootstrap-report.json");
+  const receiptPath = join(logsDirectory, "receipt.json");
+  const callsPath = join(logsDirectory, "calls.log");
+  const fieldId = "3b9690ea-d2df-4ee8-9420-d52af32fa1c8";
+  const keyId = "field-key-0001";
+  await writeFile(launcherPath, testSource, "utf8");
+  await writeFile(
+    bootstrapPath,
+    String.raw`[CmdletBinding(SupportsShouldProcess=$true)]
+param([string]$ManifestPath, [string]$ManifestDigest, [string]$ReportPath)
+Add-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS -Value 'bootstrap' -Encoding ascii
+$bootstrapCalls = @(Get-Content -LiteralPath $env:EXOSUIT_HARNESS_CALLS | Where-Object { $_ -ceq 'bootstrap' }).Count
+$unlocked = $env:EXOSUIT_HARNESS_SCENARIO -cne 'never_unlocked' -and ($env:EXOSUIT_HARNESS_SCENARIO -cne 'locked_then_unlocked' -or $bootstrapCalls -ge 2)
+$passed = if ($unlocked) { 'true' } else { 'false' }
+[IO.File]::WriteAllText($ReportPath, ('{"checks":[{"name":"session_unlocked","passed":' + $passed + '}]}'), [Text.UTF8Encoding]::new($false))`,
+    "utf8",
+  );
+  await writeFile(agentPath, "inert harness placeholder", "utf8");
+  await writeFile(manifestPath, "{}", "utf8");
+  await writeFile(
+    runtimePath,
+    JSON.stringify({ contractVersion: 1, bootstrapReportPath: reportPath, field: { fieldId, fieldGeneration: 7 }, keyId }),
+    "utf8",
+  );
+  await writeFile(launchPath, JSON.stringify({ contractVersion: 1, manifestPath, runtimeConfigPath: runtimePath }), "utf8");
+  await writeFile(
+    receiptPath,
+    JSON.stringify({
+      completedAt: new Date().toISOString(),
+      contractVersion: 1,
+      ciphertextEnvelopeSha256: "a".repeat(64),
+      field: { fieldGeneration: 7, fieldId },
+      keyId,
+      status: scenario === "already_protected" ? "already_protected" : "converted",
+    }),
+    "utf8",
+  );
+  const spawnHarness = () =>
+    spawnSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        launcherPath,
+        "-LaunchConfigPath",
+        launchPath,
+        "-DesktopReadyTimeoutSeconds",
+        scenario === "locked_then_unlocked" ? "10" : "1",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EXOSUIT_HARNESS_CALLS: callsPath,
+          EXOSUIT_HARNESS_RECEIPT: receiptPath,
+          EXOSUIT_HARNESS_SCENARIO: scenario,
+        },
+      },
+    );
+  let result = spawnHarness();
+  // A saturated full-suite worker can fail to allocate powershell.exe before
+  // product code starts. Retry only that infrastructure condition; once a child
+  // starts, its first result is authoritative and is never retried.
+  for (let attempt = 1; result.status === null && result.error && attempt < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+    result = spawnHarness();
+  }
+  const calls = await readFile(callsPath, "utf8").catch(() => "");
+  await rm(root, { recursive: true, force: true });
+  return { ...result, calls: calls.trim().split(/\r?\n/).filter(Boolean) };
+}
+
 describe("Windows Field administration scripts", () => {
+  it("derives a new immutable base only from an exact read-only source copy", async () => {
+    const derive = await script("New-ExosuitDerivedFieldBase.ps1");
+    expect(derive).toContain("BUILD FIELD BASE $TargetImageId FROM $SourceImageId");
+    expect(derive).toContain("Derived base requires the exact clean source commit");
+    expect(derive).toContain("Assert-StandaloneAgentBundle -Path $components['Exosuit.Agent.exe']");
+    expect(derive).toContain("standalone single-file Field agent");
+    expect(derive).toContain("$agent.Length -lt 16MB");
+    expect(derive).toContain('"$stem.runtimeconfig.json"');
+    expect(derive).toContain("standaloneAgentBundleVerified = $true");
+    expect(derive).toContain("if (-not $sourceItem.IsReadOnly)");
+    expect(derive).toContain("if (Test-Path -LiteralPath $target)");
+    expect(derive).toContain("Mount-VHD -Path $temporary");
+    expect(derive).not.toContain("Mount-VHD -Path $source");
+    expect(derive).toContain("per-generation configuration or secrets");
+    expect(derive).toContain("Set-ExactComponentAcl -Path $guestAgentRoot -Container $true");
+    expect(derive).toContain("SecurityIdentifier]::new($entry.Sid)");
+    expect(derive).toContain("Assert-NoUntrustedWrite");
+    expect(derive).toContain("Dismount-VHD -Path $temporary");
+    expect(derive).toContain("$temporaryItem.IsReadOnly = $true");
+    expect(derive).toContain("Move-Item -LiteralPath $temporary -Destination $target");
+    expect(derive).toContain("if ($targetPublished -and (Test-Path -LiteralPath $target))");
+    expect(derive).not.toContain("Invoke-Expression");
+    expect(derive).not.toMatch(/New-VM|Start-VM|Connect-VMNetworkAdapter/);
+  });
+
+  it("installs a narrow hash-bound Field owner service with one visible UAC launch", async () => {
+    const show = await script("Show-ExosuitFieldOwnerInstallPlan.ps1");
+    const start = await script("Start-ExosuitFieldOwnerInstall.ps1");
+    const install = await script("Install-ExosuitFieldOwnerService.ps1");
+    const submit = await script("Submit-ExosuitFieldOwnerJob.ps1");
+    const uninstall = await script("Uninstall-ExosuitFieldOwnerService.ps1");
+
+    expect(show).toContain("arbitraryCommandExecution = $false");
+    expect(show).toContain("hostCheckScriptSha256 = Get-Digest $hostCheckScript");
+    expect(show).toContain("pilotMayChangePolicy = $false");
+    expect(show).toContain("recordingAuthority = $false");
+    expect(show).toContain("keyAuthority = $false");
+    expect(show).toContain("exportAuthority = $false");
+    expect(show).not.toContain("Start-Process");
+    expect(show).not.toMatch(/\bNew-VM\b|\bRemove-VM\b|\bStop-VM\b/);
+
+    expect(start.match(/-Verb RunAs/g)?.length).toBe(1);
+    expect(start).toContain("no UAC prompt was opened");
+    expect(start).toContain("Opening one Windows UAC prompt");
+    expect(start).not.toContain("Invoke-Expression");
+    expect(start).toContain("-EncodedCommand");
+    expect(start).toContain("Elevated installer changed after owner review.");
+    expect(start).toContain("$global:ExosuitFieldOwnerInstallStage");
+    expect(start).toContain("$global:ExosuitFieldOwnerNativeExitCode");
+    expect(start).toContain("(`$stage * 10000) + `$native");
+    expect(start).toContain("`$stage -ge 10 -and `$stage -le 60");
+    expect(start).toContain("-p:PublishSingleFile=true");
+
+    expect(install).toContain("serviceIdentity = 'LocalSystem'");
+    expect(install).toContain("policyChangeRequiresElevation = $true");
+    expect(install).toContain("Get-Digest $pair.Key");
+    expect(install).toContain("Field owner installation plan changed after owner review.");
+    expect(install).toContain("Installed Field owner input digest is invalid");
+    expect(install).toContain("Copy-Item -LiteralPath $hostCheckScript -Destination (Join-Path $scriptsRoot 'Test-ExosuitFieldHost.ps1')");
+    expect(install).toContain("hostCheckScriptSha256 = [string]$plan.hostCheckScriptSha256");
+    expect(install).toContain("*S-1-5-18:(OI)(CI)F");
+    expect(install).toContain("SecurityIdentifier]::new($OwnerSid)");
+    expect(install).toContain("FileSystemRights]::Modify");
+    expect(install).toContain("FileSystemRights]::DeleteSubdirectoriesAndFiles");
+    expect(install).toContain("FileSystemRights]::ReadAndExecute");
+    expect(install).toContain("Grant-OwnerPathAccess -Path $resultsRoot");
+    expect(install).toContain("Grant-OwnerPathAccess -Path $evidenceRoot");
+    expect(install).toContain("Grant-OwnerPathAccess -Path $policyPath");
+    expect(install).toContain("InheritanceFlags]$Inheritance = [Security.AccessControl.InheritanceFlags]::None");
+    expect(install).toContain("Set-Acl -LiteralPath $Path -AclObject $acl");
+    expect(install).toContain("$global:ExosuitFieldOwnerInstallStage = $script:InstallStage");
+    expect(install).toContain("$global:ExosuitFieldOwnerNativeExitCode = $LASTEXITCODE");
+    for (const stage of [10, 11, 12, 20, 21, 22, 23, 31, 32, 33, 40, 41, 42, 50, 60]) {
+      expect(install).toContain(`$script:InstallStage = ${stage}`);
+    }
+    expect(install).toContain("*S-1-5-32-544:(OI)(CI)F");
+    expect(install).toContain("New-Service -Name $serviceName -BinaryPathName $binaryPath -StartupType Automatic -DisplayName 'Exosuit Field Owner Authority'");
+    expect(install).toContain("$serviceAlreadyInstalled = $null -ne $existing");
+    expect(install).toContain("if (-not $serviceAlreadyInstalled)");
+    expect(install).toContain("$existing.Dispose()");
+    expect(install).not.toContain("@('delete', $serviceName)");
+    expect(install).toContain("@('config', $serviceName, 'start=', 'delayed-auto')");
+    expect(install).not.toContain("@('create'");
+    expect(install).not.toContain("'obj=', 'LocalSystem'");
+    expect(install).toContain("@('provision', 'observe', 'destroy')");
+    expect(install).not.toContain("Invoke-Expression");
+
+    expect(submit).toContain("sourceHead = $head");
+    expect(submit).toContain("Queue\\Pending");
+    expect(submit).toContain("Join-Path $destination '.ready'");
+    expect(submit).not.toContain(".staging-");
+    expect(submit).not.toContain("Move-Item");
+    expect(submit).toContain("$submissionError = $_");
+    expect(submit).toContain("throw $submissionError");
+    expect(submit).not.toContain("Start-Process");
+    expect(submit).not.toContain("Invoke-Expression");
+
+    expect(uninstall).toContain("UNINSTALL EXOSUIT FIELD OWNER SERVICE");
+    expect(uninstall).toContain("evidencePreserved = $true");
+    expect(uninstall).not.toMatch(/Remove-Item[^\n]*(Fields|Images|base|personal)/i);
+
+    const exactRunner = await script("Invoke-ExosuitFieldValidation.ps1");
+    const exactLauncher = await readFile("scripts/build-exact.mjs", "utf8");
+    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { scripts: Record<string, string> };
+    expect(exactRunner).toContain("Resolve-DotnetSdk");
+    expect(exactRunner).toContain("& $dotnet restore");
+    expect(exactRunner).toContain("& $dotnet build");
+    expect(exactRunner).toContain("& $dotnet test");
+    expect(packageJson.scripts["build:exact"]).toBe("node scripts/build-exact.mjs");
+    expect(exactLauncher).toContain('"-RepositoryRoot"');
+    expect(exactLauncher).toContain("repositoryRoot");
+    expect(exactLauncher).not.toContain("shell: true");
+  });
+
   it("keeps the plan resolver non-mutating", async () => {
     const content = await script("Show-ExosuitFieldProvisioningPlan.ps1");
     expect(content).toContain("applySupportedByThisScript = $false");
@@ -18,6 +269,8 @@ describe("Windows Field administration scripts", () => {
   it("requires exact confirmation and a disposable differencing overlay before apply", async () => {
     const content = await script("Invoke-ExosuitFieldProvisioning.ps1");
     expect(content).toContain("CREATE FIELD $fieldId GENERATION $generation");
+    expect(content).toContain("Owner-policy noninteractive apply requires LocalSystem.");
+    expect(content.indexOf("Apply requires exact typed confirmation")).toBeLessThan(content.indexOf("$ConfirmPreference = 'None'"));
     expect(content).toContain("runtimeOverlay.differencing");
     expect(content).toContain("New-VHD -Path $runtimeOverlayPath -ParentPath $base.path -Differencing");
     expect(content).toContain("Filtered NAT apply is held");
@@ -68,6 +321,8 @@ describe("Windows Field administration scripts", () => {
     expect(host).toContain("Win32_OptionalFeature");
     expect(host).toContain("HyperVisorPresent");
     expect(host).toContain("root\\virtualization\\v2");
+    expect(host).toContain("if (-not $result.ready) { exit 2 }");
+    expect(host).toContain("exit 0");
     expect(host).not.toMatch(/Enable-WindowsOptionalFeature|Disable-WindowsOptionalFeature|New-VM|Remove-VM/);
     for (const content of [showPlan, apply, destroy, guest]) {
       expect(content).toContain("Parameters.ContainsKey('Depth')");
@@ -105,6 +360,17 @@ describe("Windows Field administration scripts", () => {
     expect(guest).toContain("deliberately omitted here");
     expect(guest).toContain("not_ready instead of failed");
     expect(guest).not.toContain("Invoke-Expression");
+  });
+
+  it("allows the fixed owner service to suppress prompts only as LocalSystem after exact confirmation", async () => {
+    const provision = await script("Invoke-ExosuitFieldProvisioning.ps1");
+    const destroy = await script("Remove-ExosuitFieldGeneration.ps1");
+    for (const content of [provision, destroy]) {
+      expect(content).toContain("[switch]$OwnerPolicyAuthorized");
+      expect(content).toContain("$currentSid -cne 'S-1-5-18'");
+      expect(content.indexOf("TypedConfirmation")).toBeLessThan(content.indexOf("$ConfirmPreference = 'None'"));
+    }
+    expect(destroy).toContain("Owner-policy noninteractive destruction requires LocalSystem.");
   });
 
   it("keeps offline guest inspection bounded, private-content-free, and read-only", async () => {
@@ -171,7 +437,19 @@ describe("Windows Field administration scripts", () => {
     const systemBaseMaintenance = await script("Invoke-ExosuitFieldBaseMaintenance.ps1");
     const baseMaintenanceBootstrap = await script("Invoke-ExosuitFieldBaseMaintenanceBootstrap.ps1");
     const auditSeal = await script("Invoke-ExosuitFieldBaseAuditSeal.ps1");
+    expect(install).toContain("[ValidateSet('Automatic', 'Manual')]");
+    expect(install).toContain("[string]$StartupType = 'Automatic'");
+    expect(install).toContain("$scStartMode = if ($StartupType -ceq 'Automatic') { 'auto' } else { 'demand' }");
+    expect(install).toContain("Starting the Field guest service requires Automatic startup.");
     expect(start).toContain("--field-guest-kvp");
+    expect(start).toContain("--field-protect-channel-secret");
+    expect(start).toContain("Field channel-secret protection did not return exactly one metadata receipt.");
+    expect(start).toContain("Field channel-secret protection returned an unexpected Field receipt schema.");
+    expect(start).toContain("Field channel-secret protection receipt does not match the runtime Field generation and key.");
+    expect(start).toContain("@('converted', 'already_protected') -cnotcontains");
+    expect(start).toContain("'^[0-9a-f]{64}$'");
+    expect(start).toContain("Field channel-secret protection receipt is stale or from the future.");
+    expect(start.indexOf("--field-protect-channel-secret")).toBeLessThan(start.indexOf("--field-guest-kvp"));
     expect(start).toContain("C:\\Exosuit");
     expect(start).toContain("if (-not $?)");
     expect(start).toContain("guest-runtime-error.log");
@@ -179,7 +457,7 @@ describe("Windows Field administration scripts", () => {
     expect(install).toContain("$serviceName = 'ExosuitFieldGuest'");
     expect(install).toContain("--field-guest-service");
     expect(install).toContain("Field guest service installation requires the exact compiled launcher paths.");
-    expect(install).toContain("'start=', 'auto', 'obj=', 'LocalSystem'");
+    expect(install).toContain("'start=', $scStartMode, 'obj=', 'LocalSystem'");
     expect(install).toContain("'restart/5000/restart/30000/restart/60000'");
     expect(install).toContain('$allowedRegisteredBinaryPaths -cnotcontains [string]$registered.PathName');
     expect(install).toContain('$binaryPath,');
@@ -202,11 +480,21 @@ describe("Windows Field administration scripts", () => {
     expect(developmentAccess).toContain("if (-not $NoRestart)");
     expect(developmentAccess).not.toMatch(/Add-LocalGroupMember[^\r\n]*Administrators/i);
     expect(readKvp).toContain("Msvm_KvpExchangeComponent");
-    expect(readKvp).toContain("--field-verify-envelope");
+    expect(readKvp).toContain("--field-observe-kvp-snapshot");
     expect(readKvp).toContain("Resolve-KvpEnvelope");
     expect(readKvp).toContain("Chunked KVP envelope digest is invalid");
     expect(readKvp).toContain("for ($attempt = 1; $attempt -le 20; $attempt++)");
     expect(readKvp).toContain("$snapshot = Get-FieldKvpItems");
+    expect(readKvp).toContain("guest-to-host-observation.json");
+    expect(readKvp).toContain("[string]$ObservationStatePath");
+    expect(readKvp).toContain("[IO.Path]::GetFullPath($ObservationStatePath)");
+    expect(readKvp).toContain("--field-observe-kvp-snapshot");
+    expect(readKvp).toContain("$envelopePaths.handshake");
+    expect(readKvp).toContain("$envelopePaths.bootstrap");
+    expect(readKvp).toContain("$envelopePaths.heartbeat");
+    expect(readKvp).toContain("Guest KVP snapshot verification failed");
+    expect(readKvp).toContain("$verified = [object[]]");
+    expect(readKvp).toContain("if ($verified.Count -ne 3)");
     expect(initializeGuest).toContain("Marshal.ReadInt32(buffer, 16)");
     expect(setupComplete).toContain('if not exist "C:\\Exosuit\\Logs" mkdir "C:\\Exosuit\\Logs"');
     expect(setupComplete).toContain("-Command");
@@ -341,6 +629,9 @@ describe("Windows Field administration scripts", () => {
     expect(agentChecks).toEqual([...fieldBootstrapCheckNameSchema.options]);
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_identity_verified'");
     expect(systemBaseMaintenance).toContain("Set-MaintenanceStage 'system_maintenance_complete_sysprep_pending'");
+    expect(systemBaseMaintenance).toContain("& $runtimeInstallerPath -StartupType Manual -Confirm:$false");
+    expect(systemBaseMaintenance).toContain("[string]$runtimeService.StartMode -cne 'Manual'");
+    expect(systemBaseMaintenance).toContain("startMode = 'ManualUntilSetupComplete'");
     expect(systemBaseMaintenance).toContain("sysprep = 'pending_audit_administrator'");
     expect(systemBaseMaintenance).not.toContain("Start-Process -FilePath $sysprepPath");
     expect(auditSeal).toContain("Field base sealing requires the built-in Audit Mode administrator.");
@@ -349,6 +640,7 @@ describe("Windows Field administration scripts", () => {
     expect(auditSeal).toContain("Get-FileHash -LiteralPath $PSCommandPath");
     expect(auditSeal).toContain("$expectedMaintenanceSha256");
     expect(auditSeal).toContain("$receipt.runtimeService.principal -cne 'SYSTEM'");
+    expect(auditSeal).toContain("$receipt.runtimeService.startMode -cne 'ManualUntilSetupComplete'");
     expect(auditSeal).toContain("$receipt.perGenerationConfigurationAbsent -ne $true");
     expect(auditSeal).toContain("principal = 'built_in_audit_administrator'");
     expect(auditSeal).toContain("automaticAuditUiTerminated = $true");
@@ -364,4 +656,64 @@ describe("Windows Field administration scripts", () => {
       expect(content).not.toContain("Invoke-Expression");
     }
   });
+
+  it("keeps the compiled protection receipt and launcher on one exact digest field", async () => {
+    const launcher = await script("Start-ExosuitFieldGuest.ps1");
+    const converter = await readFile("apps/windows-agent/FieldChannelSecretSeedConverter.cs", "utf8");
+    const commandTests = await readFile("apps/windows-agent.Tests/FieldChannelSecretProtectionCommandTests.cs", "utf8");
+
+    expect(launcher).toContain("ciphertextEnvelopeSha256");
+    expect(launcher).toContain("function Get-Sha256Digest");
+    expect(launcher).toContain("[Security.Cryptography.SHA256]::Create()");
+    expect(launcher).toContain("$manifestDigest = Get-Sha256Digest -Path $manifestPath");
+    expect(launcher).not.toContain("Get-FileHash -LiteralPath $manifestPath");
+    expect(converter).toContain("string CiphertextEnvelopeSha256");
+    expect(commandTests).toContain(
+      '["ciphertextEnvelopeSha256", "completedAt", "contractVersion", "field", "keyId", "status"]',
+    );
+    expect(launcher).not.toContain("protectedEnvelopeSha256");
+  });
+
+  const windowsIt = process.platform === "win32" ? it : it.skip;
+  windowsIt("executes the protected-secret startup transaction and never starts the guest after denial", async () => {
+    for (const scenario of ["converted", "already_protected"] as const) {
+      const result = await runGuestStartupHarness(scenario);
+      expect(result.error, `${scenario}: ${result.error?.message}`).toBeUndefined();
+      expect(result.status, `${scenario}: ${result.stderr}`).toBe(0);
+      expect(result.calls).toEqual(["bootstrap", "protect", "guest", "wait"]);
+    }
+    for (const scenario of ["command_failure", "malformed_receipt", "post_publication_interruption"] as const) {
+      const result = await runGuestStartupHarness(scenario);
+      expect(result.error, `${scenario}: ${result.error?.message}`).toBeUndefined();
+      expect(result.status, scenario).not.toBe(0);
+      expect(result.calls, `${scenario}: ${result.stderr}`).toEqual(["bootstrap", "protect"]);
+    }
+    const lockedThenUnlocked = await runGuestStartupHarness("locked_then_unlocked");
+    expect(lockedThenUnlocked.status, lockedThenUnlocked.stderr).toBe(0);
+    expect(lockedThenUnlocked.calls).toEqual(["bootstrap", "protect", "guest", "bootstrap", "wait"]);
+
+    const neverUnlocked = await runGuestStartupHarness("never_unlocked");
+    expect(neverUnlocked.status).not.toBe(0);
+    expect(neverUnlocked.calls.slice(0, 3)).toEqual(["bootstrap", "protect", "guest"]);
+    expect(neverUnlocked.calls.at(-1)).toBe("stop");
+    expect(neverUnlocked.calls).not.toContain("wait");
+    expect(neverUnlocked.calls.slice(3, -1).every((call) => call === "bootstrap")).toBe(true);
+  // Seven isolated Windows PowerShell child processes execute product deadlines
+  // internally. This outer harness timeout only bounds aggregate process startup
+  // under host load; it does not relax any launcher or desktop-ready deadline.
+  }, 120_000);
+
+  windowsIt("normalizes Windows PowerShell JSON arrays before indexing KVP verification results", () => {
+    const command = [
+      "$json='[{\"status\":\"verified\"},{\"status\":\"verified\"},{\"status\":\"verified\"}]'",
+      "$verified=[object[]]($json | ConvertFrom-Json)",
+      "if ($verified.Count -ne 3) { exit 9 }",
+      "Write-Output $verified.Count",
+    ].join("; ");
+    const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", command], {
+      encoding: "utf8",
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toBe("3");
+  }, 30_000);
 });

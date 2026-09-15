@@ -141,6 +141,7 @@ export EXOSUIT_COMPLETION_KEY_PREFIX="live-"
 | Report status | `npm run validate:completion` |
 | Record evidence from a command | `tsx src/completion/cli.ts record --test <ID> --class <class> --command "<cmd>"` |
 | Record evidence from a file | `tsx src/completion/cli.ts record-artifact --test <ID> --class <class> --file <path> --field-id <id> --field-generation <n> --field-boot-id <id>` |
+| Record a reviewed CHN candidate | `npx --no-install tsx src/completion/chn001Harness.ts record --run-id <id> --confirm "RECORD CHN-001 LIVE CANDIDATE"` (refuses missing lifecycle) |
 | Field lifecycle event | `tsx src/completion/cli.ts field-lifecycle --field-id <id> --generation <n> --kind created\|booted\|stopped\|destroyed [--boot-id <id>] [--base-image-sha256 <hash>]` |
 | Promote a gate | `tsx src/completion/cli.ts transition --test <ID> --from ready_for_live --to passed --evidence <ids> --issuer <who> --reviewer <who> --reason "<why>"` |
 | Negatives vs real artifacts | `EXOSUIT_COMPLETION_DIR=docs/qa/completion-m05 tsx src/completion/m05Negatives.ts` |

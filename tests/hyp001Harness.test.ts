@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   BLOCKING_FIELD_VM_STATES,
   deriveBootId,
   evaluateCompetingFieldVms,
   evaluateFreeMemory,
   FIELD_VM_PREFIX,
+  HYP001_MEMORY,
   hyp001RunSchema,
   resolveDotnetSdk,
   validateHyp001Run,
@@ -51,6 +53,47 @@ function run(cycles: readonly unknown[]) {
 }
 
 const threeGoodCycles = [cycle(0), cycle(1), cycle(2)];
+
+describe("HYP-001 operator contract", () => {
+  const runbook = readFileSync("docs/project-driver/HYP001_SESSION_RUNBOOK.md", "utf8");
+  const handoff = readFileSync("docs/DEVELOPER_HANDOFF.md", "utf8");
+  const harnessSource = readFileSync("src/completion/hyp001Harness.ts", "utf8");
+
+  it("ships the runbook referenced by the developer handoff", () => {
+    expect(handoff).toContain("docs/project-driver/HYP001_SESSION_RUNBOOK.md");
+    expect(runbook).toContain('npm run hyp001:cycles -- --apply --confirm "RUN HYP-001 LIVE CYCLES"');
+  });
+
+  it("does not mislabel the raw preflight JSON as signed completion evidence", () => {
+    expect(runbook).toContain("ordinary JSON written by the harness");
+    expect(runbook).toContain("it must not be described as signed evidence");
+    expect(handoff).toContain("machine-generated but unsigned");
+    expect(handoff).not.toMatch(/preflight[^\n]{0,80}writes a signed artifact/i);
+  });
+
+  it("documents the resource gates enforced immediately before apply", () => {
+    expect(runbook).toContain("At least 4.00 GiB physical memory free");
+    expect(runbook).toContain("No `Exosuit-Field-*` VM is in a resource-holding state");
+    expect(runbook).toContain("apply command re-runs preflight");
+  });
+
+  it("uses a memory profile accepted by the authoritative Field plan", () => {
+    expect(HYP001_MEMORY).toEqual({
+      minimumMemoryMiB: 2_048,
+      startupMemoryMiB: 4_096,
+      maximumMemoryMiB: 4_096,
+    });
+  });
+
+  it("suppresses ShouldProcess prompts only after exact typed confirmation", () => {
+    expect(harnessSource).toContain('`CREATE FIELD ${fieldId} GENERATION ${generation}`');
+    expect(harnessSource).toContain('`DESTROY FIELD ${fieldId} GENERATION ${generation}`');
+    expect(harnessSource).toContain("Windows PowerShell 5.1 cannot receive `-Confirm:$false`");
+    expect(harnessSource).toContain("-Confirm:$false`;");
+    expect(harnessSource).toContain('powershellConfirmedScript("Invoke-ExosuitFieldProvisioning.ps1"');
+    expect(harnessSource).toContain('powershellConfirmedScript("Remove-ExosuitFieldGeneration.ps1"');
+  });
+});
 
 describe("deriveBootId", () => {
   it("binds the vm guid and the observed power-on instant", () => {

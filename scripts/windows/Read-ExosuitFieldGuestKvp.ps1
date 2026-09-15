@@ -12,7 +12,10 @@ param(
     [string]$AgentPath,
 
     [Parameter(Mandatory)]
-    [string]$EvidenceDirectory
+    [string]$EvidenceDirectory,
+
+    [Parameter()]
+    [string]$ObservationStatePath
 )
 
 Set-StrictMode -Version Latest
@@ -83,20 +86,34 @@ function Resolve-KvpEnvelope {
 }
 
 New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
-$replayPath = Join-Path $EvidenceDirectory 'guest-to-host-replay.json'
-$verified = @()
+$observationPath = if ([string]::IsNullOrWhiteSpace($ObservationStatePath)) {
+    Join-Path $EvidenceDirectory 'guest-to-host-observation.json'
+} else {
+    $resolvedObservation = [IO.Path]::GetFullPath($ObservationStatePath)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $resolvedObservation) -Force | Out-Null
+    $resolvedObservation
+}
+$envelopePaths = @{}
 foreach ($entry in @(
     @{ name = 'handshake'; key = 'Exosuit.Field.Handshake' },
     @{ name = 'bootstrap'; key = 'Exosuit.Field.Bootstrap' },
     @{ name = 'heartbeat'; key = 'Exosuit.Field.Heartbeat' }
 )) {
-    $envelopePath = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
-    [IO.File]::WriteAllText($envelopePath, (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
-    $output = & $AgentPath --field-verify-envelope $RuntimeConfigPath $envelopePath $replayPath 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Guest $($entry.name) envelope verification failed: $($output -join ' ')"
-    }
-    $verified += ($output -join [Environment]::NewLine) | ConvertFrom-Json
+    $envelopePaths[$entry.name] = Join-Path $EvidenceDirectory "$($entry.name)-envelope.json"
+    [IO.File]::WriteAllText($envelopePaths[$entry.name], (Resolve-KvpEnvelope -Key $entry.key), [Text.UTF8Encoding]::new($false))
+}
+$output = & $AgentPath --field-observe-kvp-snapshot `
+    $RuntimeConfigPath `
+    $envelopePaths.handshake `
+    $envelopePaths.bootstrap `
+    $envelopePaths.heartbeat `
+    $observationPath 2>&1
+if ($LASTEXITCODE -ne 0) {
+    throw "Guest KVP snapshot verification failed: $($output -join ' ')"
+}
+$verified = [object[]](($output -join [Environment]::NewLine) | ConvertFrom-Json)
+if ($verified.Count -ne 3) {
+    throw "Guest KVP snapshot verifier returned $($verified.Count) results; exactly three are required."
 }
 
 $result = [ordered]@{

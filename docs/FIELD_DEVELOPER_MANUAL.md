@@ -54,6 +54,20 @@ Use this sequence unless a recorded architecture decision changes it:
 
 Do not combine first live recording, first visual capture, first physical input, first autonomous policy, and first real-account task into one slice.
 
+### Accelerated build fabric
+
+Every active slice is declared in `development/current-slice.json`. Run
+`npm run build:fast` for non-promotional working-tree feedback, then run the complete
+`npm run build:exact` evidence runner against the exact review head. Test selection or
+parallelization is an inner-loop optimization only; it never waives a required command.
+
+The host Field owner service is a separate service authority. It may execute only an
+owner-preauthorized exact-generation provision, authenticated read-only observation, or destruction job. Do not add a shell,
+command string, script path, host-config path, recording operation, key operation,
+export operation, policy mutation, mode transition, or MCP endpoint. Its policy and
+installed scripts must remain admin/SYSTEM writable only and hash-bound. A policy
+replacement requires elevation and must retain a bounded expiry.
+
 ## Component naming
 
 Use explicit names:
@@ -80,6 +94,18 @@ contractVersion
 ```
 
 Generation is not optional. A closed/rebuilt/rolled-back environment may reuse a human-readable name but must not silently reuse runtime authority.
+
+Do not treat the v1 bootstrap `windowsSessionId` as interactive-desktop proof.
+Current M1 manifests bind the LocalSystem service process in session 0. M2 scene
+code must carry a separately OS-derived per-boot active session, interactive
+user SID, client PID, and exact producer image identity. Tests or adapters that
+copy session 0 into a scene contract are invalid even if channel authentication
+passes.
+
+`FieldSceneRelayWindowsClientResolver` derives facts only after a pipe client is
+connected; it does not make that pipe safe. Do not wire it until the fixed pipe
+name, ACL, direction, byte framing, connection budget, disconnect behavior, and
+per-generation interactive SID source are reviewed and tested.
 
 Tests must cover:
 
@@ -125,6 +151,48 @@ Attestation code must:
 
 Future key-storage improvements must preserve backward-incompatible versioning where necessary.
 
+### Protected channel-secret files
+
+`ProtectedFieldChannelSecretStore` is a bounded Windows primitive, not a live
+rotation provider. It is used only by the explicit conversion command and the
+protected guest reader. Use fake protectors and file-policy providers in ordinary
+tests. The real provider uses guest-machine DPAPI LocalMachine and requires an
+exact non-inherited SYSTEM/Administrators DACL before publication. Do not call it
+from the host against an offline guest overlay: LocalMachine DPAPI must execute
+inside the target guest. Do not add plaintext fallback or silently migrate
+`channel-secret.txt`; a guest LocalSystem conversion requires its own reviewed,
+consumed-seed, deletion, restart, and failure-injection slice.
+
+The seed converter is invoked only by the explicit
+`--field-protect-channel-secret C:\Exosuit\Config\guest-runtime.json` command.
+Do not invoke it automatically from ordinary KVP startup and do not interpret
+malformed JSON as a legacy seed. The command must retain its literal-path,
+LocalSystem-before-read, bounded strict JSON, exact Field/generation/key/path
+derivation, and metadata-only output rules. The guest KVP emitter must use
+`ProtectedFieldKvpSecretReader`; never restore its former `File.ReadAllText`
+fallback. The fixed guest launcher must run the protection command, validate the
+metadata receipt against runtime Field/generation/key, status, digest, and time,
+and only then start the emitter. After one valid bootstrap precheck, the emitter
+may report authenticated `provisioning` while the session remains locked; the
+launcher must keep refreshing bootstrap, deny readiness, and stop the exact child
+on exit or timeout. Do not weaken this ordering or print the receipt. Live
+promotion remains held until combined LocalSystem restart/failure
+evidence passes. Treat atomic replacement as namespace removal,
+not secure erasure; disposable overlay destruction and storage-retention policy
+remain part of secret retirement.
+
+The launcher contains marked, narrow process adapters solely to separate the
+protection and emitter effects from receipt validation. Tests may create a
+temporary source-derived launcher and replace those adapters with inert fakes;
+never add an environment variable, command-line switch, alternate agent path,
+or other runtime injection hook to the production launcher. Harness success is
+script evidence, not guest LocalSystem or DPAPI evidence.
+
+Guest-machine DPAPI and host verification secrets are separate protection
+domains. Do not copy guest ciphertext to the host or teach the host observer to
+decrypt it. The host store requires its own reviewed protection and rotation
+implementation.
+
 ## Teach Mode requirements
 
 Teach Mode is a privacy-sensitive subsystem.
@@ -142,6 +210,11 @@ Before adding a recorder:
 - add positive, denial, overflow, cancellation, and corruption tests.
 
 The recorder must never infer consent from task text or model output.
+
+Recording emergency-stop evidence belongs to TCH-001 after live capture hooks exist.
+Do not satisfy a channel gate with a synthetic recorder state, an owner assertion, or
+a stopped VM alone. The proof must bind active consent, visible indication, stopped
+hooks, invalidated pending input, exact Field/generation, and bounded stop timing.
 
 ## Demonstration data laws
 

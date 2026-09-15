@@ -118,6 +118,49 @@ See [`docs/qa/ATOMIC_AUDIT_2026-08-04_PRODUCT_PARITY_LAYER.md`](docs/qa/ATOMIC_A
 
 These are repository and fake-provider results. Live Windows, Hyper-V, Teach, owner-derived calibration, process-level Shadow isolation, credential insertion, Assisted execution, ChatGPT-to-Field acceptance, graphical cockpit, installer execution, MVP, and production remain denied.
 
+Still unproven:
+
+- independent hosted CI attestation of the consolidated Glove/Field commit (local exact-head L0 and clean parity pass);
+- repeatable Hyper-V lifecycle, isolation, destruction, and failure-injection evidence;
+- production-authenticated host/guest transport, key storage, and rotation;
+- production guest bootstrap and heartbeat without development auto-login/unattended setup;
+- live scene production;
+- live consented Teach recording;
+- actual demonstration processing and retrieval;
+- actual Shadow predictor;
+- personal task, motor, typing, timing, language, and correction models;
+- live cross-VM artifact transport;
+- Pilot integration;
+- ChatGPT-to-Field acceptance;
+- real account or consequential website operation;
+- production readiness.
+
+## Current execution gate
+
+The next mandatory phase is L0 in the master plan and GitHub issue #12.
+
+On an authenticated Windows checkout of the exact branch head:
+
+```powershell
+./scripts/windows/Invoke-ExosuitFieldValidation.ps1
+```
+
+This runner is intended to preserve exact evidence for repository validation, the master-plan validator, Field validation, TypeScript, tests, builds, PowerShell parsing, .NET, and the read-only Hyper-V host check.
+
+For working-tree feedback, `npm run build:fast` runs the independent contract and
+typecheck lanes concurrently and writes non-promotional evidence beneath
+`artifacts/build-fabric`. The active slice contract is
+`development/current-slice.json`. The fast runner never substitutes for the complete
+exact-head runner.
+
+The optional accelerated Field owner service is installed through one reviewed UAC
+transaction documented in `docs/FIELD_WINDOWS_RUNBOOK.md`. Its expiring standing policy
+allows only exact-generation provisioning, authenticated read-only KVP observation, and
+destruction through fixed hash-bound components. It has no MCP surface and grants no
+desktop, recording, consent, key, export, or policy authority.
+
+Hosted GitHub jobs for the draft branch have repeatedly failed before checkout with zero allocated steps and no logs. That is an infrastructure block—not a repository pass or failure.
+
 ## Current MCP surface
 
 The exposed tool set is selected by `EXOSUIT_MCP_SURFACE`:
