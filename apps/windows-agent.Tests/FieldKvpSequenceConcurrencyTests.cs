@@ -3,7 +3,7 @@ namespace Exosuit.Agent.Tests;
 public sealed class FieldKvpSequenceConcurrencyTests
 {
     [Fact]
-    public void GuestSequenceAllocationsAreSerializedAcrossConcurrentWriters()
+    public async Task GuestSequenceAllocationsAreSerializedAcrossConcurrentWriters()
     {
         var root = Path.Combine(Path.GetTempPath(), $"exosuit-kvp-sequence-concurrent-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -18,17 +18,17 @@ public sealed class FieldKvpSequenceConcurrencyTests
                 Path.Combine(root, "bootstrap.json"),
                 1_000);
             var now = DateTimeOffset.Parse("2026-09-15T21:00:00.000Z");
-            using var start = new ManualResetEventSlim(false);
+            var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var tasks = Enumerable.Range(0, 32)
-                .Select(_ => Task.Run(() =>
+                .Select(async _ =>
                 {
-                    start.Wait();
+                    await start.Task;
                     return FieldKvpRuntime.ReserveNextGuestSequence(configuration, now);
-                }))
+                })
                 .ToArray();
 
-            start.Set();
-            var sequences = Task.WhenAll(tasks).GetAwaiter().GetResult();
+            start.SetResult();
+            var sequences = await Task.WhenAll(tasks);
             Array.Sort(sequences);
 
             Assert.Equal(32, sequences.Distinct().Count());
