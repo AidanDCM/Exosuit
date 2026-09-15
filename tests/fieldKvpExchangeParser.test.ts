@@ -109,16 +109,27 @@ describe("guest exchange snapshot parsing", () => {
     expect(Object.keys(result.snapshot)).toContain("Exosuit.Field.Scene.001");
   });
 
-  it("fails a duplicate name rather than letting the last one win", () => {
+  it("removes an ambiguous duplicate name instead of selecting either value", () => {
     const result = parseGuestExchangeItems([
       item("Exosuit.Field.Scene", "first"),
       item("Exosuit.Field.Scene", "second"),
     ]);
 
-    // Two values for one key means the snapshot is ambiguous; picking one would hand the reader
-    // a value it cannot attribute.
-    expect(result.snapshot["Exosuit.Field.Scene"]).toBe("first");
+    // Once two values claim the same key there is no attributable winner. Failing closed means
+    // downstream code sees the scene as absent/unusable, not whichever copy happened to arrive first.
+    expect(result.snapshot).not.toHaveProperty("Exosuit.Field.Scene");
     expect(result.failures.join(" ")).toContain("duplicate");
+  });
+
+  it("keeps a name poisoned after a duplicate so a third copy cannot reappear", () => {
+    const result = parseGuestExchangeItems([
+      item("Exosuit.Field.Scene", "first"),
+      item("Exosuit.Field.Scene", "second"),
+      item("Exosuit.Field.Scene", "third"),
+    ]);
+
+    expect(result.snapshot).not.toHaveProperty("Exosuit.Field.Scene");
+    expect(result.failures).toHaveLength(2);
   });
 
   it("reports each invalid item with its index rather than dropping it silently", () => {
